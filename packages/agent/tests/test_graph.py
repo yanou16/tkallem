@@ -5,13 +5,9 @@ from tkallem_agent.graph import build_graph
 
 SCENARIO = json.loads((Path(__file__).parents[3] / "apps/api/app/scenarios/visa-us.json").read_text())
 
-GOOD = {
-    "reply": "Good. And how will you pay for your studies?",
-    "corrections": [{"original": "for study", "fixed": "to study", "type": "grammar", "why_fr": "Le but : to + verbe."}],
-    "sentence_status": "orange",
-    "goal_covered": "purpose_of_trip",
-}
-BAD = {k: v for k, v in GOOD.items() if k != "reply"}  # missing required field: invalid even after sanitizing
+FOUND = {"corrections": [{"original": "for study", "fixed": "to study", "type": "grammar", "why_fr": "Le but : to + verbe."}]}
+GOOD = {"reply": "Good. And how will you pay for your studies?", "goal_covered": "purpose_of_trip"}
+BAD = {"goal_covered": None}  # missing required "reply"
 
 
 class FakeLLM:
@@ -34,21 +30,22 @@ def run(llm):
 
 
 def test_happy_path_records_history():
-    out = run(FakeLLM([GOOD]))
+    out = run(FakeLLM([FOUND, GOOD]))
     assert out["turn"].sentence_status == "orange"
+    assert out["turn"].corrections[0].fixed == "to study"
     assert len(out["history"]) == 2
 
 
-def test_invalid_output_is_retried_once():
-    llm = FakeLLM([BAD, GOOD])
+def test_invalid_coach_output_is_retried_once():
+    llm = FakeLLM([FOUND, BAD, GOOD])
     out = run(llm)
-    assert llm.calls == 2 and out["turn"].reply.startswith("Good")
+    assert llm.calls == 3 and out["turn"].reply.startswith("Good")
 
 
 def test_gives_up_after_retry_without_turn():
-    llm = FakeLLM([BAD, BAD])
+    llm = FakeLLM([FOUND, BAD, BAD])
     out = run(llm)
-    assert llm.calls == 2 and "turn" not in out
+    assert llm.calls == 3 and "turn" not in out
 
 
 def test_coach_follows_scenario_question_order():
@@ -65,5 +62,5 @@ def test_coach_follows_scenario_question_order():
 def test_unknown_goal_is_dropped():
     from tkallem_agent.schemas import sanitize
 
-    out = sanitize({**GOOD, "goal_covered": "made_up_goal"}, SCENARIO["goals"])
+    out = sanitize({**GOOD, "corrections": [], "sentence_status": "green", "goal_covered": "made_up_goal"}, SCENARIO["goals"])
     assert out["goal_covered"] is None

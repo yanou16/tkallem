@@ -8,10 +8,23 @@ from langgraph.graph import END, START, StateGraph
 from pydantic import ValidationError
 
 from .levels import LEVEL_RULES
-from .schemas import AgentTurn, Level, sanitize
+from pydantic import BaseModel
 
-PROMPT = (Path(__file__).parent.parent / "prompts" / "coach_system.md").read_text()
+from .schemas import AgentTurn, Correction, Level, sanitize
+
+PROMPTS = Path(__file__).parent.parent / "prompts"
+PROMPT = (PROMPTS / "coach_system.md").read_text()
+CORRECTOR_PROMPT = (PROMPTS / "corrector_system.md").read_text()
 MAX_RETRIES = 1
+
+
+class Reply(BaseModel):
+    reply: str
+    goal_covered: str | None = None
+
+
+class Found(BaseModel):
+    corrections: list[Correction] = []
 
 
 class CoachState(TypedDict, total=False):
@@ -20,6 +33,7 @@ class CoachState(TypedDict, total=False):
     history: list[BaseMessage]
     student_text: str
     system: str
+    found: list[dict]
     turn: AgentTurn
     error: str
     retries: int
@@ -47,18 +61,29 @@ def build_system_prompt(level: Level, scenario: dict, history: list[BaseMessage]
 
 
 def build_graph(llm: BaseChatModel):
-    structured = llm.with_structured_output(AgentTurn.model_json_schema(), method="json_schema")
+    """load profile -> correct (strict, dedicated call) -> respond (coach) -> validate -> record."""
+    corrector = llm.with_structured_output(Found.model_json_schema(), method="json_schema")
+    coach = llm.with_structured_output(Reply.model_json_schema(), method="json_schema")
 
     def load_profile(state: CoachState) -> CoachState:
         return {"system": build_system_prompt(state["level"], state["scenario"], state.get("history", [])), "retries": 0}
+
+    def correct(state: CoachState) -> CoachState:
+        raw = corrector.invoke(
+            [SystemMessage(CORRECTOR_PROMPT.format(level=state["level"])), HumanMessage(state["student_text"])]
+        )
+        found = raw.get("corrections") if isinstance(raw, dict) else []
+        return {"found": found or []}
 
     def respond(state: CoachState) -> CoachState:
         messages = [SystemMessage(state["system"]), *state.get("history", []), HumanMessage(state["student_text"])]
         if state.get("error"):
             messages.append(SystemMessage(f"Your previous output was invalid: {state['error']}. Fix it."))
-        raw = structured.invoke(messages)
+        raw = coach.invoke(messages)
         try:
-            return {"turn": AgentTurn.model_validate(sanitize(raw, state["scenario"]["goals"], state["student_text"])), "error": ""}
+            merged = {**raw, "corrections": state.get("found", []), "sentence_status": "green"}
+            turn = AgentTurn.model_validate(sanitize(merged, state["scenario"]["goals"], state["student_text"]))
+            return {"turn": turn, "error": ""}
         except ValidationError as e:
             return {"error": str(e), "retries": state.get("retries", 0) + 1}
 
@@ -73,10 +98,12 @@ def build_graph(llm: BaseChatModel):
 
     g = StateGraph(CoachState)
     g.add_node("load_profile", load_profile)
+    g.add_node("correct", correct)
     g.add_node("respond", respond)
     g.add_node("record", record)
     g.add_edge(START, "load_profile")
-    g.add_edge("load_profile", "respond")
+    g.add_edge("load_profile", "correct")
+    g.add_edge("correct", "respond")
     g.add_conditional_edges("respond", route, {"record": "record", "respond": "respond", END: END})
     g.add_edge("record", END)
     return g.compile()
