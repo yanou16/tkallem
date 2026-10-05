@@ -19,8 +19,8 @@ MAX_RETRIES = 1
 
 
 class Reply(BaseModel):
-    reply: str
-    goal_covered: str | None = None
+    reaction: str
+    goal_covered: str | None  # required (may be null): the model must always decide
 
 
 class Found(BaseModel):
@@ -39,18 +39,18 @@ class CoachState(TypedDict, total=False):
     retries: int
 
 
-def next_step(scenario: dict, history: list[BaseMessage]) -> str:
-    """The coach follows the scenario questions in order: the API asked question 0, so the next one follows the student's turns."""
+def next_question(scenario: dict, history: list[BaseMessage]) -> str | None:
+    """Scenario questions come in order, verbatim. The API asked question 0, so the next one follows the student's turns."""
     answered = sum(isinstance(m, HumanMessage) for m in history) + 1  # + the answer being processed
     questions = scenario["questions"]
-    if answered < len(questions):
-        return f'ask exactly this question next, nothing else: "{questions[answered]}"'
-    return "the interview is over: thank the student briefly and close. Do not ask a new question."
+    return questions[answered] if answered < len(questions) else None
+
+
+CLOSING = "Thank you, that is the end of the interview."
 
 
 def build_system_prompt(level: Level, scenario: dict, history: list[BaseMessage] | None = None) -> str:
     return PROMPT.format(
-        next_step=next_step(scenario, history or []),
         coach_role=scenario["coach_role"],
         level=level,
         level_rules=LEVEL_RULES[level],
@@ -81,7 +81,17 @@ def build_graph(llm: BaseChatModel):
             messages.append(SystemMessage(f"Your previous output was invalid: {state['error']}. Fix it."))
         raw = coach.invoke(messages)
         try:
-            merged = {**raw, "corrections": state.get("found", []), "sentence_status": "green"}
+            history = state.get("history", [])
+            question = next_question(state["scenario"], history)
+            if question is None:  # interview finished: close once, then only react
+                already_closed = sum(isinstance(m, HumanMessage) for m in history) + 1 > len(state["scenario"]["questions"])
+                question = "" if already_closed else CLOSING
+            merged = {
+                "reply": f"{str(raw.get('reaction', '')).strip()} {question}".strip() if raw.get("reaction") else "",
+                "goal_covered": raw.get("goal_covered"),
+                "corrections": state.get("found", []),
+                "sentence_status": "green",
+            }
             turn = AgentTurn.model_validate(sanitize(merged, state["scenario"]["goals"], state["student_text"]))
             return {"turn": turn, "error": ""}
         except ValidationError as e:

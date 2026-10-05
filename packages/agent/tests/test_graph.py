@@ -6,8 +6,8 @@ from tkallem_agent.graph import build_graph
 SCENARIO = json.loads((Path(__file__).parents[3] / "apps/api/app/scenarios/visa-us.json").read_text())
 
 FOUND = {"corrections": [{"original": "for study", "fixed": "to study", "type": "grammar", "why_fr": "Le but : to + verbe."}]}
-GOOD = {"reply": "Good. And how will you pay for your studies?", "goal_covered": "purpose_of_trip"}
-BAD = {"goal_covered": None}  # missing required "reply"
+GOOD = {"reaction": "Good, you want to study.", "goal_covered": "purpose_of_trip"}
+BAD = {"goal_covered": None}  # missing required "reaction"
 
 
 class FakeLLM:
@@ -48,15 +48,20 @@ def test_gives_up_after_retry_without_turn():
     assert llm.calls == 3 and "turn" not in out
 
 
-def test_coach_follows_scenario_question_order():
+def test_reply_ends_with_next_scenario_question_verbatim():
+    out = run(FakeLLM([FOUND, GOOD]))
+    assert out["turn"].reply == "Good, you want to study. " + SCENARIO["questions"][1]
+
+
+def test_coach_follows_scenario_question_order_then_closes():
     from langchain_core.messages import AIMessage, HumanMessage
 
-    from tkallem_agent.graph import next_step
+    from tkallem_agent.graph import next_question
 
     qs = SCENARIO["questions"]
-    assert qs[1] in next_step(SCENARIO, [])
-    done = [HumanMessage("a"), AIMessage("b")] * (len(qs) - 1)
-    assert "over" in next_step(SCENARIO, done)
+    assert next_question(SCENARIO, []) == qs[1]
+    assert next_question(SCENARIO, [HumanMessage("a"), AIMessage("b")]) == qs[2]
+    assert next_question(SCENARIO, [HumanMessage("a"), AIMessage("b")] * (len(qs) - 1)) is None
 
 
 def test_unknown_goal_is_dropped():
