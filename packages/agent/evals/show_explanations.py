@@ -6,15 +6,15 @@ from pathlib import Path
 
 from tkallem_agent.graph import build_graph
 from tkallem_agent.llm import get_llm
+from tkallem_agent.scenarios import load_scenario
 
 ROOT = Path(__file__).parent
-SCENARIO = json.loads((ROOT.parents[2] / "apps/api/app/scenarios/visa-us.json").read_text())
+SCENARIO = load_scenario("visa-us").model_dump()
 ANSWERS = [
     "I go to the US for study. I want to do a master in computer science.",
     "My family support me but I have scholarship of DAAD.",
     "After my master I will return to Algeria because my family is there.",
 ]
-SCENARIO = {**SCENARIO, "questions": SCENARIO["questions"]}
 
 
 def main() -> None:
