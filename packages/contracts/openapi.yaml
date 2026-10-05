@@ -1,0 +1,124 @@
+# DRAFT from the MVP spec. Change only by a PR approved by all three owners.
+openapi: 3.1.0
+info: { title: Tkallem API, version: 0.1.0 }
+components:
+  schemas:
+    Correction:
+      type: object
+      required: [original, fixed, type, why_fr]
+      properties:
+        original: { type: string }
+        fixed: { type: string }
+        type: { type: string, enum: [grammar, vocabulary, word_choice, other] }
+        why_fr: { type: string }
+    SentenceStatus: { type: string, enum: [green, orange, red] }
+    Turn:
+      type: object
+      required: [transcript, reply, corrections, sentence_status]
+      properties:
+        transcript: { type: string }
+        reply: { type: string }
+        reply_audio_url: { type: [string, "null"] }
+        corrections:
+          type: array
+          maxItems: 3
+          items: { $ref: "#/components/schemas/Correction" }
+        sentence_status: { $ref: "#/components/schemas/SentenceStatus" }
+paths:
+  /sessions:
+    post:
+      summary: Start a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scenario_id]
+              properties:
+                scenario_id: { type: string }
+                mode: { type: string, enum: [text, voice] }
+      responses:
+        "200":
+          description: Session started
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session_id, first_question]
+                properties:
+                  session_id: { type: string }
+                  first_question:
+                    type: object
+                    properties:
+                      text: { type: string }
+                      audio_url: { type: [string, "null"] }
+  /sessions/{id}/turn:
+    post:
+      summary: Send one student turn (audio file or text)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                audio: { type: string, format: binary }
+                text: { type: string }
+      responses:
+        "200":
+          description: Coach reply with corrections
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Turn" }
+  /sessions/{id}/end:
+    post:
+      summary: End the session and get the report
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Report
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [lines, note, metrics]
+                properties:
+                  lines:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        role: { type: string, enum: [coach, student] }
+                        text: { type: string }
+                        status: { $ref: "#/components/schemas/SentenceStatus" }
+                        corrections:
+                          type: array
+                          items: { $ref: "#/components/schemas/Correction" }
+                  note: { type: string }
+                  metrics: { $ref: "#/paths/~1me~1progress/get/responses/200/content/application~1json/schema/properties/current" }
+  /me/progress:
+    get:
+      summary: Progress numbers and frequent mistakes
+      responses:
+        "200":
+          description: Progress
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  current:
+                    type: object
+                    properties:
+                      mistakes_per_100: { type: number }
+                      words_per_answer: { type: number }
+                      hesitations_per_min: { type: number }
+                      speaking_seconds: { type: number }
+                  baseline: { type: object }
+                  top_mistakes:
+                    type: array
+                    items: { type: object }

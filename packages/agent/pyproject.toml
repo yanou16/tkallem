@@ -1,0 +1,12 @@
+[project]
+name = "tkallem-agent"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = ["langgraph", "langchain", "langchain-core", "langchain-groq", "langchain-openai", "pydantic", "langfuse"]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["tkallem_agent"]

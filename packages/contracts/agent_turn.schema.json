@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AgentTurn",
+  "description": "Output of the agent for one student turn. DRAFT from the MVP spec: change only by a PR approved by all three owners.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["reply", "corrections", "sentence_status", "goal_covered"],
+  "properties": {
+    "reply": { "type": "string" },
+    "corrections": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["original", "fixed", "type", "why_fr"],
+        "properties": {
+          "original": { "type": "string" },
+          "fixed": { "type": "string" },
+          "type": { "type": "string", "enum": ["grammar", "vocabulary", "word_choice", "other"] },
+          "why_fr": { "type": "string" }
+        }
+      }
+    },
+    "sentence_status": { "type": "string", "enum": ["green", "orange", "red"] },
+    "goal_covered": { "type": ["string", "null"] }
+  }
+}

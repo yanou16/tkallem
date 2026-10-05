@@ -1,0 +1,8 @@
+{
+  "id": "visa-us",
+  "title": "Visa interview",
+  "coach_role": "A US consular officer: polite, short questions.",
+  "questions": ["What is the purpose of your trip?", "How will you pay for your studies?"],
+  "goals": ["purpose_of_trip", "funding", "ties_to_algeria", "plans_after"],
+  "useful_words": ["scholarship", "master's degree", "return"]
+}
