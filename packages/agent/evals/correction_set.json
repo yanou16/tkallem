@@ -1,0 +1,443 @@
+[
+  {
+    "id": "s01",
+    "sentence": "I go to the US for study.",
+    "level": "B1",
+    "errors": [
+      {
+        "wrong": "for study",
+        "fixed": "to study",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "I go to the US to study."
+    ]
+  },
+  {
+    "id": "s02",
+    "sentence": "My family support me.",
+    "level": "B1",
+    "errors": [
+      {
+        "wrong": "support",
+        "fixed": "supports",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "My family supports me."
+    ]
+  },
+  {
+    "id": "s03",
+    "sentence": "I have scholarship of DAAD.",
+    "level": "B1",
+    "errors": [
+      {
+        "wrong": "I have scholarship of DAAD",
+        "fixed": "I have a DAAD scholarship",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "I have a DAAD scholarship.",
+      "I have a scholarship from DAAD."
+    ]
+  },
+  {
+    "id": "s04",
+    "sentence": "I want to continue my study in Germany.",
+    "level": "B1",
+    "errors": [
+      {
+        "wrong": "my study",
+        "fixed": "my studies",
+        "type": "word_choice"
+      }
+    ],
+    "accepted": [
+      "I want to continue my studies in Germany."
+    ]
+  },
+  {
+    "id": "s05",
+    "sentence": "I am agree with you.",
+    "level": "A2",
+    "errors": [
+      {
+        "wrong": "am agree",
+        "fixed": "agree",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "I agree with you."
+    ]
+  },
+  {
+    "id": "s06",
+    "sentence": "I have 22 years old.",
+    "level": "A2",
+    "errors": [
+      {
+        "wrong": "have 22 years old",
+        "fixed": "am 22 years old",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "I am 22 years old."
+    ]
+  },
+  {
+    "id": "s07",
+    "sentence": "I live in Algiers since five years.",
+    "level": "B1",
+    "errors": [
+      {
+        "wrong": "live",
+        "fixed": "have lived",
+        "type": "grammar"
+      },
+      {
+        "wrong": "since five years",
+        "fixed": "for five years",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "I have lived in Algiers for five years."
+    ]
+  },
+  {
+    "id": "s08",
+    "sentence": "She don't like coffee.",
+    "level": "A2",
+    "errors": [
+      {
+        "wrong": "don't",
+        "fixed": "doesn't",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "She doesn't like coffee."
+    ]
+  },
+  {
+    "id": "s09",
+    "sentence": "I will return to Algeria after I will finish my master.",
+    "level": "B2",
+    "errors": [
+      {
+        "wrong": "after I will finish",
+        "fixed": "after I finish",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "I will return to Algeria after I finish my master.",
+      "I will return to Algeria after I finish my master's.",
+      "I will return to Algeria after I finish my master's degree."
+    ]
+  },
+  {
+    "id": "s10",
+    "sentence": "I study computer science at the university of Algiers.",
+    "level": "B1",
+    "errors": [],
+    "accepted": [
+      "I study computer science at the university of Algiers."
+    ]
+  },
+  {
+    "id": "s11",
+    "sentence": "Yesterday I go to the embassy.",
+    "level": "A2",
+    "errors": [
+      {
+        "wrong": "go",
+        "fixed": "went",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "Yesterday I went to the embassy."
+    ]
+  },
+  {
+    "id": "s12",
+    "sentence": "I am interesting in artificial intelligence.",
+    "level": "B1",
+    "errors": [
+      {
+        "wrong": "interesting",
+        "fixed": "interested",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "I am interested in artificial intelligence."
+    ]
+  },
+  {
+    "id": "s13",
+    "sentence": "My father is a teacher and my mother too.",
+    "level": "B1",
+    "errors": [],
+    "accepted": [
+      "My father is a teacher and my mother too."
+    ]
+  },
+  {
+    "id": "s14",
+    "sentence": "I can pay my studies with my savings.",
+    "level": "B1",
+    "errors": [
+      {
+        "wrong": "pay my studies",
+        "fixed": "pay for my studies",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "I can pay for my studies with my savings."
+    ]
+  },
+  {
+    "id": "s15",
+    "sentence": "I want to work in a company who build software.",
+    "level": "B2",
+    "errors": [
+      {
+        "wrong": "who build",
+        "fixed": "that builds",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "I want to work in a company that builds software.",
+      "I want to work in a company which builds software."
+    ]
+  },
+  {
+    "id": "s16",
+    "sentence": "I didn't saw the documents.",
+    "level": "A2",
+    "errors": [
+      {
+        "wrong": "saw",
+        "fixed": "see",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "I didn't see the documents."
+    ]
+  },
+  {
+    "id": "s17",
+    "sentence": "The informations are in my file.",
+    "level": "B1",
+    "errors": [
+      {
+        "wrong": "informations are",
+        "fixed": "information is",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "The information is in my file."
+    ]
+  },
+  {
+    "id": "s18",
+    "sentence": "I am agree to come back to my country.",
+    "level": "B1",
+    "errors": [
+      {
+        "wrong": "am agree",
+        "fixed": "agree",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "I agree to come back to my country."
+    ]
+  },
+  {
+    "id": "s19",
+    "sentence": "I have a master degree in physics.",
+    "level": "B2",
+    "errors": [
+      {
+        "wrong": "master degree",
+        "fixed": "master's degree",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "I have a master's degree in physics."
+    ]
+  },
+  {
+    "id": "s20",
+    "sentence": "I'm working here since two years.",
+    "level": "B1",
+    "errors": [
+      {
+        "wrong": "I'm working",
+        "fixed": "I have been working",
+        "type": "grammar"
+      },
+      {
+        "wrong": "since two years",
+        "fixed": "for two years",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "I have been working here for two years.",
+      "I've been working here for two years."
+    ]
+  },
+  {
+    "id": "s21",
+    "sentence": "He have a scholarship from Turkey.",
+    "level": "A2",
+    "errors": [
+      {
+        "wrong": "He have",
+        "fixed": "He has",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "He has a scholarship from Turkey."
+    ]
+  },
+  {
+    "id": "s22",
+    "sentence": "I would like to study in Germany because the education is free.",
+    "level": "B1",
+    "errors": [],
+    "accepted": [
+      "I would like to study in Germany because the education is free."
+    ]
+  },
+  {
+    "id": "s23",
+    "sentence": "He go to school every day.",
+    "level": "A2",
+    "errors": [
+      {
+        "wrong": "go",
+        "fixed": "goes",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "He goes to school every day."
+    ]
+  },
+  {
+    "id": "s24",
+    "sentence": "I am student at the university of Algiers.",
+    "level": "B1",
+    "errors": [
+      {
+        "wrong": "I am student",
+        "fixed": "I am a student",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "I am a student at the university of Algiers."
+    ]
+  },
+  {
+    "id": "s25",
+    "sentence": "I am very exciting about this opportunity.",
+    "level": "B1",
+    "errors": [
+      {
+        "wrong": "exciting",
+        "fixed": "excited",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "I am very excited about this opportunity."
+    ]
+  },
+  {
+    "id": "s26",
+    "sentence": "There is many students in my class.",
+    "level": "A2",
+    "errors": [
+      {
+        "wrong": "is many",
+        "fixed": "are many",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "There are many students in my class."
+    ]
+  },
+  {
+    "id": "s27",
+    "sentence": "I need practice my speaking.",
+    "level": "B1",
+    "errors": [
+      {
+        "wrong": "need practice",
+        "fixed": "need to practice",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "I need to practice my speaking."
+    ]
+  },
+  {
+    "id": "s28",
+    "sentence": "My plan is to do a PhD in computer science.",
+    "level": "B2",
+    "errors": [],
+    "accepted": [
+      "My plan is to do a PhD in computer science."
+    ]
+  },
+  {
+    "id": "s29",
+    "sentence": "I look forward to hear from you.",
+    "level": "B2",
+    "errors": [
+      {
+        "wrong": "to hear",
+        "fixed": "to hearing",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "I look forward to hearing from you."
+    ]
+  },
+  {
+    "id": "s30",
+    "sentence": "Do you can repeat the question please?",
+    "level": "A2",
+    "errors": [
+      {
+        "wrong": "Do you can",
+        "fixed": "Can you",
+        "type": "grammar"
+      }
+    ],
+    "accepted": [
+      "Can you repeat the question please?"
+    ]
+  }
+]
