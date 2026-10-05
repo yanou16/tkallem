@@ -69,6 +69,7 @@ class CoachSession:
         *,
         llm: BaseChatModel | None = None,
         session_id: str | None = None,
+        max_text_chars: int = MAX_TEXT_CHARS,
     ):
         if level not in MAX_WORDS:
             raise ValueError(f"unknown level {level!r}: expected one of {list(MAX_WORDS)}")
@@ -80,6 +81,7 @@ class CoachSession:
         self.session_id = session_id or uuid.uuid4().hex
         self.turns: list[TurnLog] = []
         self.last_timings: dict[str, float] = {}
+        self.max_text_chars = max_text_chars  # the API passes settings.max_text_chars so both limits agree
         self._llm = llm
 
     @property
@@ -108,8 +110,8 @@ class CoachSession:
         text = " ".join(str(student_text).split())
         if not text:
             raise ValueError("empty answer")
-        if len(text) > MAX_TEXT_CHARS:
-            raise ValueError(f"answer too long ({len(text)} characters, max {MAX_TEXT_CHARS})")
+        if len(text) > self.max_text_chars:
+            raise ValueError(f"answer too long ({len(text)} characters, max {self.max_text_chars})")
         if audio_seconds is not None and audio_seconds < 0:
             raise ValueError("audio_seconds must be positive")
         return text
@@ -122,7 +124,9 @@ class CoachSession:
             {"type": "reply", "reply": str}
             {"type": "corrections", "corrections": [Correction as dict], "sentence_status": "green|orange|red"}
             {"type": "done", "turn": AgentTurn, "timings": {seconds}}
-        Raises AgentError (possibly after a "corrections" event); the turn is then not recorded.
+        Raises AgentError, possibly AFTER a "reply" or "corrections" event (for example the corrector failed twice
+        while the reply was already sent). The turn is then not recorded: tell the student to repeat the answer;
+        the coach will react to it again and ask the same next question.
         """
         text = self._clean_input(student_text, audio_seconds)
         scenario, history = self.scenario.model_dump(), self.history()
@@ -152,7 +156,7 @@ class CoachSession:
                     timings["reply_ready"] = time.perf_counter() - t0
                     yield {"type": "reply", "reply": compose_reply(data["reply"], scenario, history)}
                 elif node == "correct":
-                    corrections, status = final_corrections(data.get("found", []), scenario, text)
+                    corrections, status = final_corrections(data.get("found", []), scenario, text, data.get("changes_meaning", False))
                     yield {"type": "corrections", "corrections": corrections, "sentence_status": status}
                 elif node == "assemble":
                     turn, error = data.get("turn"), data.get("error")
@@ -221,9 +225,12 @@ class CoachSession:
         }
 
     @classmethod
-    def from_state(cls, state: dict, *, llm: BaseChatModel | None = None) -> "CoachSession":
+    def from_state(cls, state: dict, *, llm: BaseChatModel | None = None, max_text_chars: int = MAX_TEXT_CHARS) -> "CoachSession":
         if state.get("version") != STATE_VERSION:
             raise ValueError(f"unsupported session state version: {state.get('version')!r}")
-        session = cls(state["scenario_id"], state["level"], state["explain_lang"], llm=llm, session_id=state["session_id"])
+        session = cls(
+            state["scenario_id"], state["level"], state["explain_lang"],
+            llm=llm, session_id=state["session_id"], max_text_chars=max_text_chars,
+        )
         session.turns = [TurnLog(**t) for t in state["turns"]]
         return session

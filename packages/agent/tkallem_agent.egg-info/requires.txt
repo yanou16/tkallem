@@ -5,3 +5,14 @@ langchain-groq
 langchain-openai
 pydantic
 langfuse
+
+[cefr-space]
+gradio_client
+
+[cli]
+python-dotenv
+
+[test]
+pytest
+jsonschema
+pyyaml

@@ -11,7 +11,8 @@ from datetime import date
 from pathlib import Path
 
 from tkallem_agent import CoachSession, tracing
-from tkallem_agent.graph import build_graph, sentences, word_count
+from tkallem_agent.graph import build_graph, sentences
+from tkallem_agent.report import words as word_count
 from tkallem_agent.levels import MAX_WORDS
 from tkallem_agent.llm import default_llm
 from tkallem_agent.scenarios import load_scenario

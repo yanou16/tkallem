@@ -9,3 +9,11 @@ Requires-Dist: langchain-groq
 Requires-Dist: langchain-openai
 Requires-Dist: pydantic
 Requires-Dist: langfuse
+Provides-Extra: cefr-space
+Requires-Dist: gradio_client; extra == "cefr-space"
+Provides-Extra: cli
+Requires-Dist: python-dotenv; extra == "cli"
+Provides-Extra: test
+Requires-Dist: pytest; extra == "test"
+Requires-Dist: jsonschema; extra == "test"
+Requires-Dist: pyyaml; extra == "test"

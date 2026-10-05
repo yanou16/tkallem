@@ -1,6 +1,7 @@
 """Scenario files (JSON, versioned in Git, reviewed by the team). The agent is their only reader: the API lists them
 with `list_scenarios()` and starts sessions with `load_scenario(id)`."""
 import json
+import logging
 import os
 from functools import lru_cache
 from pathlib import Path
@@ -8,7 +9,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-SCENARIOS_DIR = Path(os.getenv("TKALLEM_SCENARIOS_DIR", Path(__file__).parent.parent / "scenarios"))
+logger = logging.getLogger(__name__)
+SCENARIOS_DIR = Path(os.getenv("TKALLEM_SCENARIOS_DIR", Path(__file__).parent / "scenarios"))
 
 
 class Scenario(BaseModel):
@@ -49,14 +51,25 @@ class ScenarioNotFound(LookupError):
     pass
 
 
+def read_scenario(path: Path) -> Scenario:
+    s = Scenario.model_validate(json.loads(path.read_text()))
+    if s.id != path.stem:
+        raise ValueError(f"{path.name}: id {s.id!r} must match the file name")
+    return s
+
+
 @lru_cache
 def list_scenarios() -> tuple[Scenario, ...]:
+    """Valid scenarios. A broken file is logged and skipped, so one bad file does not take every scenario down
+    (pytest validates all files strictly, see tests/test_scenarios.py)."""
     out = []
     for f in sorted(SCENARIOS_DIR.glob("*.json")):
-        s = Scenario.model_validate(json.loads(f.read_text()))
-        if s.id != f.stem:
-            raise ValueError(f"{f.name}: id {s.id!r} must match the file name")
-        out.append(s)
+        try:
+            out.append(read_scenario(f))
+        except (ValueError, OSError) as e:
+            logger.error("skipping scenario %s: %s", f.name, e)
+    if not out:
+        logger.error("no scenario found in %s", SCENARIOS_DIR)
     return tuple(out)
 
 

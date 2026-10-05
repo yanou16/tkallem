@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from .schemas import Correction, ExplainLang, Level, Status
 
-NOTE_PROMPT = (Path(__file__).parent.parent / "prompts" / "report_note.md").read_text()
+NOTE_PROMPT = (Path(__file__).parent / "prompts" / "report_note.md").read_text()
 FILLERS = re.compile(r"\b(?:u+h+|u+m+|e+r+m*|h+m+|euh+)\b", re.I)
 LANG_NAME = {"en": "simple English", "fr": "French"}
 

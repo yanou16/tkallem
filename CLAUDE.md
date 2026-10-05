@@ -9,7 +9,7 @@ Read `docs/DESIGN.md`. Use only tokens from `tokens.css` / `tailwind.preset.ts`.
 - `apps/web/` — Front and design (Person C)
 - `apps/api/` — Back and voice (Person B)
 - `packages/agent/` — AI agent and prompts (Rayane)
-- `packages/agent/scenarios/` — scenario content (Rayane); questions come from real sources and are reviewed by the team
+- `packages/agent/tkallem_agent/scenarios/` — scenario content (Rayane); questions come from real sources and are reviewed by the team
 - `packages/contracts/` — shared API and agent schemas: change only by a pull request approved by all three
 
 ## Contracts first

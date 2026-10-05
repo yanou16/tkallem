@@ -1,0 +1,17 @@
+{
+  "id": "job-remote",
+  "title": "Remote job interview",
+  "mode": "guided",
+  "minutes": 10,
+  "coach_role": "A recruiter from an international company interviewing a candidate for a remote junior position on a video call: friendly, professional, short questions.",
+  "questions": [
+    "Can you tell me a little about yourself?",
+    "Why are you interested in this position?",
+    "Can you describe a project you are proud of?",
+    "How do you organise your work when you work remotely?",
+    "Tell me about a problem you had in a team and how you solved it.",
+    "Do you have any questions for us?"
+  ],
+  "goals": ["self_introduction", "motivation", "achievement", "remote_work", "teamwork", "candidate_questions"],
+  "useful_words": ["experience", "deadline", "time zone", "communication", "responsible for", "team", "feedback", "skills"]
+}

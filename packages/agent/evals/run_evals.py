@@ -48,7 +48,7 @@ def apply(sentence: str, corrections) -> str:
 def main() -> int:
     graph = build_graph(get_llm())
     rows = json.loads((ROOT / "correction_set.json").read_text())
-    total = found = exact = harmful = false_alarms = invalid = 0
+    total = found = exact = harmful = false_alarms = invalid = reds = 0
     for r in rows:
         try:
             out = graph.invoke({"level": r["level"], "scenario": SCENARIO, "student_text": r["sentence"], "history": [],
@@ -70,13 +70,14 @@ def main() -> int:
         harmful += bad
         false_alarms += bool(not r["errors"] and changed)
         tag = "OK " if ok else ("BAD" if bad else "MISS")
-        print(f"{r['id']} {tag} | {r['sentence']} -> {result}")
+        reds += turn.sentence_status == "red"
+        print(f"{r['id']} {tag} [{turn.sentence_status}] | {r['sentence']} -> {result}")
         for c in turn.corrections:
             print(f"      {c.original!r} -> {c.fixed!r} | {c.why}")
     rate = found / total if total else 0
     print(
         f"\nSUMMARY detected {found}/{total} = {rate:.0%} (>=85%) | exact {exact}/{len(rows)} | "
-        f"harmful {harmful} (0) | false alarms {false_alarms} (0) | invalid {invalid} (0)"
+        f"harmful {harmful} (0) | false alarms {false_alarms} (0) | invalid {invalid} (0) | red {reds}"
     )
     return 0 if rate >= 0.85 and harmful == 0 and false_alarms == 0 and invalid == 0 else 1
 

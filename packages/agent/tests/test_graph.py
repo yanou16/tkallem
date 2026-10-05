@@ -105,3 +105,37 @@ def test_prompts_get_the_level_limits():
     run(llm, level="A2")
     system = llm.seen["Reply"][0][0].content
     assert "max 8 words" in system and "A2" in system
+
+
+def test_unparseable_coach_output_is_retried():
+    from langchain_core.exceptions import OutputParserException
+
+    llm = FakeChat([NONE], [OutputParserException("bad json"), GOOD])
+    out = run(llm)
+    assert llm.calls["Reply"] == 2 and out["turn"].reply.startswith("Good")
+
+
+def test_corrector_error_is_retried_once():
+    llm = FakeChat([RuntimeError("provider hiccup"), FOUND], [GOOD])
+    out = run(llm)
+    assert llm.calls["Found"] == 2 and out["turn"].corrections[0].fixed == "to study"
+
+
+def test_meaning_change_makes_the_sentence_red():
+    out = run(FakeChat([{**FOUND, "changes_meaning": True}], [GOOD]))
+    assert len(out["turn"].corrections) == 1 and out["turn"].sentence_status == "red"
+    out = run(FakeChat([{"corrections": [], "changes_meaning": True}], [GOOD]))
+    assert out["turn"].sentence_status == "green"  # red needs a kept correction
+
+
+def test_corrector_retry_asks_for_compact_output():
+    llm = FakeChat([RuntimeError("length limit"), FOUND], [GOOD])
+    run(llm)
+    assert "compact JSON" in llm.seen["Found"][1][-1].content
+
+
+def test_coach_retries_after_any_output_error():
+    llm = FakeChat([NONE], [RuntimeError("length limit reached"), GOOD])
+    assert run(llm)["turn"].reply.startswith("Good") and llm.calls["Reply"] == 2
+    llm = FakeChat([NONE], [RuntimeError("x"), RuntimeError("x")])
+    assert "turn" not in run(llm)

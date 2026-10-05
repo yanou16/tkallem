@@ -34,17 +34,19 @@ student text ─┬─► corrector (LLM, strict) ─┬─► guardrails ─►
 
 - The two calls run in parallel. `turn_events()` yields the coach reply first, so the voice can start before the
   corrections are ready.
-- A call still running after `TKALLEM_HEDGE_AFTER` seconds gets one duplicate request; the first answer wins.
+- A call running for `TKALLEM_HEDGE_AFTER` seconds gets one duplicate request; the first answer wins (time waiting
+  for a free thread does not count). An unparseable output is retried once (coach and corrector).
 - Guardrails (`schemas.sanitize`): a correction is dropped if it is malformed, changes nothing, quotes words that are not
   in the student's text, removes a name or a number, or rewrites far more than it fixes. Max 3. The color comes from
-  the corrections. Goal ids must come from the scenario.
+  the corrections: red for 3 corrections, or when the corrector flags a mistake that changes the meaning. Goal ids
+  must come from the scenario.
 - Guided mode: the model writes one short reaction; the code appends the next scenario question verbatim.
 - The coach is asked once to rephrase a sentence longer than the level allows (`levels.MAX_WORDS`).
 - The report note is rejected (template note instead) if it contains a number that is not in the session facts.
 
 ## Scenarios
 
-JSON files in [`scenarios/`](scenarios), validated by `scenarios.Scenario` (one goal id per question, file name = id).
+JSON files in [`tkallem_agent/scenarios/`](tkallem_agent/scenarios), validated by `scenarios.Scenario` (one goal id per question, file name = id).
 `mode: "guided"` has 6 ordered questions; `mode: "free"` has an `opening` line and no fixed questions. Questions must
 come from real sources and be reviewed by the team.
 
@@ -59,8 +61,9 @@ come from real sources and be reviewed by the team.
 | `LLM_TEMPERATURE` | `0` | 0 keeps corrections reproducible |
 | `LLM_TIMEOUT` / `LLM_MAX_RETRIES` | `20` / `1` | per request |
 | `TKALLEM_HEDGE_AFTER` | `3` | seconds before a duplicate request, `0` disables |
-| `TKALLEM_MAX_TEXT_CHARS` | `1000` | longest accepted answer |
-| `TKALLEM_SCENARIOS_DIR` | `scenarios/` | other scenario folder |
+| `TKALLEM_MAX_TEXT_CHARS` | `1000` | default longest answer (the API passes its own `max_text_chars`) |
+| `TKALLEM_LLM_WORKERS` | `64` | threads for LLM calls, shared by all sessions |
+| `TKALLEM_SCENARIOS_DIR` | `tkallem_agent/scenarios/` | other scenario folder |
 | `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_HOST` | | tracing, off when unset |
 
 ## Tests and evaluations

@@ -10,6 +10,7 @@ the sentence status, the allowed goal ids and which corrections are kept (see sc
 """
 import os
 import re
+import threading
 import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from concurrent.futures import TimeoutError as FuturesTimeout
@@ -24,26 +25,37 @@ from pydantic import BaseModel, ValidationError
 
 from .explain import render
 from .levels import LEVEL_RULES, MAX_WORDS
+from .report import words
 from .schemas import AgentTurn, Correction, ExplainLang, Level, sanitize
 
-PROMPTS = Path(__file__).parent.parent / "prompts"
+PROMPTS = Path(__file__).parent / "prompts"
 PROMPT = (PROMPTS / "coach_system.md").read_text()
 CORRECTOR_PROMPT = (PROMPTS / "corrector_system.md").read_text()
 FREE_PROMPT = (PROMPTS / "coach_free_system.md").read_text()
 MAX_RETRIES = 1
 CLOSING = "Thank you, that is the end of the interview."
+RETRY_COMPACT = "Your previous answer was invalid or too long. Return compact JSON only: short sentences, no repetition."
 LENGTH_TOLERANCE = 2  # words above MAX_WORDS before the coach is asked to rephrase
 HEDGE_AFTER = float(os.getenv("TKALLEM_HEDGE_AFTER", "3"))  # seconds; 0 disables the duplicate request
-_POOL = ThreadPoolExecutor(max_workers=16, thread_name_prefix="tkallem-llm")
+# LLM calls are I/O-bound: a large pool, so concurrent sessions do not wait for a free thread.
+_POOL = ThreadPoolExecutor(max_workers=int(os.getenv("TKALLEM_LLM_WORKERS", "64")), thread_name_prefix="tkallem-llm")
 
 
 def hedged_invoke(runnable, messages, config=None, after: float | None = None):
-    """invoke(), plus one duplicate request if the first is still running after `after` seconds.
+    """invoke(), plus one duplicate request if the first has been RUNNING for `after` seconds (time spent waiting
+    for a free thread does not count, so a busy server does not multiply requests).
     Returns the first successful answer; the slower request is left to finish in the background."""
     after = HEDGE_AFTER if after is None else after
     if after <= 0:
         return runnable.invoke(messages, config)
-    first = _POOL.submit(runnable.invoke, messages, config)
+    started = threading.Event()
+
+    def call():
+        started.set()
+        return runnable.invoke(messages, config)
+
+    first = _POOL.submit(call)
+    started.wait()
     try:
         return first.result(timeout=after)
     except FuturesTimeout:
@@ -64,6 +76,7 @@ class Reply(BaseModel):
 
 class Found(BaseModel):
     corrections: list[Correction] = []
+    changes_meaning: bool = False  # one mistake changes what the student meant: the sentence is red (spec)
 
 
 def merge_dicts(a: dict | None, b: dict | None) -> dict:
@@ -77,6 +90,7 @@ class CoachState(TypedDict, total=False):
     history: list[BaseMessage]
     student_text: str
     found: list[dict]
+    changes_meaning: bool
     reply: dict | None
     coach_error: str
     turn: AgentTurn
@@ -118,10 +132,6 @@ def sentences(text: str) -> list[str]:
     return [s for s in re.split(r"(?<=[.!?])\s+", text.strip()) if s]
 
 
-def word_count(text: str) -> int:
-    return len(re.findall(r"[A-Za-z0-9']+", text))
-
-
 def reply_problem(raw) -> str | None:
     """Hard problems: the coach output cannot be used."""
     if not isinstance(raw, dict) or not isinstance(raw.get("reaction"), str) or not raw["reaction"].strip():
@@ -132,7 +142,7 @@ def reply_problem(raw) -> str | None:
 def reaction_problem(reaction: str, level: Level) -> str | None:
     """Soft problem: a sentence above the level's length. The coach is asked once to rephrase, then it is accepted."""
     limit = MAX_WORDS[level]
-    too_long = [s for s in sentences(reaction) if word_count(s) > limit + LENGTH_TOLERANCE]
+    too_long = [s for s in sentences(reaction) if words(s) > limit + LENGTH_TOLERANCE]
     if too_long:
         return f"sentence too long for level {level} (max {limit} words): {too_long[0]!r}"
     return None
@@ -160,9 +170,14 @@ def compose_reply(reply: dict, scenario: dict, history: list[BaseMessage]) -> st
     return f"{clean_reaction(reply['reaction'], free)} {question or ''}".strip() or "Thank you."
 
 
-def final_corrections(found: list, scenario: dict, student_text: str) -> tuple[list[dict], str]:
+def declared_status(changes_meaning: bool) -> str:
+    """Status passed to sanitize: "red" survives only if corrections remain, otherwise it is derived from them."""
+    return "red" if changes_meaning else "green"
+
+
+def final_corrections(found: list, scenario: dict, student_text: str, changes_meaning: bool = False) -> tuple[list[dict], str]:
     """Corrections kept after the code guardrails, and the sentence status derived from them."""
-    out = sanitize({"corrections": found, "sentence_status": "green"}, scenario.get("goals", []), student_text)
+    out = sanitize({"corrections": found, "sentence_status": declared_status(changes_meaning)}, scenario.get("goals", []), student_text)
     kept = [Correction.model_validate(c).model_dump() for c in out["corrections"]]
     return kept, out["sentence_status"]
 
@@ -175,9 +190,18 @@ def build_graph(llm: BaseChatModel):
         t0 = time.perf_counter()
         level = state["level"]
         system = CORRECTOR_PROMPT.format(level=level, **render(state.get("explain_lang", "fr"), level))
-        raw = hedged_invoke(corrector, [SystemMessage(system), HumanMessage(learner_text(state["student_text"]))], config)
+        messages = [SystemMessage(system), HumanMessage(learner_text(state["student_text"]))]
+        for attempt in range(MAX_RETRIES + 1):
+            try:
+                raw = hedged_invoke(corrector, messages, config)
+                break
+            except Exception:  # unparseable or runaway output, provider error: one more try, then the turn fails
+                if attempt == MAX_RETRIES:
+                    raise
+                messages = [*messages, SystemMessage(RETRY_COMPACT)]
         found = raw.get("corrections") if isinstance(raw, dict) else None
-        return {"found": found or [], "timings": {"correct": time.perf_counter() - t0}}
+        meaning = bool(raw.get("changes_meaning")) if isinstance(raw, dict) else False
+        return {"found": found or [], "changes_meaning": meaning, "timings": {"correct": time.perf_counter() - t0}}
 
     def coach_node(state: CoachState, config: RunnableConfig) -> CoachState:
         t0 = time.perf_counter()
@@ -189,8 +213,12 @@ def build_graph(llm: BaseChatModel):
         ]
         problem = ""
         for attempt in range(MAX_RETRIES + 1):
-            raw = hedged_invoke(coach, messages, config)
-            hard = reply_problem(raw)
+            try:
+                raw = hedged_invoke(coach, messages, config)
+            except Exception as e:  # invalid JSON, runaway output, provider error: same as an unusable reply
+                raw = None
+                problem = f"no usable output ({type(e).__name__}). {RETRY_COMPACT}"
+            hard = reply_problem(raw) if raw is not None else problem
             soft = None if hard else reaction_problem(raw["reaction"], level)
             if not hard and (not soft or attempt == MAX_RETRIES):
                 timings = {"coach": time.perf_counter() - t0, "coach_attempts": attempt + 1}
@@ -208,7 +236,7 @@ def build_graph(llm: BaseChatModel):
             "reply": compose_reply(reply, scenario, history),
             "goal_covered": reply.get("goal_covered"),
             "corrections": state.get("found", []),
-            "sentence_status": "green",  # derived from the corrections by sanitize
+            "sentence_status": declared_status(state.get("changes_meaning", False)),  # finalised by sanitize
         }
         try:
             turn = AgentTurn.model_validate(sanitize(merged, scenario.get("goals", []), state["student_text"]))

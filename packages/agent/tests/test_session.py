@@ -147,3 +147,24 @@ def test_hedged_invoke_returns_the_faster_duplicate():
     assert hedged_invoke(Flaky(), [], after=0.2) == "fast"
     assert _time.perf_counter() - t0 < 1.0
     assert hedged_invoke(Flaky(), [], after=0) == "slow"  # 0 disables hedging
+
+
+def test_corrector_failing_twice_raises_and_records_nothing():
+    s = CoachSession("visa-us", "B1", llm=FakeChat([RuntimeError("down"), RuntimeError("down")], [reply()]))
+    with pytest.raises(AgentError):
+        s.turn("I go to the US for study.")
+    assert s.turns == []
+
+
+def test_text_limit_comes_from_the_caller():
+    s = CoachSession("visa-us", "B1", llm=FakeChat([NONE], [reply()]), max_text_chars=2000)
+    s.turn("word " * 300)  # 1500 characters: accepted with the API's own limit
+    with pytest.raises(ValueError):
+        CoachSession("visa-us", "B1", llm=FakeChat(), max_text_chars=10).turn("a long answer here")
+    assert CoachSession.from_state(s.to_state(), llm=FakeChat(), max_text_chars=2000).max_text_chars == 2000
+
+
+def test_turn_events_carry_the_meaning_status():
+    s = CoachSession("visa-us", "B1", llm=FakeChat([{**FOUND, "changes_meaning": True}], [reply()]))
+    events = {e["type"]: e for e in s.turn_events("I go to the US for study.")}
+    assert events["corrections"]["sentence_status"] == "red" and events["done"]["turn"].sentence_status == "red"
