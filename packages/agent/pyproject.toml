@@ -6,6 +6,8 @@ dependencies = ["langgraph", "langchain", "langchain-core", "langchain-groq", "l
 
 [project.optional-dependencies]
 cefr-space = ["gradio_client"]
+cli = ["python-dotenv"]
+test = ["pytest", "jsonschema", "pyyaml"]
 
 [build-system]
 requires = ["setuptools"]
@@ -13,3 +15,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ["tkallem_agent"]
+
+[tool.setuptools.package-data]
+tkallem_agent = ["prompts/*.md", "scenarios/*.json"]  # shipped with the package, not only in editable installs
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

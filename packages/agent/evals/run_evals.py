@@ -13,9 +13,10 @@ from pathlib import Path
 
 from tkallem_agent.graph import build_graph
 from tkallem_agent.llm import get_llm
+from tkallem_agent.scenarios import load_scenario
 
 ROOT = Path(__file__).parent
-SCENARIO = json.loads((ROOT.parents[2] / "apps/api/app/scenarios/visa-us.json").read_text())
+SCENARIO = load_scenario("visa-us").model_dump()
 STOP = {"the", "a", "an", "to", "i", "my"}
 
 
@@ -47,10 +48,13 @@ def apply(sentence: str, corrections) -> str:
 def main() -> int:
     graph = build_graph(get_llm())
     rows = json.loads((ROOT / "correction_set.json").read_text())
-    total = found = exact = harmful = false_alarms = invalid = 0
+    total = found = exact = harmful = false_alarms = invalid = reds = 0
     for r in rows:
-        out = graph.invoke({"level": r["level"], "scenario": SCENARIO, "student_text": r["sentence"], "history": [],
-                            "explain_lang": os.getenv("EXPLAIN_LANG", "fr")})
+        try:
+            out = graph.invoke({"level": r["level"], "scenario": SCENARIO, "student_text": r["sentence"], "history": [],
+                                "explain_lang": os.getenv("EXPLAIN_LANG", "fr")})
+        except Exception as e:  # network or provider error: count the row as invalid, keep going
+            out = {"error": f"{type(e).__name__}: {e}"}
         turn = out.get("turn")
         if turn is None:
             invalid += 1
@@ -66,13 +70,14 @@ def main() -> int:
         harmful += bad
         false_alarms += bool(not r["errors"] and changed)
         tag = "OK " if ok else ("BAD" if bad else "MISS")
-        print(f"{r['id']} {tag} | {r['sentence']} -> {result}")
+        reds += turn.sentence_status == "red"
+        print(f"{r['id']} {tag} [{turn.sentence_status}] | {r['sentence']} -> {result}")
         for c in turn.corrections:
             print(f"      {c.original!r} -> {c.fixed!r} | {c.why}")
     rate = found / total if total else 0
     print(
         f"\nSUMMARY detected {found}/{total} = {rate:.0%} (>=85%) | exact {exact}/{len(rows)} | "
-        f"harmful {harmful} (0) | false alarms {false_alarms} (0) | invalid {invalid} (0)"
+        f"harmful {harmful} (0) | false alarms {false_alarms} (0) | invalid {invalid} (0) | red {reds}"
     )
     return 0 if rate >= 0.85 and harmful == 0 and false_alarms == 0 and invalid == 0 else 1
 

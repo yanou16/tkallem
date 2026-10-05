@@ -60,7 +60,7 @@ def _norm(text: str) -> str:
 def sanitize(raw: dict, goals: list[str] | None = None, student_text: str | None = None) -> dict:
     """Guardrails applied to raw model output before validation.
 
-    Drops a correction when it: changes nothing; quotes a fragment that is not in the student's text;
+    Drops a correction when it: is malformed; changes nothing; quotes a fragment that is not in the student's text;
     removes a number or proper noun (meaning change, e.g. Germany -> USA); or rewrites far more words than it replaces.
     Keeps at most 3, derives the status from the corrections so the model cannot contradict itself
     (a model-declared "red" is kept when corrections remain), and only accepts goal ids from the scenario.
@@ -68,6 +68,12 @@ def sanitize(raw: dict, goals: list[str] | None = None, student_text: str | None
     out = dict(raw)
     kept = []
     for c in out.get("corrections") or []:
+        if not isinstance(c, dict):
+            c = c.model_dump() if isinstance(c, BaseModel) else {}
+        try:
+            Correction.model_validate(c)  # malformed item (missing type, bad type...): dropped, the turn goes on
+        except ValueError:
+            continue
         original, fixed = str(c.get("original", "")).strip(), str(c.get("fixed", "")).strip()
         if not original or not fixed or original.lower() == fixed.lower():
             continue

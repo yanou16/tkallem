@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from .schemas import Correction, ExplainLang, Level, Status
 
-NOTE_PROMPT = (Path(__file__).parent.parent / "prompts" / "report_note.md").read_text()
+NOTE_PROMPT = (Path(__file__).parent / "prompts" / "report_note.md").read_text()
 FILLERS = re.compile(r"\b(?:u+h+|u+m+|e+r+m*|h+m+|euh+)\b", re.I)
 LANG_NAME = {"en": "simple English", "fr": "French"}
 
@@ -36,7 +36,7 @@ class Report(BaseModel):
     note: str
     metrics: dict[str, float | None]
     levels: dict[str, Status | None]  # proposed addition to the contract: traffic light per metric
-    redo_index: int | None  # index in `lines` of the answer to redo (worst student answer), if any
+    redo_index: int | None  # index in `lines` of the answer to redo (see redo_target), if any
 
 
 def words(text: str) -> int:
@@ -99,11 +99,11 @@ def fallback_note(facts: dict, lang: ExplainLang) -> str:
     return s + (f" Work first on: {top[0]}." if top else " Keep going.")
 
 
-def write_note(llm: BaseChatModel, facts: dict, level: Level, lang: ExplainLang) -> str:
+def write_note(llm: BaseChatModel, facts: dict, level: Level, lang: ExplainLang, config: dict | None = None) -> str:
     allowed = numbers_in(json.dumps(facts))
     prompt = NOTE_PROMPT.format(level=level, lang_name=LANG_NAME[lang], facts=json.dumps(facts, ensure_ascii=False))
     try:
-        note = str(llm.invoke(prompt).content).strip()
+        note = str(llm.invoke(prompt, config=config).content).strip()
     except Exception:  # network or provider error: the report must still be shown
         return fallback_note(facts, lang)
     if not note or not numbers_in(note) <= allowed:  # invented number: reject the note
@@ -118,21 +118,34 @@ def build_report(
     explain_lang: ExplainLang = "fr",
     speaking_seconds: float | None = None,
     coach_lines: list[str] | None = None,
+    config: dict | None = None,
 ) -> Report:
-    """`coach_lines`: coach messages in order (coach[i] precedes student turn i), for the full transcript."""
+    """`coach_lines`: coach messages in order (coach[i] precedes student turn i, an extra last one closes the
+    transcript). `config`: LangChain run config (tracing)."""
     metrics = compute_metrics(turns, speaking_seconds)
     levels = {name: level_of(name, metrics[name]) for name in THRESHOLDS}
     lines: list[dict] = []
-    rank = {"green": 0, "orange": 1, "red": 2}
-    worst = None
+    student_line: list[int] = []
     for i, t in enumerate(turns):
         if coach_lines and i < len(coach_lines):
             lines.append({"role": "coach", "text": coach_lines[i], "status": None, "corrections": []})
         lines.append(
             {"role": "student", "text": t.student_text, "status": t.status, "corrections": [c.model_dump() for c in t.corrections]}
         )
-        if t.status == "red" and (worst is None or rank[t.status] >= rank[turns[worst[0]].status]):
-            worst = (i, len(lines) - 1)
+        student_line.append(len(lines) - 1)
+    if coach_lines and len(coach_lines) > len(turns):  # last coach line (closing or reaction) ends the transcript
+        lines.append({"role": "coach", "text": coach_lines[len(turns)], "status": None, "corrections": []})
     facts = facts_for(turns, metrics, levels, level)
-    note = write_note(llm, facts, level, explain_lang) if turns else ""
-    return Report(lines=lines, note=note, metrics=metrics, levels=levels, redo_index=worst[1] if worst else None)
+    note = write_note(llm, facts, level, explain_lang, config) if turns else ""
+    return Report(lines=lines, note=note, metrics=metrics, levels=levels, redo_index=redo_target(turns, student_line))
+
+
+def redo_target(turns: list[TurnRecord], student_line: list[int]) -> int | None:
+    """Line to redo: the red answer, else the orange answer with the most corrections (first one on ties).
+    None when every answer is clean."""
+    rank = {"green": 0, "orange": 1, "red": 2}
+    candidates = [(rank[t.status], len(t.corrections), -i) for i, t in enumerate(turns) if t.status != "green"]
+    if not candidates:
+        return None
+    _, _, neg_i = max(candidates)
+    return student_line[-neg_i]
