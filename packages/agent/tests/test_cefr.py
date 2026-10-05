@@ -29,3 +29,9 @@ def test_transcript_set_is_balanced():
     rows = json.loads((Path(__file__).parents[1] / "evals/cefr/transcripts.json").read_text())
     levels = [r["level"] for r in rows]
     assert {lv: levels.count(lv) for lv in set(levels)} == {"A2": 6, "B1": 6, "B2": 6, "C1": 6}
+
+
+def test_clamp_to_product_scale():
+    from tkallem_agent.cefr import clamp
+
+    assert clamp("A1") == "A2" and clamp("C2") == "C1" and clamp("B2") == "B2"
