@@ -34,6 +34,9 @@ CORRECTOR_PROMPT = (PROMPTS / "corrector_system.md").read_text()
 FREE_PROMPT = (PROMPTS / "coach_free_system.md").read_text()
 MAX_RETRIES = 1
 CLOSING = "Thank you, that is the end of the interview."
+# "function_calling": measured on OpenRouter/Qwen3, ~3 s and no failure where "json_schema" (constrained decoding)
+# averaged 24 s with runaway outputs on some hosts. Switchable if a provider behaves differently.
+STRUCTURED_METHOD = os.getenv("TKALLEM_STRUCTURED_METHOD", "function_calling")
 RETRY_COMPACT = "Your previous answer was invalid or too long. Return compact JSON only: short sentences, no repetition."
 LENGTH_TOLERANCE = 2  # words above MAX_WORDS before the coach is asked to rephrase
 HEDGE_AFTER = float(os.getenv("TKALLEM_HEDGE_AFTER", "3"))  # seconds; 0 disables the duplicate request
@@ -183,8 +186,8 @@ def final_corrections(found: list, scenario: dict, student_text: str, changes_me
 
 
 def build_graph(llm: BaseChatModel):
-    corrector = llm.with_structured_output(Found.model_json_schema(), method="json_schema")
-    coach = llm.with_structured_output(Reply.model_json_schema(), method="json_schema")
+    corrector = llm.with_structured_output(Found.model_json_schema(), method=STRUCTURED_METHOD)
+    coach = llm.with_structured_output(Reply.model_json_schema(), method=STRUCTURED_METHOD)
 
     def correct(state: CoachState, config: RunnableConfig) -> CoachState:
         t0 = time.perf_counter()

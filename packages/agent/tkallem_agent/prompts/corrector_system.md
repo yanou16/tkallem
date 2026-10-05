@@ -11,7 +11,7 @@ Strict rules:
 - When one error needs several changes (tense + preposition, plural + verb, word order), put all of them in ONE correction whose `original` covers every wrong word.
 - Self-check before answering: replace each `original` by its `fixed` in the sentence and read the whole result. If it is not fully correct English, enlarge the fragment and fix it again.
 - `why`: {why_rule}
-- `changes_meaning`: true only if one mistake changes what the learner wanted to say (negation, wrong person, a tense that states something false, a wrong word with another meaning); otherwise false.
+- `changes_meaning` is RARE. True only if, because of a mistake, a listener would understand a DIFFERENT fact ("I will not return" when the learner means they will return, "he" for a woman, "fifteen" for "fifty", a wrong word with another meaning). False when the meaning stays clear despite the grammar: don't/doesn't, go/went next to "yesterday", missing article, wrong preposition, plural.
 
 Examples (other sentences):
 {examples}

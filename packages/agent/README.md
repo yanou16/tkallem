@@ -60,6 +60,7 @@ come from real sources and be reviewed by the team.
 | `OPENROUTER_PROVIDER_SORT` | `latency` | OpenRouter routing (`latency`, `throughput`, `price`, empty = default) |
 | `LLM_TEMPERATURE` | `0` | 0 keeps corrections reproducible |
 | `LLM_TIMEOUT` / `LLM_MAX_RETRIES` | `20` / `1` | per request |
+| `TKALLEM_STRUCTURED_METHOD` | `function_calling` | how the model returns JSON (`json_schema` was slower and looped on some hosts) |
 | `TKALLEM_HEDGE_AFTER` | `3` | seconds before a duplicate request, `0` disables |
 | `TKALLEM_MAX_TEXT_CHARS` | `1000` | default longest answer (the API passes its own `max_text_chars`) |
 | `TKALLEM_LLM_WORKERS` | `64` | threads for LLM calls, shared by all sessions |
@@ -81,16 +82,16 @@ set -a && source ../../apps/api/.env && set +a          # LLM keys for the evalu
 
 Every prompt change must re-run `run_evals.py` (both languages) and `injection.py`.
 
-Last results (2026-10-05, `qwen/qwen3-235b-a22b-2507` via OpenRouter):
+Last results (2026-10-05, `qwen/qwen3-235b-a22b-2507` via OpenRouter, `function_calling`):
 
 | Check | Result | Target |
 |---|---|---|
-| Correction set, French explanations | 28/28 errors detected, 29/30 sentences exact, 0 false alarm | ≥ 85 %, 0 |
-| Correction set, English explanations | 28/28 detected, 29/30 exact, 1 unnecessary style change | ≥ 85 %, 0 |
-| Prompt injection | 9/9 attacks handled | all |
-| Coach reply ready (voice can start) | p50 1.7 s, p95 2.4 s | 2.5 s (assumed share of the 4 s) |
-| Corrections ready | p50 2.4 s, p95 6.9 s | shown after the reply starts |
-| Report | max 3.1 s | < 5 s |
+| Correction set, French explanations | 27/28 errors detected, 28/30 sentences exact, 0 false alarm, 0 false red | ≥ 85 %, 0 |
+| Correction set, English explanations | 26/28 detected, 27/30 exact, 0 false alarm, 0 false red | ≥ 85 %, 0 |
+| Prompt injection | 8/9 on the last run (the missed case was corrected 5/5 on re-check), 9/9 on the two runs before | all |
+| Coach reply ready (voice can start) | p50 1.0 s, p95 4.0 s | 2.5 s (assumed share of the 4 s) |
+| Corrections ready | p50 1.9 s, p95 4.0 s | shown after the reply starts |
+| Report | max 1.8 s | < 5 s |
 | Coach sentence length vs level (20 replies) | 0 above the limit | 0 |
 
 Results vary between runs (provider routing): re-run before quoting them.
