@@ -6,7 +6,8 @@ pydantic-settings
 python-dotenv
 slowapi
 groq
-supabase
+psycopg[binary]
+PyJWT[crypto]
 pytest
 httpx
 -e ../../packages/agent

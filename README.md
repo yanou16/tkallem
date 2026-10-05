@@ -7,7 +7,7 @@ AI speaking coach for Algerian students: practice real English conversations (vi
 - `packages/agent/` LangGraph agent, prompts, evals (30-sentence correction set)
 - `packages/contracts/` OpenAPI + agent turn JSON schema (shared, change by PR approved by all three)
 - `docs/DESIGN.md` design system; read `CLAUDE.md` for ownership rules
-- `apps/web/` Next.js PWA, Tailwind, shadcn/ui, Framer Motion, Supabase client
+- `apps/web/` Next.js PWA, Tailwind, shadcn/ui, Framer Motion, Clerk auth
 
 ## Run
 ```bash
@@ -26,3 +26,6 @@ Add a JSON file in `apps/api/app/scenarios/` (see `visa-us.json`): `id`, `title`
 
 ## Not installed yet
 Kokoro TTS (pulls PyTorch, install when the voice pipeline starts) and LiveKit Agents (Should, week 3).
+
+## Auth and database
+Neon (Postgres, auto-wakes, never freezes) and Clerk (auth). The API verifies Clerk JWTs and filters every query by `user_id`. Before a live demo, open the app 5 minutes early to wake the database.
