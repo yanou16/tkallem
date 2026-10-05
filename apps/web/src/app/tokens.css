@@ -1,5 +1,4 @@
 /* Tkallem design tokens (Miro-style). Import once in app/globals.css */
-@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&display=swap");
 
 :root {
   --canvas: #ffffff;
