@@ -16,6 +16,12 @@ from pathlib import Path
 LEVELS = {"A2", "B1", "B2", "C1"}  # the levels the app supports
 
 
+def normalize_level(raw: str) -> str:
+    """ICNALE-style sub-levels (A2_0, B1_1, B1_2, B2_0) become plain CEFR levels. Native speakers etc. stay unknown and are skipped."""
+    m = re.fullmatch(r"([ABC][12])(?:_\d)?", raw.strip().upper())
+    return m.group(1) if m else raw.strip().upper()
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("csv_path")
@@ -30,7 +36,7 @@ def main() -> None:
     per_level: dict[str, int] = {}
     with open(a.csv_path, newline="", encoding="utf-8") as f:
         for i, r in enumerate(csv.DictReader(f)):
-            level, text = r[a.level_col].strip().upper(), " ".join(r[a.text_col].split())
+            level, text = normalize_level(r[a.level_col]), " ".join(r[a.text_col].split())
             if level not in LEVELS:
                 skipped["level"] += 1
                 continue
