@@ -5,12 +5,12 @@ components:
   schemas:
     Correction:
       type: object
-      required: [original, fixed, type, why_fr]
+      required: [original, fixed, type, why]
       properties:
         original: { type: string }
         fixed: { type: string }
         type: { type: string, enum: [grammar, vocabulary, word_choice, other] }
-        why_fr: { type: string }
+        why: { type: string, description: Explanation in the session explain_lang }
     SentenceStatus: { type: string, enum: [green, orange, red] }
     Turn:
       type: object
@@ -38,6 +38,7 @@ paths:
               properties:
                 scenario_id: { type: string }
                 mode: { type: string, enum: [text, voice] }
+                explain_lang: { type: string, enum: [en, fr], default: fr }
       responses:
         "200":
           description: Session started
