@@ -4,6 +4,9 @@ version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = ["langgraph", "langchain", "langchain-core", "langchain-groq", "langchain-openai", "pydantic", "langfuse"]
 
+[project.optional-dependencies]
+cefr-space = ["gradio_client"]
+
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"

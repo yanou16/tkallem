@@ -7,7 +7,7 @@ from pydantic import ValidationError
 from tkallem_agent.graph import build_system_prompt
 from tkallem_agent.schemas import AgentTurn
 
-C = {"original": "for study", "fixed": "to study", "type": "grammar", "why_fr": "Le but : to + verbe."}
+C = {"original": "for study", "fixed": "to study", "type": "grammar", "why": "Le but : to + verbe."}
 
 
 def test_valid_turn():

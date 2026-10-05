@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 Level = Literal["A2", "B1", "B2", "C1"]
+ExplainLang = Literal["en", "fr"]
 Status = Literal["green", "orange", "red"]
 ErrorType = Literal["grammar", "vocabulary", "word_choice", "other"]
 
@@ -15,7 +16,7 @@ class Correction(BaseModel):
     original: str = Field(min_length=1)
     fixed: str = Field(min_length=1)
     type: ErrorType
-    why_fr: str = Field(min_length=1)
+    why: str = Field(min_length=1)  # in the session's explain_lang
 
     @model_validator(mode="after")
     def must_change_something(self):
