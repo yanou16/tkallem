@@ -58,10 +58,13 @@ def test_coach_follows_scenario_question_order_then_closes():
 
     from tkallem_agent.graph import next_question
 
-    qs = SCENARIO["questions"]
-    assert next_question(SCENARIO, []) == qs[1]
-    assert next_question(SCENARIO, [HumanMessage("a"), AIMessage("b")]) == qs[2]
-    assert next_question(SCENARIO, [HumanMessage("a"), AIMessage("b")] * (len(qs) - 1)) is None
+    qs = ["q0", "q1", "q2", "q3"]
+    sc = {"questions": qs}
+    turn = [HumanMessage("a"), AIMessage("b")]
+    assert next_question(sc, []) == "q1"
+    assert next_question(sc, turn) == "q2"
+    assert next_question(sc, turn * 2) == "q3"
+    assert next_question(sc, turn * 3) is None
 
 
 def test_unknown_goal_is_dropped():
@@ -69,3 +72,12 @@ def test_unknown_goal_is_dropped():
 
     out = sanitize({**GOOD, "corrections": [], "sentence_status": "green", "goal_covered": "made_up_goal"}, SCENARIO["goals"])
     assert out["goal_covered"] is None
+
+
+def test_free_talk_has_no_fixed_question_and_no_closing():
+    free = json.loads((Path(__file__).parents[3] / "apps/api/app/scenarios/free-talk.json").read_text())
+    out = build_graph(FakeLLM([FOUND, {"reaction": "Sorry to hear that. What happened?", "goal_covered": None}])).invoke(
+        {"level": "B1", "scenario": free, "student_text": "Yesterday I have a problem at work.", "history": []}
+    )
+    assert out["turn"].reply == "Sorry to hear that. What happened?"
+    assert out["turn"].goal_covered is None

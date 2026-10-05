@@ -15,6 +15,7 @@ from .schemas import AgentTurn, Correction, Level, sanitize
 PROMPTS = Path(__file__).parent.parent / "prompts"
 PROMPT = (PROMPTS / "coach_system.md").read_text()
 CORRECTOR_PROMPT = (PROMPTS / "corrector_system.md").read_text()
+FREE_PROMPT = (PROMPTS / "coach_free_system.md").read_text()
 MAX_RETRIES = 1
 
 
@@ -39,8 +40,14 @@ class CoachState(TypedDict, total=False):
     retries: int
 
 
+def is_free(scenario: dict) -> bool:
+    return scenario.get("mode") == "free"
+
+
 def next_question(scenario: dict, history: list[BaseMessage]) -> str | None:
     """Scenario questions come in order, verbatim. The API asked question 0, so the next one follows the student's turns."""
+    if is_free(scenario):
+        return None
     answered = sum(isinstance(m, HumanMessage) for m in history) + 1  # + the answer being processed
     questions = scenario["questions"]
     return questions[answered] if answered < len(questions) else None
@@ -50,6 +57,10 @@ CLOSING = "Thank you, that is the end of the interview."
 
 
 def build_system_prompt(level: Level, scenario: dict, history: list[BaseMessage] | None = None) -> str:
+    if is_free(scenario):
+        return FREE_PROMPT.format(
+            coach_role=scenario["coach_role"], level=level, level_rules=LEVEL_RULES[level]
+        )
     return PROMPT.format(
         coach_role=scenario["coach_role"],
         level=level,
@@ -83,7 +94,9 @@ def build_graph(llm: BaseChatModel):
         try:
             history = state.get("history", [])
             question = next_question(state["scenario"], history)
-            if question is None:  # interview finished: close once, then only react
+            if question is None and is_free(state["scenario"]):
+                question = ""  # free chat: the reaction already contains the follow-up question
+            elif question is None:  # interview finished: close once, then only react
                 already_closed = sum(isinstance(m, HumanMessage) for m in history) + 1 > len(state["scenario"]["questions"])
                 question = "" if already_closed else CLOSING
             merged = {
