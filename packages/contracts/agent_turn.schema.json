@@ -13,12 +13,12 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["original", "fixed", "type", "why_fr"],
+        "required": ["original", "fixed", "type", "why"],
         "properties": {
           "original": { "type": "string" },
           "fixed": { "type": "string" },
           "type": { "type": "string", "enum": ["grammar", "vocabulary", "word_choice", "other"] },
-          "why_fr": { "type": "string" }
+          "why": { "type": "string", "description": "One-sentence explanation, written in the session explain_lang (en or fr)." }
         }
       }
     },
