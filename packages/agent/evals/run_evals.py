@@ -2,10 +2,11 @@
 
 Targets: errors detected >= 85%, harmful corrections = 0, false alarms on clean sentences = 0, invalid outputs = 0.
 "harmful" = the corrections, once applied, give a sentence that is neither the original nor an accepted correct sentence
-(wrong fix, incomplete fix, or a new fault). Read the printed corrections too: the explanations (why_fr) need a human eye.
+(wrong fix, incomplete fix, or a new fault). Read the printed corrections too: the explanations (why) need a human eye.
 Usage: python evals/run_evals.py   (needs LLM env vars)
 """
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -48,7 +49,8 @@ def main() -> int:
     rows = json.loads((ROOT / "correction_set.json").read_text())
     total = found = exact = harmful = false_alarms = invalid = 0
     for r in rows:
-        out = graph.invoke({"level": r["level"], "scenario": SCENARIO, "student_text": r["sentence"], "history": []})
+        out = graph.invoke({"level": r["level"], "scenario": SCENARIO, "student_text": r["sentence"], "history": [],
+                            "explain_lang": os.getenv("EXPLAIN_LANG", "fr")})
         turn = out.get("turn")
         if turn is None:
             invalid += 1
@@ -66,7 +68,7 @@ def main() -> int:
         tag = "OK " if ok else ("BAD" if bad else "MISS")
         print(f"{r['id']} {tag} | {r['sentence']} -> {result}")
         for c in turn.corrections:
-            print(f"      {c.original!r} -> {c.fixed!r} | {c.why_fr}")
+            print(f"      {c.original!r} -> {c.fixed!r} | {c.why}")
     rate = found / total if total else 0
     print(
         f"\nSUMMARY detected {found}/{total} = {rate:.0%} (>=85%) | exact {exact}/{len(rows)} | "

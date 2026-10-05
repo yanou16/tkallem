@@ -5,7 +5,7 @@ from tkallem_agent.graph import build_graph
 
 SCENARIO = json.loads((Path(__file__).parents[3] / "apps/api/app/scenarios/visa-us.json").read_text())
 
-FOUND = {"corrections": [{"original": "for study", "fixed": "to study", "type": "grammar", "why_fr": "Le but : to + verbe."}]}
+FOUND = {"corrections": [{"original": "for study", "fixed": "to study", "type": "grammar", "why": "Le but : to + verbe."}]}
 GOOD = {"reaction": "Good, you want to study.", "goal_covered": "purpose_of_trip"}
 BAD = {"goal_covered": None}  # missing required "reaction"
 
@@ -75,7 +75,7 @@ def test_unknown_goal_is_dropped():
 
 
 def test_free_talk_has_no_fixed_question_and_no_closing():
-    free = json.loads((Path(__file__).parents[3] / "apps/api/app/scenarios/free-talk.json").read_text())
+    free = {"id": "free-talk", "mode": "free", "coach_role": "A friendly partner.", "questions": [], "goals": [], "useful_words": []}
     out = build_graph(FakeLLM([FOUND, {"reaction": "Sorry to hear that. What happened?", "goal_covered": None}])).invoke(
         {"level": "B1", "scenario": free, "student_text": "Yesterday I have a problem at work.", "history": []}
     )

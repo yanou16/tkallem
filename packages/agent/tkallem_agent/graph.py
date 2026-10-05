@@ -10,7 +10,8 @@ from pydantic import ValidationError
 from .levels import LEVEL_RULES
 from pydantic import BaseModel
 
-from .schemas import AgentTurn, Correction, Level, sanitize
+from .explain import render
+from .schemas import AgentTurn, Correction, ExplainLang, Level, sanitize
 
 PROMPTS = Path(__file__).parent.parent / "prompts"
 PROMPT = (PROMPTS / "coach_system.md").read_text()
@@ -30,6 +31,7 @@ class Found(BaseModel):
 
 class CoachState(TypedDict, total=False):
     level: Level
+    explain_lang: ExplainLang  # defaults to "fr"
     scenario: dict
     history: list[BaseMessage]
     student_text: str
@@ -81,7 +83,7 @@ def build_graph(llm: BaseChatModel):
 
     def correct(state: CoachState) -> CoachState:
         raw = corrector.invoke(
-            [SystemMessage(CORRECTOR_PROMPT.format(level=state["level"])), HumanMessage(state["student_text"])]
+            [SystemMessage(CORRECTOR_PROMPT.format(level=state["level"], **render(state.get("explain_lang", "fr"), state["level"]))), HumanMessage(state["student_text"])]
         )
         found = raw.get("corrections") if isinstance(raw, dict) else []
         return {"found": found or []}

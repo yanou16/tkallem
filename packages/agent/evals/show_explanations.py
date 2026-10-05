@@ -1,4 +1,4 @@
-"""Print the French explanations (why_fr) for the correction set, then a mock visa interview.
+"""Print the French explanations (why) for the correction set, then a mock visa interview.
 For HUMAN review of explanation quality and coach level. Usage: python evals/show_explanations.py
 """
 import json
@@ -28,7 +28,7 @@ def main() -> None:
             print("  INVALID OUTPUT")
             continue
         for c in t.corrections:
-            print(f"  - {c.original!r} -> {c.fixed!r} ({c.type})\n    FR: {c.why_fr}")
+            print(f"  - {c.original!r} -> {c.fixed!r} ({c.type})\n    FR: {c.why}")
         if not t.corrections:
             print("  (no correction)")
 
@@ -40,7 +40,7 @@ def main() -> None:
         t = out["turn"]
         print(f"\nSTUDENT: {a}")
         for c in t.corrections:
-            print(f"  fix: {c.original!r} -> {c.fixed!r} | FR: {c.why_fr}")
+            print(f"  fix: {c.original!r} -> {c.fixed!r} | FR: {c.why}")
         print(f"  status={t.sentence_status} goal={t.goal_covered}\nCOACH: {t.reply}")
 
 
