@@ -45,7 +45,9 @@ def test_eval_set_integrity():
 
 
 def test_system_prompt_contains_level_and_questions():
-    scenario = json.loads((Path(__file__).parents[3] / "apps/api/app/scenarios/visa-us.json").read_text())
+    from tkallem_agent.scenarios import load_scenario
+
+    scenario = load_scenario("visa-us").model_dump()
     p = build_system_prompt("B1", scenario)
     assert "B1" in p and "What is the purpose of your trip?" in p and "max 12 words" in p
 

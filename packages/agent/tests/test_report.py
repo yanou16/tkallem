@@ -8,7 +8,7 @@ class FakeLLM:
     def __init__(self, text):
         self.text = text
 
-    def invoke(self, prompt):
+    def invoke(self, prompt, config=None):
         class R:
             content = self.text
 
@@ -41,6 +41,8 @@ def test_report_structure_and_redo_target():
     r = build_report(TURNS, FakeLLM("Good work. Practise verbs next."), "B1", coach_lines=["Q1", "Q2", "Q3"])
     assert [l["role"] for l in r.lines] == ["coach", "student"] * 3
     assert r.lines[r.redo_index]["status"] == "red"
+    closing = build_report(TURNS, FakeLLM("ok"), "B1", coach_lines=["Q1", "Q2", "Q3", "Bye"])
+    assert closing.lines[-1] == {"role": "coach", "text": "Bye", "status": None, "corrections": []}
     assert r.note == "Good work. Practise verbs next."
 
 
@@ -52,7 +54,7 @@ def test_note_with_invented_number_is_replaced_by_template():
 
 def test_provider_error_still_gives_a_report():
     class Boom:
-        def invoke(self, p):
+        def invoke(self, p, config=None):
             raise RuntimeError("provider down")
 
     assert build_report(TURNS, Boom(), "B1", "en").note.startswith("You answered 3 times")
@@ -61,3 +63,14 @@ def test_provider_error_still_gives_a_report():
 def test_empty_session():
     r = build_report([], FakeLLM("x"), "B1")
     assert r.lines == [] and r.note == "" and r.redo_index is None
+
+
+def test_redo_falls_back_to_the_most_corrected_orange_answer():
+    turns = [
+        TurnRecord("a b c", [C], "orange"),
+        TurnRecord("d e f", [C, C], "orange"),
+        TurnRecord("g h i", [], "green"),
+    ]
+    r = build_report(turns, FakeLLM("ok"), "B1")
+    assert r.lines[r.redo_index]["text"] == "d e f"
+    assert build_report([TurnRecord("ok fine", [], "green")], FakeLLM("ok"), "B1").redo_index is None
