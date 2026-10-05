@@ -3,6 +3,7 @@
 Usage:
   python evals/cefr/run_cefr_eval.py [llm]              # zero-shot LLM baseline (needs LLM env vars)
   python evals/cefr/run_cefr_eval.py hf                 # fine-tuned model via its Hugging Face Space
+  add --data real_testers.json to use real samples (see import_samples.py)
   python evals/cefr/run_cefr_eval.py mypkg.mod:func     # your own estimator: a function str -> "B1"
 """
 import importlib
@@ -14,7 +15,7 @@ from pathlib import Path
 from tkallem_agent.cefr import ORDER, clamp, distance, hf_space_estimator, llm_estimator
 from tkallem_agent.llm import get_llm
 
-DATA = Path(__file__).parent / "transcripts.json"
+DATA = Path(__file__).parent / "transcripts.json"  # override with --data
 GATE = 0.85
 
 
@@ -28,8 +29,15 @@ def load_estimator(spec: str | None):
 
 
 def main() -> int:
-    estimate = load_estimator(sys.argv[1] if len(sys.argv) > 1 else None)
-    rows = json.loads(DATA.read_text())
+    args = sys.argv[1:]
+    data = DATA
+    if "--data" in args:
+        i = args.index("--data")
+        data = Path(args[i + 1])
+        args = args[:i] + args[i + 2:]
+    estimate = load_estimator(args[0] if args else None)
+    rows = json.loads(data.read_text())
+    print(f"dataset: {data.name} ({len(rows)} samples)")
     conf: Counter = Counter()
     exact = within1 = exact_clamped = errors = 0
     for r in rows:
@@ -53,7 +61,8 @@ def main() -> int:
             print(f"  {t}  " + " ".join(f"{conf[(t, g)]:>3}" for g in ORDER))
     print(f"\nexact {exact}/{n} = {exact / n:.0%} | within one level {within1}/{n} = {within1 / n:.0%} (gate {GATE:.0%}) | errors {errors}")
     print(f"exact once clamped to the app's A2-C1 scale: {exact_clamped}/{n} = {exact_clamped / n:.0%}")
-    print("NOTE: transcripts are synthetic. Validate on real learner speech before trusting the gate.")
+    if all(str(r.get("source", "")).startswith("synthetic") for r in rows):
+        print("NOTE: transcripts are synthetic. Validate on real learner speech before trusting the gate.")
     return 0 if within1 / n > GATE else 1
 
 
