@@ -1,0 +1,11 @@
+{
+  "id": "free-talk",
+  "title": "Free talk",
+  "mode": "free",
+  "minutes": null,
+  "coach_role": "A friendly, curious English conversation partner. You chat about the student's day, work, studies and life.",
+  "opening": "Hi! How was your day?",
+  "questions": [],
+  "goals": [],
+  "useful_words": []
+}

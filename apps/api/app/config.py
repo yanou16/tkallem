@@ -4,8 +4,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    llm_provider: str = "groq"
-    llm_model: str = "llama-3.3-70b-versatile"
+    llm_provider: str = "openrouter"
+    llm_model: str = "qwen/qwen3-235b-a22b-2507"
     groq_api_key: str = ""
     openrouter_api_key: str = ""
     stt_model: str = "whisper-large-v3-turbo"

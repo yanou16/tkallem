@@ -6,3 +6,13 @@ __pycache__/
 node_modules/
 .next/
 .DS_Store
+
+# Real learner data: personal (testers) or licensed (Speak & Improve forbids sharing). Never commit.
+packages/agent/evals/cefr/real_*.json
+packages/agent/evals/cefr/data/
+# Generated review sheets (re-run evals/review_sheet.py)
+packages/agent/evals/review/
+
+# Python build artifacts
+build/
+*.egg-info/
