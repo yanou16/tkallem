@@ -26,16 +26,19 @@ def upgrade() -> None:
             email TEXT,
             first_name TEXT,
             level TEXT CHECK (level IN ('A2', 'B1', 'B2', 'C1')),
+            explain_lang TEXT NOT NULL DEFAULT 'fr' CHECK (explain_lang IN ('en', 'fr')),
             created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         )
     """)
 
     op.execute("""
         CREATE TABLE practice_sessions (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            id UUID PRIMARY KEY,
             user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             scenario_id TEXT NOT NULL,
             mode TEXT NOT NULL DEFAULT 'text' CHECK (mode IN ('text', 'voice')),
+            explain_lang TEXT NOT NULL CHECK (explain_lang IN ('en', 'fr')),
+            state JSONB NOT NULL,
             note TEXT,
             started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             ended_at TIMESTAMPTZ
@@ -51,9 +54,6 @@ def upgrade() -> None:
             reply TEXT NOT NULL,
             sentence_status TEXT NOT NULL CHECK (sentence_status IN ('green', 'orange', 'red')),
             goal_covered TEXT,
-            word_count INT NOT NULL,
-            speaking_seconds REAL,
-            hesitation_count INT,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             UNIQUE (session_id, position)
         )
@@ -66,7 +66,19 @@ def upgrade() -> None:
             original TEXT NOT NULL,
             fixed TEXT NOT NULL,
             type TEXT NOT NULL CHECK (type IN ('grammar', 'vocabulary', 'word_choice', 'other')),
-            why_fr TEXT NOT NULL
+            why TEXT NOT NULL
+        )
+    """)
+
+    op.execute("""
+        CREATE TABLE session_metrics (
+            session_id UUID PRIMARY KEY REFERENCES practice_sessions(id) ON DELETE CASCADE,
+            words INT NOT NULL,
+            mistakes_per_100 REAL,
+            words_per_answer REAL,
+            hesitations_per_min REAL,
+            speaking_seconds REAL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         )
     """)
 
@@ -75,6 +87,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.execute("DROP TABLE session_metrics")
     op.execute("DROP TABLE corrections")
     op.execute("DROP TABLE turns")
     op.execute("DROP TABLE practice_sessions")
