@@ -6,7 +6,8 @@ pydantic-settings
 python-dotenv
 slowapi
 groq
-psycopg[binary]
+psycopg[binary,pool]
+alembic
 PyJWT[crypto]
 pytest
 httpx
