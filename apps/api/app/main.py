@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.db.connection import close_pool, open_pool
 
+from app.routes.me import router as me_router
 logger = logging.getLogger(__name__)
 
 
@@ -26,10 +27,11 @@ app = FastAPI(title="Tkallem API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.frontend_origin],
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PATCH"],
     allow_headers=["*"],
 )
 
+app.include_router(me_router)
 
 @app.get("/health")
 def health() -> dict[str, str]:
