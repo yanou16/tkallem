@@ -1,7 +1,15 @@
 # DRAFT from the MVP spec. Change only by a PR approved by all three owners.
 openapi: 3.1.0
 info: { title: Tkallem API, version: 0.1.0 }
+security:
+  - bearerAuth: []
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Clerk session token
   schemas:
     Correction:
       type: object
@@ -12,6 +20,23 @@ components:
         type: { type: string, enum: [grammar, vocabulary, word_choice, other] }
         why: { type: string, description: Explanation in the session explain_lang }
     SentenceStatus: { type: string, enum: [green, orange, red] }
+    Me:
+      type: object
+      required: [first_name, level, explain_lang]
+      properties:
+        first_name: { type: [string, "null"] }
+        level:
+          type: [string, "null"]
+          enum: [A2, B1, B2, C1, null]
+          description: null until the student picks a level
+        explain_lang: { type: string, enum: [en, fr] }
+    MeUpdate:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        level: { type: string, enum: [A2, B1, B2, C1] }
+        explain_lang: { type: string, enum: [en, fr] }
     Turn:
       type: object
       required: [transcript, reply, corrections, sentence_status]
@@ -123,3 +148,31 @@ paths:
                   top_mistakes:
                     type: array
                     items: { type: object }
+  /me:
+    get:
+      summary: Current student's profile (created on first call)
+      responses:
+        "200":
+          description: Profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "401":
+          description: Missing or invalid token
+    patch:
+      summary: Update the current student's level or explanation language
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MeUpdate" }
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "401":
+          description: Missing or invalid token
+        "422":
+          description: Empty body, unknown field or invalid value
