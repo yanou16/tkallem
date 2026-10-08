@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     stt_model: str = "whisper-large-v3-turbo"
     database_url: str = ""
+    test_database_url: str = ""
     clerk_jwks_url: str = ""
     clerk_issuer: str = ""
     max_audio_bytes: int = 5_000_000
