@@ -17,6 +17,18 @@ function AuthTokenBridge() {
   return null;
 }
 
+/**
+ * Clerk v6's `useAuth()` throws "called in static mode" during Next.js 14 SSR.
+ * We delay the entire inner tree until after client-side hydration so no component
+ * in the tree can call useAuth() during server rendering.
+ */
+function HydrationGate({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+  return <>{children}</>;
+}
+
 export default function Providers({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [client] = useState(
@@ -35,13 +47,15 @@ export default function Providers({ children }: { children: ReactNode }) {
   );
 
   return (
-    <ClerkProvider>
-      {!pathname?.startsWith("/sign-in") && !pathname?.startsWith("/sign-up") && (
-        <AuthTokenBridge />
-      )}
-      <QueryClientProvider client={client}>
-        {children}
-      </QueryClientProvider>
+    <ClerkProvider dynamic>
+      <HydrationGate>
+        {!pathname?.startsWith("/sign-in") && !pathname?.startsWith("/sign-up") && (
+          <AuthTokenBridge />
+        )}
+        <QueryClientProvider client={client}>
+          {children}
+        </QueryClientProvider>
+      </HydrationGate>
     </ClerkProvider>
   );
-}
+}
