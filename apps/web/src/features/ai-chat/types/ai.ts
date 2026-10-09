@@ -1,40 +1,45 @@
+export type Correction = {
+  original: string;
+  fixed: string;
+  type: "grammar" | "vocabulary" | "word_choice" | "other";
+  why: string;
+};
+
 export type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
   createdAt: string;
-  audioUrl?: string;
 };
-
-export type Correction = {
-  id: string;
-  kind: "grammar" | "phrasing";
-  original: string;
-  improved: string;
-  explanation?: string;
-  saved?: boolean;
-};
-
-export type VocabularyItem = { id: string; word: string; meaning?: string };
 
 export type AiSession = {
   id: string;
   scenarioId?: string;
   scenarioTitle?: string;
-  scenarioIcon?: string;
-  level?: string;
   messages: ChatMessage[];
   corrections: Correction[];
-  vocabulary: VocabularyItem[];
-  savedMistakesCount: number;
 };
 
-export type SendMessageInput = { sessionId: string; message: string; mode: "text" | "voice" };
-export type SendMessageResponse = {
-  userMessage?: ChatMessage;
-  message: ChatMessage;
-  corrections?: Correction[];
-  newVocabulary?: VocabularyItem[];
+export type StartSessionInput = {
+  scenario_id: string;
+  mode?: "text" | "voice";
+  explain_lang?: "en" | "fr";
+};
+
+export type StartSessionResponse = {
+  session_id: string;
+  first_question: {
+    text: string;
+    audio_url: string | null;
+  };
+};
+
+export type TurnResponse = {
+  transcript: string;
+  reply: string;
+  reply_audio_url: string | null;
+  corrections: Correction[];
+  sentence_status: "green" | "orange" | "red";
 };
 
 export type VoiceState = "idle" | "recording" | "uploading" | "processing" | "speaking" | "error";

@@ -26,12 +26,9 @@ export const endpoints = {
     focus: "/api/practice/focus",
   },
   ai: {
-    sessions: "/api/ai/sessions",
-    session: (id: string) => `/api/ai/sessions/${id}`,
-    messages: (id: string) => `/api/ai/sessions/${id}/messages`,
-    voice: (id: string) => `/api/ai/sessions/${id}/voice`,
-    saveCorrection: (sid: string, cid: string) => `/api/ai/sessions/${sid}/corrections/${cid}/save`,
-    assist: "/api/ai/assist",
+    sessions: "/sessions",
+    turn: (id: string) => `/sessions/${id}/turn`,
+    end: (id: string) => `/sessions/${id}/end`,
   },
   groups: {
     list: "/api/groups",
@@ -46,5 +43,5 @@ export const endpoints = {
     sessions: (id: string) => `/api/groups/${id}/sessions`,
     sessionReminder: (id: string, sessionId: string) => `/api/groups/${id}/sessions/${sessionId}/reminder`,
   },
-  progress: "/api/progress",
+  progress: "/me/progress",
 } as const;

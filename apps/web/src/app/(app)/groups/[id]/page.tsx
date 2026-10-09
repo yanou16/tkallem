@@ -3,9 +3,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, Calendar, Check, Crown, Heart, Lightbulb, MessageCircle, Mic, Plus, Share2, MoreHorizontal, Users, Globe, Tag, Signal, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calendar, Check, Crown, Heart, Lightbulb, MessageCircle, Mic, Plus, Share2, MoreHorizontal, Users, Globe, Tag, Signal } from "lucide-react";
 import { useCreatePost, useGroup, useGroupPosts, useLikePost, useSetReminder, useToggleMembership } from "@/features/groups/hooks/useGroups";
-import { assistWriting } from "@/features/ai-chat/api/ai";
 import { Async, Avatar, AvatarStack, Button, Card, Dialog, EmptyState, ErrorState, Pill, Skeleton } from "@/components/ui";
 import { cn, timeAgo } from "@/lib/utils";
 
@@ -22,9 +21,6 @@ export default function GroupPage() {
   const [tab, setTab] = useState<Tab>("discussion");
   const [composer, setComposer] = useState(false);
   const [draft, setDraft] = useState("");
-  const [ai, setAi] = useState("");
-  const [aiResult, setAiResult] = useState<string | null>(null);
-  const [aiBusy, setAiBusy] = useState(false);
 
   if (group.isLoading) return <Skeleton className="mt-6 h-[500px]" />;
   if (group.error || !group.data) return <ErrorState error={group.error} onRetry={() => group.refetch()} className="mt-6" />;
@@ -145,16 +141,6 @@ export default function GroupPage() {
             </button>
           </Card>
         )}
-        <div className="rounded-card bg-lilac p-5">
-          <p className="flex items-center gap-2 font-semibold"><Sparkles size={16} className="text-violet-600" /> AI Helper</p>
-          <p className="mt-1 font-semibold">Need help phrasing your reply?</p>
-          <p className="mb-3 text-sm text-muted">Ask AI to improve your message, fix grammar, or suggest natural expressions.</p>
-          <form onSubmit={async (e) => { e.preventDefault(); if (!ai.trim()) return; setAiBusy(true); try { setAiResult((await assistWriting(ai, g.name)).suggestion); } catch { setAiResult("Couldn't get a suggestion. Try again."); } finally { setAiBusy(false); } }} className="flex gap-2">
-            <input value={ai} onChange={(e) => setAi(e.target.value)} placeholder="Write your idea here…" className="flex-1 rounded-full border border-line bg-white px-4 py-2.5 text-sm outline-none" />
-            <button disabled={aiBusy} aria-label="Ask AI" className="flex h-10 w-10 items-center justify-center rounded-full bg-black/10"><ArrowRight size={16} /></button>
-          </form>
-          {aiResult && <p className="mt-3 rounded-xl bg-white/70 p-3 text-sm">{aiResult}</p>}
-        </div>
       </aside>
 
       <Dialog open={composer} title="New post" onClose={() => setComposer(false)}>

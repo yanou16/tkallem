@@ -1,29 +1,43 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createSession, getSession, saveCorrection, sendMessage, sendVoice } from "../api/ai";
-import type { AiSession, SendMessageResponse } from "../types/ai";
+import { createSession, sendText, sendVoice } from "../api/ai";
+import type { AiSession, StartSessionResponse, TurnResponse } from "../types/ai";
 
 const key = (id?: string) => ["ai-session", id] as const;
 
 export const useAiSession = (id?: string) =>
-  useQuery({ queryKey: key(id), queryFn: () => getSession(id!), enabled: !!id });
+  useQuery<AiSession>({ queryKey: key(id), enabled: false });
 
 export const useCreateSession = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: createSession,
-    onSuccess: (s) => qc.setQueryData(key(s.id), s),
+    onSuccess: (s: StartSessionResponse) => {
+      qc.setQueryData<AiSession>(key(s.session_id), {
+        id: s.session_id,
+        messages: [{
+          id: `${s.session_id}-question`,
+          role: "assistant",
+          content: s.first_question.text,
+          createdAt: new Date().toISOString(),
+        }],
+        corrections: [],
+      });
+    },
   });
 };
 
-function merge(qc: ReturnType<typeof useQueryClient>, sessionId: string, r: SendMessageResponse) {
+function merge(qc: ReturnType<typeof useQueryClient>, sessionId: string, transcript: string, r: TurnResponse) {
   qc.setQueryData<AiSession>(key(sessionId), (prev) =>
     prev
       ? {
           ...prev,
-          messages: [...prev.messages, ...(r.userMessage ? [r.userMessage] : []), r.message],
-          corrections: [...prev.corrections, ...(r.corrections ?? [])],
-          vocabulary: [...prev.vocabulary, ...(r.newVocabulary ?? [])],
+          messages: [
+            ...prev.messages,
+            { id: `${sessionId}-${prev.messages.length}`, role: "user", content: transcript, createdAt: new Date().toISOString() },
+            { id: `${sessionId}-${prev.messages.length + 1}`, role: "assistant", content: r.reply, createdAt: new Date().toISOString() },
+          ],
+          corrections: [...prev.corrections, ...r.corrections],
         }
       : prev,
   );
@@ -32,8 +46,8 @@ function merge(qc: ReturnType<typeof useQueryClient>, sessionId: string, r: Send
 export const useSendMessage = (sessionId?: string) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: sendMessage,
-    onSuccess: (r) => sessionId && merge(qc, sessionId, r),
+    mutationFn: ({ text }: { text: string }) => sendText(sessionId!, text),
+    onSuccess: (r, variables) => sessionId && merge(qc, sessionId, variables.text, r),
   });
 };
 
@@ -41,23 +55,6 @@ export const useSendVoice = (sessionId?: string) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (audio: Blob) => sendVoice(sessionId!, audio),
-    onSuccess: (r) => sessionId && merge(qc, sessionId, r),
-  });
-};
-
-export const useSaveCorrection = (sessionId?: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (correctionId: string) => saveCorrection(sessionId!, correctionId),
-    onSuccess: (_r, correctionId) =>
-      qc.setQueryData<AiSession>(key(sessionId), (prev) =>
-        prev
-          ? {
-              ...prev,
-              savedMistakesCount: prev.savedMistakesCount + 1,
-              corrections: prev.corrections.map((c) => (c.id === correctionId ? { ...c, saved: true } : c)),
-            }
-          : prev,
-      ),
+    onSuccess: (r) => sessionId && merge(qc, sessionId, r.transcript, r),
   });
 };
