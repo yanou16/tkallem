@@ -9,6 +9,7 @@ npm install
 npm run dev
 ```
 Create your test account in the backend (or via /sign-up) and sign in at `/sign-in`.
+The API expects Clerk session tokens as Bearer tokens, so keep `NEXT_PUBLIC_AUTH_MODE=bearer`.
 
 ## Where to adapt to your backend
 | What | File |
@@ -19,7 +20,7 @@ Create your test account in the backend (or via /sign-up) and sign in at `/sign-
 | Other DTOs | `src/features/*/types/*.ts` |
 
 ## Expected responses (shapes live in the types files)
-- `GET /api/users/me` → `User` · `PATCH /api/users/me`
+- `GET /me` → current profile (`first_name`, `level`, `explain_lang`) · `PATCH /me`
 - `GET /api/dashboard`, `GET /api/mistakes/top`
 - `GET /api/practice/{scenarios,sessions/recent,recommended,focus}`
 - `POST /api/ai/sessions`, `GET /api/ai/sessions/:id`, `POST …/messages`, `POST …/voice` (multipart `audio`), `POST …/corrections/:id/save`

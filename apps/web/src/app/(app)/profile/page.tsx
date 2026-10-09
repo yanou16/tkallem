@@ -10,7 +10,7 @@ import { Icon } from "@/lib/icons";
 import { cn, timeAgo } from "@/lib/utils";
 
 type Edit =
-  | { kind: "name" } | { kind: "bio" } | { kind: "goal" } | { kind: "mode" } | { kind: "daily" } | { kind: "focus" } | { kind: "language" } | null;
+  | { kind: "name" } | { kind: "bio" } | { kind: "goal" } | { kind: "mode" } | { kind: "daily" } | { kind: "focus" } | { kind: "language" } | { kind: "level" } | { kind: "explainLang" } | null;
 
 export default function ProfilePage() {
   const { user, activeLanguage } = useCurrentUser();
@@ -41,6 +41,8 @@ export default function ProfilePage() {
       case "daily": return patch({ dailyGoalMinutes: Math.max(1, Number(value) || 0) });
       case "focus": return patch({ focusAreas: value.split(",").map((s) => s.trim()).filter(Boolean) });
       case "language": return addLang.mutate({ code: value.trim().toLowerCase(), level: value2.trim() || "A1" }, { onSuccess: close });
+      case "level": return patch({ level: value as NonNullable<UpdateProfileInput["level"]> });
+      case "explainLang": return patch({ explainLang: value as NonNullable<UpdateProfileInput["explainLang"]> });
     }
   }
   const pending = update.isPending || addLang.isPending;
@@ -81,6 +83,8 @@ export default function ProfilePage() {
 
         <div className="mb-3 mt-8 flex items-center justify-between"><h2 className="text-lg font-semibold">My learning setup</h2></div>
         <div className="grid gap-4 md:grid-cols-3">
+          <SetupCard tone={3} icon="chart" title="English level" onEdit={() => open({ kind: "level" }, user.level ?? "")} text={user.level} empty="Choose your level" />
+          <SetupCard tone={4} icon="book" title="Explanation language" onEdit={() => open({ kind: "explainLang" }, user.explainLang ?? "fr")} text={user.explainLang === "en" ? "English" : user.explainLang === "fr" ? "French" : undefined} empty="Choose a language" />
           <SetupCard tone={0} icon="target" title="Learning goals" onEdit={() => open({ kind: "goal" }, user.learningGoal ?? "")} text={user.learningGoal} empty="Set a learning goal" />
           <SetupCard tone={1} icon="laptop" title="Preferred practice mode" onEdit={() => open({ kind: "mode" }, user.preferredPracticeMode ?? "")} text={user.preferredPracticeMode} empty="Choose how you like to practice" />
           <SetupCard tone={2} icon="chart" title="Daily goal" onEdit={() => open({ kind: "daily" }, String(user.dailyGoalMinutes ?? ""))} text={user.dailyGoalMinutes ? `${user.dailyGoalMinutes} minutes of speaking practice` : undefined} empty="Set a daily goal" />
@@ -162,6 +166,8 @@ export default function ProfilePage() {
           {edit?.kind === "mode" && <Input v={value} set={setValue} label="Preferred practice mode" />}
           {edit?.kind === "daily" && <Input v={value} set={setValue} label="Daily goal (minutes)" type="number" />}
           {edit?.kind === "focus" && <Input v={value} set={setValue} label="Focus areas (comma separated)" />}
+          {edit?.kind === "level" && <select aria-label="English level" value={value} onChange={(e) => setValue(e.target.value)} className="w-full rounded-xl border border-line px-3 py-2.5"><option value="">Choose a level</option>{["A2", "B1", "B2", "C1"].map((level) => <option key={level} value={level}>{level}</option>)}</select>}
+          {edit?.kind === "explainLang" && <select aria-label="Explanation language" value={value} onChange={(e) => setValue(e.target.value)} className="w-full rounded-xl border border-line px-3 py-2.5"><option value="fr">French</option><option value="en">English</option></select>}
           {edit?.kind === "language" && <><Input v={value} set={setValue} label="Language code (e.g. en, fr)" /><Input v={value2} set={setValue2} label="Your level (e.g. A1)" /></>}
           {error && <p role="alert" className="text-sm text-red-600">{error.message}</p>}
           <div className="flex justify-end gap-2 pt-2"><Button dark={false} onClick={close}>Cancel</Button><Button onClick={save} disabled={pending}>{pending ? "Saving…" : "Save changes"}</Button></div>

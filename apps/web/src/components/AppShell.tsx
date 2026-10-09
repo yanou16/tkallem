@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 import { ROUTES } from "@/lib/config";
 import { ApiError, setUnauthorizedHandler } from "@/lib/api/client";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
-import { useUnreadCount } from "@/features/profile/hooks/useProfile";
 
 const NAV = [
   { href: "/", label: "Home", icon: House },
@@ -69,7 +68,6 @@ function MobileNav() {
 function HeaderBar() {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
-  const unread = useUnreadCount();
   const [open, setOpen] = useState(false);
 
   return (
@@ -78,7 +76,6 @@ function HeaderBar() {
       <div className="flex items-center gap-5">
         <button aria-label="Notifications" className="relative rounded-full p-2 hover:bg-black/5">
           <Bell size={22} strokeWidth={1.7} />
-          {(unread.data?.count ?? 0) > 0 && <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-red-500" />}
         </button>
         {!isLoaded || !user ? (
           <div className="flex items-center gap-3"><Skeleton className="h-10 w-10 !rounded-full" /><Skeleton className="h-4 w-16" /></div>

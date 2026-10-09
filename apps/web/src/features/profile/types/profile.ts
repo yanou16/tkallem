@@ -19,4 +19,6 @@ export type UpdateProfileInput = Partial<{
   preferredPracticeMode: string;
   focusAreas: string[];
   activeLanguageId: string;
+  level: "A2" | "B1" | "B2" | "C1";
+  explainLang: "en" | "fr";
 }>;

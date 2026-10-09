@@ -22,6 +22,14 @@ export type User = {
   dailyGoalMinutes?: number;
   preferredPracticeMode?: string;
   focusAreas?: string[];
+  level?: "A2" | "B1" | "B2" | "C1";
+  explainLang?: "en" | "fr";
+};
+
+export type MeResponse = {
+  first_name: string | null;
+  level: User["level"] | null;
+  explain_lang: NonNullable<User["explainLang"]>;
 };
 
 export type LoginInput = { email: string; password: string; remember?: boolean };
@@ -29,5 +37,19 @@ export type RegisterInput = { firstName: string; lastName?: string; email: strin
 export type AuthResponse = { token?: string; accessToken?: string };
 
 export function getActiveLanguage(user?: User | null): LearningLanguage | undefined {
-  return user?.activeLanguage ?? user?.learningLanguages?.[0];
+  return user?.activeLanguage ?? user?.learningLanguages?.[0] ??
+    (user?.level ? { id: "profile", code: "en", name: "English", level: user.level } : undefined);
+}
+
+export function toUser(me: MeResponse): User {
+  return {
+    id: "current-user",
+    firstName: me.first_name ?? "Student",
+    email: "",
+    learningLanguages: me.level
+      ? [{ id: "profile", code: "en", name: "English", level: me.level }]
+      : [],
+    level: me.level ?? undefined,
+    explainLang: me.explain_lang,
+  };
 }

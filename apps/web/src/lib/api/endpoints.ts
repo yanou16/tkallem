@@ -6,10 +6,10 @@ export const endpoints = {
     login: "/api/auth/login",
     register: "/api/auth/register",
     logout: "/api/auth/logout",
-    me: "/api/users/me", // or "/api/auth/me"
+    me: "/me",
   },
   user: {
-    me: "/api/users/me",
+    me: "/me",
     languages: "/api/users/me/languages",
     avatar: "/api/users/me/avatar",
     achievements: "/api/users/me/achievements",
