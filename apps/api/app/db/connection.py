@@ -3,6 +3,11 @@ from psycopg_pool import ConnectionPool
 
 from app.config import settings
 
+from collections.abc import Callable
+from contextlib import AbstractContextManager
+
+from psycopg import Connection
+
 pool = ConnectionPool(
     conninfo=settings.database_url,
     min_size=1,
@@ -24,3 +29,8 @@ def close_pool() -> None:
 def get_conn():
     with pool.connection() as conn:
         yield conn
+
+ConnFactory = Callable[[], AbstractContextManager[Connection]]
+
+def get_conn_factory() -> ConnFactory:
+    return pool.connection

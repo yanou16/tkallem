@@ -1,7 +1,7 @@
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
-from tkallem_agent.schemas import ExplainLang
+from tkallem_agent.schemas import Correction, ExplainLang, Status
 
 
 class SessionCreate(BaseModel):
@@ -20,3 +20,10 @@ class FirstQuestion(BaseModel):
 class SessionStarted(BaseModel):
     session_id: str
     first_question: FirstQuestion
+
+class TurnResult(BaseModel):
+    transcript: str
+    reply: str
+    reply_audio_url: str | None = None
+    corrections: list[Correction] = Field(max_length=3)
+    sentence_status: Status
