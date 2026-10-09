@@ -1,17 +1,28 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import Providers from "./providers";
+
+const font = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
 
 export const metadata: Metadata = {
   title: "Tkallem",
-  description: "Practice the English conversations that matter, without fear of mistakes.",
+  description: "Learn a language through real conversations.",
 };
 
-export const viewport: Viewport = { themeColor: "#ffffff" };
-
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="en" className="h-full antialiased font-sans">
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" className={font.variable}>
+      <body className="font-sans">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

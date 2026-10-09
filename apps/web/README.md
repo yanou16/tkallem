@@ -1,36 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tkallem web
 
-## Getting Started
+Next.js 14 (App Router) + TypeScript + Tailwind + TanStack Query. **No mock users or fixtures** — every value on screen comes from the backend.
 
-First, run the development server:
-
+## Run
 ```bash
+cp .env.local.example .env.local   # set NEXT_PUBLIC_API_URL and NEXT_PUBLIC_AUTH_MODE
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
+Create your test account in the backend (or via /sign-up) and sign in at `/sign-in`.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Where to adapt to your backend
+| What | File |
+|---|---|
+| Every URL | `src/lib/api/endpoints.ts` |
+| Base URL, cookie vs Bearer, 401 handling | `src/lib/api/client.ts`, `src/lib/config.ts` |
+| User shape | `src/features/auth/types/user.ts` |
+| Other DTOs | `src/features/*/types/*.ts` |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Expected responses (shapes live in the types files)
+- `GET /api/users/me` → `User` · `PATCH /api/users/me`
+- `GET /api/dashboard`, `GET /api/mistakes/top`
+- `GET /api/practice/{scenarios,sessions/recent,recommended,focus}`
+- `POST /api/ai/sessions`, `GET /api/ai/sessions/:id`, `POST …/messages`, `POST …/voice` (multipart `audio`), `POST …/corrections/:id/save`
+- `GET /api/groups` (query: search, language, level, topic, voiceRooms, examPrep), `/suggested`, `/sessions/upcoming`, `/topics/active`, `/:id`, `/:id/posts`, join/leave/like/reminder
+- `GET /api/progress?range=4w`
+- `GET /api/users/me/{achievements,activity,preferences}`, `PATCH …/preferences`, `POST …/avatar`, `POST …/languages`
+- `GET /api/notifications/unread-count`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Missing endpoint → that card shows its error state; empty data → its empty state. Never fake data.
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Icons: backend sends identifiers (`briefcase`, `plane`, …) mapped in `src/lib/icons.tsx`.
+Card colours are cosmetic and assigned by position in the UI.

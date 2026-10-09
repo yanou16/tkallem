@@ -19,7 +19,7 @@ cd apps/api && .venv/bin/pytest
 cd apps/web && npm run dev
 ```
 
-Copy `apps/api/.env.example` to `apps/api/.env` and `apps/web/.env.example` to `frontend/.env.local`, then fill in the keys (API keys server-side only).
+Copy `apps/api/.env.example` to `apps/api/.env` and `apps/web/.env.local.example` to `apps/web/.env.local`, then fill in the keys (API keys server-side only).
 
 ## Add a scenario
 Add a JSON file in `packages/agent/tkallem_agent/scenarios/` (see `visa-us.json`): `id` (= file name), `title`, `mode`, `minutes`, `coach_role`, 6 `questions`, one goal id per question, `useful_words`. `pytest` in `packages/agent` validates it.
