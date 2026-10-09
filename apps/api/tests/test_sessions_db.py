@@ -45,8 +45,8 @@ def test_other_user_cannot_read_the_session(db, session_id):
 def test_save_turn_numbers_turns_and_stores_corrections(db, user, session_id):
     correction = {"original": "I go", "fixed": "I'm going", "type": "grammar", "why": "Projet futur."}
 
-    save_turn(db, session_id, {"step": 1}, "I go to the US", "Why?", "orange", None, [correction])
-    second = save_turn(db, session_id, {"step": 2}, "For study.", "Good.", "green", "purpose", [])
+    save_turn(db, session_id, {"turns": [1]}, "I go to the US", "Why?", "orange", None, [correction], expected_turns=0)
+    second = save_turn(db, session_id, {"turns": [1, 2]}, "For study.", "Good.", "green", "purpose", [], expected_turns=1)
 
     positions = db.execute(
         "SELECT position FROM turns WHERE session_id = %s ORDER BY position", (session_id,)
@@ -56,9 +56,22 @@ def test_save_turn_numbers_turns_and_stores_corrections(db, user, session_id):
     stored = db.execute("SELECT original, fixed, type, why FROM corrections").fetchall()
     assert stored == [correction]
 
-    assert get_session_for_user(db, session_id, user["id"])["state"] == {"step": 2}
+    assert get_session_for_user(db, session_id, user["id"])["state"] == {"turns": [1, 2]}
     assert isinstance(second, int)
 
+def test_save_turn_rejects_a_concurrent_turn(db, session_id):
+    first = save_turn(db, session_id, {"turns": [1]}, "Hello", "Hi", "green", None, [], expected_turns=0)
+    duplicate = save_turn(db, session_id, {"turns": [1]}, "Hello", "Hi", "green", None, [], expected_turns=0)
+
+    assert first is not None
+    assert duplicate is None
+    assert db.execute("SELECT count(*) AS n FROM turns").fetchone()["n"] == 1
+
+
+def test_save_turn_rejects_an_ended_session(db, session_id):
+    end_session(db, session_id, "Fin.", METRICS)
+
+    assert save_turn(db, session_id, {"turns": [1]}, "Hi", "Hi", "green", None, [], expected_turns=0) is None
 
 def test_end_session_only_once(db, user, session_id):
     assert end_session(db, session_id, "Bon travail.", METRICS) is True

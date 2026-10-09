@@ -42,11 +42,22 @@ def save_turn(
     sentence_status: str,
     goal_covered: str | None,
     corrections: list[dict],
-) -> int:
-    conn.execute(
-        "UPDATE practice_sessions SET state = %s WHERE id = %s",
-        (Jsonb(state), session_id),
-    )
+    *,
+    expected_turns: int,
+) -> int | None:
+    updated = conn.execute(
+        """
+        UPDATE practice_sessions SET state = %s
+        WHERE id = %s
+          AND ended_at IS NULL
+          AND jsonb_array_length(state -> 'turns') = %s
+        RETURNING id
+        """,
+        (Jsonb(state), session_id, expected_turns),
+    ).fetchone()
+    if updated is None:
+        return None
+
     turn = conn.execute(
         """
         INSERT INTO turns (session_id, position, transcript, reply, sentence_status, goal_covered)
