@@ -20,13 +20,40 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     op.execute("""
+        DO $$ BEGIN
+            CREATE TYPE user_level AS ENUM ('A2', 'B1', 'B2', 'C1');
+        EXCEPTION WHEN duplicate_object THEN null;
+        END $$;
+
+        DO $$ BEGIN
+            CREATE TYPE explain_lang AS ENUM ('en', 'fr');
+        EXCEPTION WHEN duplicate_object THEN null;
+        END $$;
+
+        DO $$ BEGIN
+            CREATE TYPE practice_mode AS ENUM ('text', 'voice');
+        EXCEPTION WHEN duplicate_object THEN null;
+        END $$;
+
+        DO $$ BEGIN
+            CREATE TYPE sentence_status AS ENUM ('green', 'orange', 'red');
+        EXCEPTION WHEN duplicate_object THEN null;
+        END $$;
+
+        DO $$ BEGIN
+            CREATE TYPE correction_type AS ENUM ('grammar', 'vocabulary', 'word_choice', 'other');
+        EXCEPTION WHEN duplicate_object THEN null;
+        END $$;
+    """)
+
+    op.execute("""
         CREATE TABLE users (
             id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
             clerk_user_id TEXT NOT NULL UNIQUE,
             email TEXT,
             first_name TEXT,
-            level TEXT CHECK (level IN ('A2', 'B1', 'B2', 'C1')),
-            explain_lang TEXT NOT NULL DEFAULT 'fr' CHECK (explain_lang IN ('en', 'fr')),
+            level user_level,
+            explain_lang explain_lang NOT NULL DEFAULT 'fr',
             created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         )
     """)
@@ -36,8 +63,8 @@ def upgrade() -> None:
             id UUID PRIMARY KEY,
             user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             scenario_id TEXT NOT NULL,
-            mode TEXT NOT NULL DEFAULT 'text' CHECK (mode IN ('text', 'voice')),
-            explain_lang TEXT NOT NULL CHECK (explain_lang IN ('en', 'fr')),
+            mode practice_mode NOT NULL DEFAULT 'text',
+            explain_lang explain_lang NOT NULL,
             state JSONB NOT NULL,
             note TEXT,
             started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -52,7 +79,7 @@ def upgrade() -> None:
             position INT NOT NULL,
             transcript TEXT NOT NULL,
             reply TEXT NOT NULL,
-            sentence_status TEXT NOT NULL CHECK (sentence_status IN ('green', 'orange', 'red')),
+            sentence_status sentence_status NOT NULL,
             goal_covered TEXT,
             created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
             UNIQUE (session_id, position)
@@ -65,7 +92,7 @@ def upgrade() -> None:
             turn_id BIGINT NOT NULL REFERENCES turns(id) ON DELETE CASCADE,
             original TEXT NOT NULL,
             fixed TEXT NOT NULL,
-            type TEXT NOT NULL CHECK (type IN ('grammar', 'vocabulary', 'word_choice', 'other')),
+            type correction_type NOT NULL,
             why TEXT NOT NULL
         )
     """)
@@ -92,3 +119,8 @@ def downgrade() -> None:
     op.execute("DROP TABLE turns")
     op.execute("DROP TABLE practice_sessions")
     op.execute("DROP TABLE users")
+    op.execute("DROP TYPE IF EXISTS correction_type")
+    op.execute("DROP TYPE IF EXISTS sentence_status")
+    op.execute("DROP TYPE IF EXISTS practice_mode")
+    op.execute("DROP TYPE IF EXISTS explain_lang")
+    op.execute("DROP TYPE IF EXISTS user_level")

@@ -1,6 +1,22 @@
+import logging
+
 from psycopg import Connection, sql
 
+logger = logging.getLogger(__name__)
+
 USER_COLUMNS = "id, clerk_user_id, email, first_name, level, explain_lang, created_at"
+UPDATABLE_COLUMNS = {
+    "first_name",
+    "last_name",
+    "avatar_url",
+    "bio",
+    "learning_goal",
+    "daily_goal_minutes",
+    "preferred_practice_mode",
+    "focus_areas",
+    "level",
+    "explain_lang",
+}
 
 
 def get_by_clerk_id(conn: Connection, clerk_user_id: str) -> dict | None:
@@ -11,8 +27,10 @@ def get_by_clerk_id(conn: Connection, clerk_user_id: str) -> dict | None:
 
 
 def get_or_create_by_clerk_id(conn: Connection, clerk_user_id: str) -> dict:
+    logger.debug("Looking up user profile")
     user = get_by_clerk_id(conn, clerk_user_id)
     if user is not None:
+        logger.debug("User profile found")
         return user
 
     created = conn.execute(
@@ -25,12 +43,11 @@ def get_or_create_by_clerk_id(conn: Connection, clerk_user_id: str) -> dict:
         (clerk_user_id,),
     ).fetchone()
     if created is not None:
+        logger.info("Created user profile on first access")
         return created
 
+    logger.debug("User profile was created concurrently; fetching it again")
     return get_by_clerk_id(conn, clerk_user_id)
-
-
-UPDATABLE_COLUMNS = {"level", "explain_lang"}
 
 
 def update_profile(conn: Connection, user_id: int, changes: dict) -> dict:
@@ -47,4 +64,8 @@ def update_profile(conn: Connection, user_id: int, changes: dict) -> dict:
         assignments=assignments,
         columns=sql.SQL(USER_COLUMNS),
     )
-    return conn.execute(query, [*changes.values(), user_id]).fetchone()
+    updated = conn.execute(query, [*changes.values(), user_id]).fetchone()
+    if updated is None:
+        logger.error("Profile update returned no user row")
+        raise LookupError("user profile was not found after update")
+    return updated

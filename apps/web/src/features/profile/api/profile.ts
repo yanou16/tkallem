@@ -4,7 +4,16 @@ import type { MeResponse, User } from "@/features/auth/types/user";
 import type { Achievement, ActivityItem, Preferences, UpdateProfileInput } from "../types/profile";
 
 export const updateProfile = (input: UpdateProfileInput) => {
-  const body: Partial<Pick<MeResponse, "level" | "explain_lang">> = {};
+  const body: Record<string, any> = {};
+  if (input.firstName !== undefined) body.first_name = input.firstName;
+  if (input.lastName !== undefined) body.last_name = input.lastName;
+  if (input.bio !== undefined) body.bio = input.bio;
+  if (input.avatarUrl !== undefined) body.avatar_url = input.avatarUrl;
+  if (input.learningGoal !== undefined) body.learning_goal = input.learningGoal;
+  if (input.dailyGoalMinutes !== undefined) body.daily_goal_minutes = input.dailyGoalMinutes;
+  if (input.preferredPracticeMode !== undefined) body.preferred_practice_mode = input.preferredPracticeMode;
+  if (input.focusAreas !== undefined) body.focus_areas = input.focusAreas;
+  if (input.learningLanguages !== undefined) body.learning_languages = input.learningLanguages;
   if (input.level !== undefined) body.level = input.level;
   if (input.explainLang !== undefined) body.explain_lang = input.explainLang;
   return api.patch<MeResponse>(endpoints.user.me, body);

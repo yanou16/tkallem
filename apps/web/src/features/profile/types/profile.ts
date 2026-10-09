@@ -18,6 +18,7 @@ export type UpdateProfileInput = Partial<{
   dailyGoalMinutes: number;
   preferredPracticeMode: string;
   focusAreas: string[];
+  learningLanguages: { id: string; code: string; name: string; level: string; flagUrl?: string }[];
   activeLanguageId: string;
   level: "A2" | "B1" | "B2" | "C1";
   explainLang: "en" | "fr";

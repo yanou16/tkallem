@@ -67,8 +67,12 @@ function MobileNav() {
 
 function HeaderBar() {
   const { user, isLoaded } = useUser();
+  const { user: appUser } = useCurrentUser();
   const { signOut } = useClerk();
   const [open, setOpen] = useState(false);
+
+  const avatarSrc = appUser?.avatarUrl || user?.imageUrl;
+  const displayName = appUser?.firstName || user?.firstName || user?.primaryEmailAddress?.emailAddress;
 
   return (
     <div className="flex items-center justify-between px-6 pt-5 md:justify-end md:px-10">
@@ -82,8 +86,8 @@ function HeaderBar() {
         ) : (
           <div className="relative">
             <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-3 rounded-full p-1 pr-2 hover:bg-black/5" aria-haspopup="menu" aria-expanded={open}>
-              <Avatar src={user.imageUrl} first={user.firstName ?? undefined} last={user.lastName ?? undefined} size={40} />
-              <span className="font-medium">{user.firstName ?? user.primaryEmailAddress?.emailAddress}</span>
+              <Avatar src={avatarSrc} first={appUser?.firstName ?? user.firstName ?? undefined} last={appUser?.lastName ?? user.lastName ?? undefined} size={40} />
+              <span className="font-medium">{displayName}</span>
               <ChevronDown size={16} />
             </button>
             {open && (
