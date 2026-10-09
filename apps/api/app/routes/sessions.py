@@ -78,7 +78,7 @@ def send_turn(
     try:
         turn = coach.turn(text)
     except ValueError as exc:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc))
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc))
     except AgentError:
         logger.exception("Agent failed on session %s", session_id)
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "The coach is unavailable, send your answer again")
