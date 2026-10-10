@@ -3,7 +3,7 @@ import { useClerk, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { Bell, ChevronDown, House, MessageCircle, Sparkles, Users, ChartNoAxesColumn, UserRound, LogOut } from "lucide-react";
+import { ChevronDown, House, MessageCircle, Sparkles, Users, ChartNoAxesColumn, UserRound, LogOut } from "lucide-react";
 import { Avatar, ErrorState, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/lib/config";
@@ -78,9 +78,7 @@ function HeaderBar() {
     <div className="flex items-center justify-between px-6 pt-5 md:justify-end md:px-10">
       <div className="md:hidden"><Logo /></div>
       <div className="flex items-center gap-5">
-        <button aria-label="Notifications" className="relative rounded-full p-2 hover:bg-black/5">
-          <Bell size={22} strokeWidth={1.7} />
-        </button>
+        {/* TODO: notifications bell, once the API has notifications. */}
         {!isLoaded || !user ? (
           <div className="flex items-center gap-3"><Skeleton className="h-10 w-10 !rounded-full" /><Skeleton className="h-4 w-16" /></div>
         ) : (

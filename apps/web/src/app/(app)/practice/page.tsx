@@ -9,7 +9,7 @@ import { Icon } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 
 export default function PracticePage() {
-  const { activeLanguage } = useCurrentUser();
+  const { user } = useCurrentUser();
   const all = useScenarios();
   const recent = useRecentSessions();
   const focus = usePracticeFocus();
@@ -18,7 +18,7 @@ export default function PracticePage() {
     <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div>
         <PageHeader
-          eyebrow={activeLanguage?.level ? `Practice · ${activeLanguage.level}` : "Practice"}
+          eyebrow={user?.level ? `Practice · ${user.level}` : "Practice"}
           title="Choose your next practice"
           subtitle="Real-life conversations, structured exercises, and exam preparation — all in one place."
         />

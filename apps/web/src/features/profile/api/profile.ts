@@ -1,33 +1,20 @@
 import { api } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
-import type { MeResponse, User } from "@/features/auth/types/user";
-import type { Achievement, ActivityItem, Preferences, UpdateProfileInput } from "../types/profile";
+import { mapMe } from "@/features/auth/api/getCurrentUser";
+import type { MeDto } from "@/features/auth/types/user";
+import type { MeUpdateDto, UpdateProfileInput } from "../types/profile";
 
-export const updateProfile = (input: UpdateProfileInput) => {
-  const body: Record<string, any> = {};
-  if (input.firstName !== undefined) body.first_name = input.firstName;
-  if (input.lastName !== undefined) body.last_name = input.lastName;
-  if (input.bio !== undefined) body.bio = input.bio;
-  if (input.avatarUrl !== undefined) body.avatar_url = input.avatarUrl;
-  if (input.learningGoal !== undefined) body.learning_goal = input.learningGoal;
-  if (input.dailyGoalMinutes !== undefined) body.daily_goal_minutes = input.dailyGoalMinutes;
-  if (input.preferredPracticeMode !== undefined) body.preferred_practice_mode = input.preferredPracticeMode;
-  if (input.focusAreas !== undefined) body.focus_areas = input.focusAreas;
-  if (input.learningLanguages !== undefined) body.learning_languages = input.learningLanguages;
+/** Only the fields present in the input are sent. */
+export function mapProfileUpdate(input: UpdateProfileInput): MeUpdateDto {
+  const body: MeUpdateDto = {};
   if (input.level !== undefined) body.level = input.level;
   if (input.explainLang !== undefined) body.explain_lang = input.explainLang;
-  return api.patch<MeResponse>(endpoints.user.me, body);
-};
-export const addLanguage = (input: { code: string; level: string }) => api.post(endpoints.user.languages, input);
-export const getAchievements = () => api.get<Achievement[]>(endpoints.user.achievements);
-export const getActivity = () => api.get<ActivityItem[]>(endpoints.user.activity);
-export const getPreferences = () => api.get<Preferences>(endpoints.user.preferences);
-export const updatePreferences = (input: Partial<Preferences["notifications"]>) =>
-  api.patch<Preferences>(endpoints.user.preferences, { notifications: input });
-export const getUnreadCount = () => api.get<{ count: number }>(endpoints.user.notificationsUnread);
+  if (input.dailyGoalMinutes !== undefined) body.daily_goal_minutes = input.dailyGoalMinutes;
+  if (input.learningGoal !== undefined) body.learning_goal = input.learningGoal;
+  if (input.practiceMode !== undefined) body.practice_mode = input.practiceMode;
+  if (input.focusAreas !== undefined) body.focus_areas = input.focusAreas;
+  return body;
+}
 
-export const uploadAvatar = (file: File) => {
-  const form = new FormData();
-  form.append("avatar", file);
-  return api.post<User>(endpoints.user.avatar, form);
-};
+export const updateProfile = (input: UpdateProfileInput) =>
+  api.patch<MeDto>(endpoints.me, mapProfileUpdate(input)).then(mapMe);

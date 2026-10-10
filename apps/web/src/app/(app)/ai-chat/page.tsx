@@ -22,7 +22,7 @@ function Chat() {
   const params = useSearchParams();
   const sessionId = params.get("sessionId") ?? undefined;
   const scenarioId = params.get("scenarioId") ?? undefined;
-  const { user, activeLanguage } = useCurrentUser();
+  const { user } = useCurrentUser();
   const scenarios = useScenarios();
   const create = useCreateSession();
   const session = useAiSession(sessionId);
@@ -99,7 +99,7 @@ function Chat() {
           </div>
           <div className="flex items-center gap-3 rounded-2xl bg-mint p-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-mint-deep"><ChartNoAxesColumn size={20} /></span>
-            <span><span className="block text-xs text-muted">Level</span><span className="font-semibold">{activeLanguage?.level ?? "—"}</span></span>
+            <span><span className="block text-xs text-muted">Level</span><span className="font-semibold">{user?.level ?? "—"}</span></span>
           </div>
           <div className="flex items-center gap-2 rounded-2xl bg-black/[0.03] p-2">
             {(["text", "voice"] as const).map((m) => (

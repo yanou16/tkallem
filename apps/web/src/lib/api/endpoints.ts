@@ -3,15 +3,6 @@
  */
 export const endpoints = {
   me: "/me",
-  user: {
-    me: "/me",
-    languages: "/api/users/me/languages",
-    avatar: "/api/users/me/avatar",
-    achievements: "/api/users/me/achievements",
-    activity: "/api/users/me/activity",
-    preferences: "/api/users/me/preferences",
-    notificationsUnread: "/api/notifications/unread-count",
-  },
   mySessions: "/me/sessions",
   practice: {
     recent: "/api/practice/sessions/recent",

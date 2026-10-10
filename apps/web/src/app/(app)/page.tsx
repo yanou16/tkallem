@@ -11,7 +11,7 @@ import { Icon } from "@/lib/icons";
 import { cn, formatMinutes, formatNumber, plural } from "@/lib/utils";
 
 export default function HomePage() {
-  const { user, activeLanguage } = useCurrentUser();
+  const { user } = useCurrentUser();
   const progress = useProgress();
   const goal = user?.dailyGoalMinutes;
 
@@ -19,7 +19,7 @@ export default function HomePage() {
     <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div>
         <PageHeader
-          eyebrow={user && <>Salam {user.firstName}{activeLanguage?.level ? ` · ${activeLanguage.level}` : ""}</>}
+          eyebrow={user && <>Salam {user.firstName}{user.level ? ` · ${user.level}` : ""}</>}
           title={goal ? `Ready for ${goal} minutes of speaking?` : "Ready to speak?"}
           subtitle="A little practice today makes a big difference. Choose a situation, or continue your journey."
         />

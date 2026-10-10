@@ -1,25 +1,21 @@
-export type Achievement = { id: string; title: string; description: string; icon: string };
-export type ActivityItem = { id: string; title: string; detail: string; createdAt: string; icon: string };
-export type NotificationPreferences = {
-  practiceReminders: boolean;
-  groupActivity: boolean;
-  achievements: boolean;
-  productUpdates: boolean;
-};
-export type AiPreferences = { correctionStyle?: string; voiceSpeed?: string; preferredTopics?: string[] };
-export type Preferences = { notifications: NotificationPreferences; ai: AiPreferences };
+import type { DailyGoalMinutes, ExplainLang, FocusArea, Level } from "@/features/auth/types/user";
 
+/** A change to the learning setup. learningGoal and practiceMode accept null to clear them. */
 export type UpdateProfileInput = Partial<{
-  firstName: string;
-  lastName: string;
-  bio: string;
-  avatarUrl: string;
-  learningGoal: string;
-  dailyGoalMinutes: number;
-  preferredPracticeMode: string;
-  focusAreas: string[];
-  learningLanguages: { id: string; code: string; name: string; level: string; flagUrl?: string }[];
-  activeLanguageId: string;
-  level: "A2" | "B1" | "B2" | "C1";
-  explainLang: "en" | "fr";
+  level: Level;
+  explainLang: ExplainLang;
+  dailyGoalMinutes: DailyGoalMinutes;
+  learningGoal: string | null;
+  practiceMode: string | null;
+  focusAreas: FocusArea[];
+}>;
+
+/** PATCH /me body. The API rejects unknown fields and an empty body. */
+export type MeUpdateDto = Partial<{
+  level: Level;
+  explain_lang: ExplainLang;
+  daily_goal_minutes: DailyGoalMinutes;
+  learning_goal: string | null;
+  practice_mode: string | null;
+  focus_areas: FocusArea[];
 }>;
