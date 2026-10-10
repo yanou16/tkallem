@@ -1,7 +1,12 @@
+from uuid import uuid4
+
 import pytest
 from fastapi.testclient import TestClient
+from tkallem_agent.scenarios import load_scenario
 
 from app.db.connection import get_conn
+from app.db.sessions import create_session
+from app.db.users import get_or_create_by_clerk_id
 from app.main import app
 from app.security import ClerkClaims, get_clerk_claims
 
@@ -42,3 +47,31 @@ def test_patch_me_rejects_invalid_body(client, body):
 
 def test_me_requires_a_token():
     assert TestClient(app).get("/me").status_code == 401
+
+def test_my_sessions_empty_for_a_new_student(client):
+    response = client.get("/me/sessions")
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_my_sessions_summaries(client, db):
+    user = get_or_create_by_clerk_id(db, "user_route_test")
+    visa, free = uuid4(), uuid4()
+    create_session(db, visa, user["id"], "visa-us", "text", "fr", {"turns": [1, 2, 3]})
+    create_session(db, free, user["id"], "free-talk", "text", "fr", {"turns": []})
+    db.execute("UPDATE practice_sessions SET started_at = now() - interval '1 hour' WHERE id = %s", (visa,))
+
+    body = client.get("/me/sessions").json()
+
+    assert [s["session_id"] for s in body] == [free.hex, visa.hex]
+    assert body[1]["title"] == load_scenario("visa-us").title
+    assert body[1]["answered"] == 3
+    assert body[1]["total_questions"] == len(load_scenario("visa-us").questions)
+    assert body[1]["ended_at"] is None
+    assert body[0]["total_questions"] is None
+
+
+@pytest.mark.parametrize("limit", [0, 21])
+def test_my_sessions_rejects_invalid_limit(client, limit):
+    assert client.get(f"/me/sessions?limit={limit}").status_code == 422
