@@ -168,3 +168,19 @@ def test_turn_events_carry_the_meaning_status():
     s = CoachSession("visa-us", "B1", llm=FakeChat([{**FOUND, "changes_meaning": True}], [reply()]))
     events = {e["type"]: e for e in s.turn_events("I go to the US for study.")}
     assert events["corrections"]["sentence_status"] == "red" and events["done"]["turn"].sentence_status == "red"
+
+
+def test_missing_llm_key_is_an_agent_error_not_a_crash(monkeypatch):
+    from tkallem_agent import llm as llm_module
+    from tkallem_agent.session import TurnLog
+
+    monkeypatch.setenv("LLM_PROVIDER", "openrouter")
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.setattr(llm_module, "_load_dotenv_once", lambda: None)  # no .env in this test
+    llm_module.default_llm.cache_clear()
+    s = CoachSession("visa-us", "B1")  # llm=None: built from the environment, like the API does
+    with pytest.raises(AgentError, match="not configured"):
+        s.turn("I go to the US for study.")
+    s.turns.append(TurnLog("I go to the US to study.", "Good.", [], "green"))
+    with pytest.raises(AgentError, match="not configured"):
+        s.end()
