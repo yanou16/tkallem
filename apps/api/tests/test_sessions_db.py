@@ -2,7 +2,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.db.sessions import create_session, end_session, get_session_for_user, save_turn
+from app.db.sessions import create_session, end_session, get_session_for_user, list_sessions_for_user, save_turn
 from app.db.users import get_or_create_by_clerk_id
 
 STATE = {"turns": [], "level": "B1"}
@@ -84,3 +84,22 @@ def test_end_session_only_once(db, user, session_id):
         "SELECT words, hesitations_per_min FROM session_metrics WHERE session_id = %s", (session_id,)
     ).fetchone()
     assert metrics == {"words": 42, "hesitations_per_min": None}
+
+def test_list_sessions_newest_first_with_answers(db, user):
+    old, new = uuid4(), uuid4()
+    create_session(db, old, user["id"], "visa-us", "text", "fr", {"turns": [1, 2]})
+    create_session(db, new, user["id"], "free-talk", "text", "fr", {"turns": []})
+    db.execute("UPDATE practice_sessions SET started_at = now() - interval '1 day' WHERE id = %s", (old,))
+    other = get_or_create_by_clerk_id(db, "user_someone_else")
+    create_session(db, uuid4(), other["id"], "visa-us", "text", "fr", {"turns": []})
+
+    sessions = list_sessions_for_user(db, user["id"], limit=5)
+
+    assert [(s["id"], s["answered"]) for s in sessions] == [(new, 0), (old, 2)]
+
+
+def test_list_sessions_respects_limit(db, user):
+    for _ in range(3):
+        create_session(db, uuid4(), user["id"], "visa-us", "text", "fr", {"turns": []})
+
+    assert len(list_sessions_for_user(db, user["id"], limit=2)) == 2
