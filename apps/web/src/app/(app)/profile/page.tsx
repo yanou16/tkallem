@@ -5,8 +5,8 @@ import { Camera, ChevronRight, Mail, Pencil, UserRound } from "lucide-react";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { DAILY_GOALS, FOCUS_AREAS, LEVELS, type DailyGoalMinutes, type ExplainLang, type FocusArea, type Level, type User } from "@/features/auth/types/user";
 import { useMySessions } from "@/features/practice/hooks/usePractice";
-import { useUpdateProfile } from "@/features/profile/hooks/useProfile";
-import type { UpdateProfileInput } from "@/features/profile/types/profile";
+import { useAchievements, useUpdateProfile } from "@/features/profile/hooks/useProfile";
+import type { Achievement, UpdateProfileInput } from "@/features/profile/types/profile";
 import { Async, Avatar, Button, Card, Dialog, EmptyState, Pill, SectionTitle, Skeleton, toneAt, toneBg, toneDeep } from "@/components/ui";
 import { SessionList } from "@/components/cards";
 import { Icon } from "@/lib/icons";
@@ -71,6 +71,7 @@ export default function ProfilePage() {
   const clerk = useClerk();
   const update = useUpdateProfile();
   const sessions = useMySessions(5);
+  const achievements = useAchievements();
   const [edit, setEdit] = useState<Edit | null>(null);
   const [value, setValue] = useState("");
   const [focus, setFocus] = useState<FocusArea[]>([]);
@@ -137,7 +138,18 @@ export default function ProfilePage() {
             text={user.focusAreas.map((f) => FOCUS_NAMES[f]).join(", ") || undefined} empty="Pick what you want to improve" />
         </div>
         {/* Hidden for the MVP: "Languages studied" and "Add another language" (English only). */}
-        {/* TODO: GET /me/achievements, then show "My achievements" again. */}
+
+        <div className="mt-8">
+          <SectionTitle title="My achievements" />
+          <Async query={achievements} skeleton={<Skeleton className="h-28" />} isEmpty={(d) => d.length === 0}
+            empty={<EmptyState title="No badges yet" text="Badges will show up here." />}>
+            {(list) => (
+              <div className="grid gap-3 md:grid-cols-3">
+                {list.map((a, i) => <Badge key={a.id} a={a} tone={i} />)}
+              </div>
+            )}
+          </Async>
+        </div>
 
         <div className="mt-8">
           <SectionTitle title="Recent activity" />
@@ -211,6 +223,23 @@ export default function ProfilePage() {
           </div>
         </div>
       </Dialog>
+    </div>
+  );
+}
+
+/** Locked badges are greyed out and say so in words (never color alone). */
+function Badge({ a, tone }: { a: Achievement; tone: number }) {
+  const t = toneAt(tone + 1);
+  return (
+    <div className={cn("flex items-center gap-3 rounded-2xl p-4", a.unlocked ? toneBg[t] : "bg-black/[0.04] opacity-60")}>
+      <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full", a.unlocked ? toneDeep[t] : "bg-black/[0.06]")}>
+        <Icon name={a.icon} />
+      </span>
+      <div className="min-w-0">
+        <p className="font-semibold">{a.title}</p>
+        <p className="text-sm text-muted">{a.description}</p>
+        {!a.unlocked && <p className="mt-1 text-xs font-semibold text-muted">Locked</p>}
+      </div>
     </div>
   );
 }

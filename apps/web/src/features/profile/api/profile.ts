@@ -2,7 +2,7 @@ import { api } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
 import { mapMe } from "@/features/auth/api/getCurrentUser";
 import type { MeDto } from "@/features/auth/types/user";
-import type { MeUpdateDto, UpdateProfileInput } from "../types/profile";
+import type { Achievement, AchievementDto, MeUpdateDto, UpdateProfileInput } from "../types/profile";
 
 /** Only the fields present in the input are sent. */
 export function mapProfileUpdate(input: UpdateProfileInput): MeUpdateDto {
@@ -18,3 +18,14 @@ export function mapProfileUpdate(input: UpdateProfileInput): MeUpdateDto {
 
 export const updateProfile = (input: UpdateProfileInput) =>
   api.patch<MeDto>(endpoints.me, mapProfileUpdate(input)).then(mapMe);
+
+export const mapAchievement = (a: AchievementDto): Achievement => ({
+  id: a.id,
+  title: a.title,
+  description: a.description,
+  icon: a.icon,
+  unlocked: a.unlocked,
+});
+
+export const getAchievements = () =>
+  api.get<AchievementDto[]>(endpoints.myAchievements).then((list) => list.map(mapAchievement));

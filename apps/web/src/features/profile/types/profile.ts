@@ -19,3 +19,21 @@ export type MeUpdateDto = Partial<{
   practice_mode: string | null;
   focus_areas: FocusArea[];
 }>;
+
+/** GET /me/achievements item, as sent by the API: the full catalog, each badge locked or not. */
+export type AchievementDto = {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  unlocked: boolean;
+};
+
+export type Achievement = {
+  id: string;
+  title: string;
+  description: string;
+  /** An icon name from lib/icons.tsx. */
+  icon: string;
+  unlocked: boolean;
+};

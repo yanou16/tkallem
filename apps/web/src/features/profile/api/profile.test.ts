@@ -1,8 +1,36 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { mapProfileUpdate, updateProfile } from "./profile";
+import { getAchievements, mapAchievement, mapProfileUpdate, updateProfile } from "./profile";
 import type { MeDto } from "@/features/auth/types/user";
+import type { AchievementDto } from "../types/profile";
 
 afterEach(() => vi.unstubAllGlobals());
+
+const FIRST_SESSION: AchievementDto = {
+  id: "first_session",
+  title: "First session",
+  description: "Finish your first practice session.",
+  icon: "star",
+  unlocked: true,
+};
+
+describe("mapAchievement", () => {
+  it("keeps the badge and whether it is unlocked", () => {
+    expect(mapAchievement(FIRST_SESSION)).toEqual(FIRST_SESSION);
+    expect(mapAchievement({ ...FIRST_SESSION, unlocked: false }).unlocked).toBe(false);
+  });
+});
+
+describe("getAchievements", () => {
+  it("reads GET /me/achievements", async () => {
+    const fetchMock = vi.fn(async (_url: string, _init: RequestInit) => new Response(JSON.stringify([FIRST_SESSION])));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const badges = await getAchievements();
+
+    expect(fetchMock.mock.calls[0][0]).toMatch(/\/me\/achievements$/);
+    expect(badges.map((b) => b.id)).toEqual(["first_session"]);
+  });
+});
 
 describe("mapProfileUpdate", () => {
   it("sends only the changed field", () => {

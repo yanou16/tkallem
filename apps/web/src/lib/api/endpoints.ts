@@ -4,6 +4,7 @@
 export const endpoints = {
   me: "/me",
   mySessions: "/me/sessions",
+  myAchievements: "/me/achievements",
   scenarios: "/scenarios",
   ai: {
     sessions: "/sessions",

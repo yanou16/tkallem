@@ -2,6 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { endSession, sendAnswer, startSession } from "../api/ai";
 import { MY_SESSIONS_KEY } from "@/features/practice/hooks/usePractice";
+import { ACHIEVEMENTS_KEY } from "@/features/profile/hooks/useProfile";
 import type { AiSession, Turn } from "../types/ai";
 
 const key = (id?: string) => ["ai-session", id] as const;
@@ -59,6 +60,8 @@ export const useEndSession = (sessionId?: string) => {
       if (sessionId) qc.setQueryData<AiSession>(key(sessionId), (prev) => prev && { ...prev, report });
       qc.invalidateQueries({ queryKey: MY_SESSIONS_KEY });
       qc.invalidateQueries({ queryKey: ["progress"] });
+      // A finished session can unlock badges.
+      qc.invalidateQueries({ queryKey: ACHIEVEMENTS_KEY });
     },
   });
 };
