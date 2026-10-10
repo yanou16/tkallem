@@ -3,9 +3,10 @@ from uuid import uuid4
 
 import pytest
 
-from app.db.progress import combine_metrics, count_streak, get_activity, get_metrics
+from app.db.progress import combine_metrics, count_streak, get_activity, get_metrics, get_top_mistakes
 from app.db.sessions import create_session
 from app.db.users import get_or_create_by_clerk_id
+
 
 TODAY = date(2026, 10, 10)
 STATE = {"turns": [], "level": "B1"}
@@ -179,3 +180,65 @@ def test_unfinished_sessions_are_ignored_by_metrics(db, user):
     add_session(db, user["id"], days_back=0, finished=False)
 
     assert get_metrics(db, user["id"])["current"]["mistakes_per_100"] == pytest.approx(3)
+
+
+def add_correction(db, session_id, category: str, original: str):
+    turn = db.execute(
+        """
+        INSERT INTO turns (session_id, position, transcript, reply, sentence_status)
+        VALUES (%s, (SELECT COALESCE(MAX(position), 0) + 1 FROM turns WHERE session_id = %s), 'answer', 'reply', 'red')
+        RETURNING id
+        """,
+        (session_id, session_id),
+    ).fetchone()
+    db.execute(
+        "INSERT INTO corrections (turn_id, original, fixed, type, why) VALUES (%s, %s, %s, %s, 'because')",
+        (turn["id"], original, f"{original} fixed", category),
+    )
+
+
+def test_top_mistakes_empty_for_a_new_user(db, user):
+    assert get_top_mistakes(db, user["id"]) == []
+
+
+def test_top_mistakes_are_grouped_counted_with_latest_example(db, user):
+    sid = add_session(db, user["id"], days_back=0, finished=False)
+    for category, original in [
+        ("grammar", "g1"), ("word_choice", "w1"), ("grammar", "g2"),
+        ("vocabulary", "v1"), ("word_choice", "w2"), ("grammar", "g3"),
+    ]:
+        add_correction(db, sid, category, original)
+
+    assert get_top_mistakes(db, user["id"]) == [
+        {"category": "grammar", "original": "g3", "correction": "g3 fixed", "count": 3},
+        {"category": "word_choice", "original": "w2", "correction": "w2 fixed", "count": 2},
+        {"category": "vocabulary", "original": "v1", "correction": "v1 fixed", "count": 1},
+    ]
+
+
+def test_top_mistakes_keeps_three_categories(db, user):
+    sid = add_session(db, user["id"], days_back=0, finished=False)
+    for category in ["word_choice", "vocabulary", "other", "grammar"]:
+        add_correction(db, sid, category, category)
+
+    categories = [m["category"] for m in get_top_mistakes(db, user["id"])]
+
+    assert categories == ["grammar", "other", "vocabulary"]
+
+
+def test_top_mistakes_only_looks_at_the_last_five_sessions(db, user):
+    old = add_session(db, user["id"], days_back=10, finished=False)
+    add_correction(db, old, "grammar", "old mistake")
+    for days_back in range(5, 0, -1):
+        sid = add_session(db, user["id"], days_back, finished=False)
+        add_correction(db, sid, "vocabulary", f"v{days_back}")
+
+    assert [(m["category"], m["count"]) for m in get_top_mistakes(db, user["id"])] == [("vocabulary", 5)]
+
+
+def test_top_mistakes_ignores_other_users(db, user):
+    other = get_or_create_by_clerk_id(db, "user_progress_other")
+    sid = add_session(db, other["id"], days_back=0, finished=False)
+    add_correction(db, sid, "grammar", "not yours")
+
+    assert get_top_mistakes(db, user["id"]) == []

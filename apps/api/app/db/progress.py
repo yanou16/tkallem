@@ -6,6 +6,7 @@ from psycopg import Connection, sql
 TIMEZONE = "Africa/Algiers"
 CURRENT_SIZE = 5
 BASELINE_SIZE = 3
+TOP_MISTAKES_SIZE = 3
 
 
 def count_streak(days: list[date], today: date) -> int:
@@ -107,3 +108,30 @@ def get_metrics(conn: Connection, user_id: int) -> dict:
     if not recent:
         return {"current": combine_metrics(first), "baseline": None}
     return {"current": combine_metrics(recent), "baseline": combine_metrics(first)}
+
+def get_top_mistakes(conn: Connection, user_id: int) -> list[dict]:
+    return conn.execute(
+        """
+        WITH recent AS (
+            SELECT id
+            FROM practice_sessions
+            WHERE user_id = %(user_id)s
+            ORDER BY started_at DESC, id DESC
+            LIMIT %(sessions)s
+        ),
+        ranked AS (
+            SELECT c.type, c.original, c.fixed,
+                   COUNT(*) OVER (PARTITION BY c.type) AS count,
+                   ROW_NUMBER() OVER (PARTITION BY c.type ORDER BY t.created_at DESC, c.id DESC) AS rank
+            FROM corrections c
+            JOIN turns t ON t.id = c.turn_id
+            JOIN recent r ON r.id = t.session_id
+        )
+        SELECT type AS category, original, fixed AS correction, count
+        FROM ranked
+        WHERE rank = 1
+        ORDER BY count DESC, category
+        LIMIT %(top)s
+        """,
+        {"user_id": user_id, "sessions": CURRENT_SIZE, "top": TOP_MISTAKES_SIZE},
+    ).fetchall()
