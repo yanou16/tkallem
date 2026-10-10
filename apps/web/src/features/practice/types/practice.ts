@@ -1,4 +1,17 @@
-/** A practice scenario, as the agent describes it (id, title, mode, minutes). */
+/** GET /scenarios item, as sent by the API. */
+export type ScenarioDto = {
+  id: string;
+  title: string;
+  mode: "guided" | "free";
+  minutes: number | null;
+  total_questions: number | null;
+  description: string | null;
+  category: string | null;
+  level: string | null;
+  icon: string | null;
+};
+
+/** A practice scenario. description, category, level and icon stay null until the agent's scenarios have them. */
 export type Scenario = {
   id: string;
   title: string;
@@ -6,6 +19,13 @@ export type Scenario = {
   mode: "guided" | "free";
   /** Shown on the card. Null for free talk. */
   minutes: number | null;
+  /** Null for free talk. */
+  totalQuestions: number | null;
+  description: string | null;
+  category: string | null;
+  level: string | null;
+  /** An icon name from lib/icons.tsx. */
+  icon: string | null;
 };
 
 /** GET /me/sessions item, as sent by the API. */

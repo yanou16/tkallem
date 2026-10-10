@@ -1,18 +1,20 @@
 import { api } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
-import type { Scenario, SessionSummary, SessionSummaryDto } from "../types/practice";
+import type { Scenario, ScenarioDto, SessionSummary, SessionSummaryDto } from "../types/practice";
 
-// TODO: GET /scenarios. The API does not list scenarios yet: these are copied from
-// packages/agent/tkallem_agent/scenarios/*.json (id, title, mode, minutes). Keep them in sync until then.
-const SCENARIOS: Scenario[] = [
-  { id: "visa-us", title: "Visa interview", mode: "guided", minutes: 8 },
-  { id: "campus-france", title: "Campus France interview", mode: "guided", minutes: 8 },
-  { id: "job-remote", title: "Remote job interview", mode: "guided", minutes: 10 },
-  { id: "ielts-part2", title: "IELTS Speaking, part 2", mode: "guided", minutes: 6 },
-  { id: "free-talk", title: "Free talk", mode: "free", minutes: null },
-];
+export const mapScenario = (s: ScenarioDto): Scenario => ({
+  id: s.id,
+  title: s.title,
+  mode: s.mode,
+  minutes: s.minutes,
+  totalQuestions: s.total_questions,
+  description: s.description,
+  category: s.category,
+  level: s.level,
+  icon: s.icon,
+});
 
-export const getScenarios = async (): Promise<Scenario[]> => SCENARIOS;
+export const getScenarios = () => api.get<ScenarioDto[]>(endpoints.scenarios).then((list) => list.map(mapScenario));
 
 export const mapSessionSummary = (s: SessionSummaryDto): SessionSummary => ({
   id: s.session_id,
