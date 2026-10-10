@@ -16,3 +16,10 @@ packages/agent/evals/review/
 # Python build artifacts
 build/
 *.egg-info/
+
+# Local learning notes - never commit
+docs/debriefs/
+
+# Voice benchmark: personal recordings and generated audio
+apps/api/scripts/samples/
+apps/api/scripts/out/

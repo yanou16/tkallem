@@ -9,6 +9,10 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     openrouter_api_key: str = ""
     stt_model: str = "whisper-large-v3-turbo"
+    stt_provider: str = "groq"  # groq | deepinfra
+    tts_provider: str = "deepinfra"  # deepinfra (Kokoro) | groq (Orpheus)
+    deepinfra_api_key: str = ""
+    voice_timeout: float = 20.0
     database_url: str = ""
     test_database_url: str = ""
     clerk_jwks_url: str = ""
