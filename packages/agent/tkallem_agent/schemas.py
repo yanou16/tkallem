@@ -8,6 +8,15 @@ Level = Literal["A2", "B1", "B2", "C1"]
 ExplainLang = Literal["en", "fr"]
 Status = Literal["green", "orange", "red"]
 ErrorType = Literal["grammar", "vocabulary", "word_choice", "other"]
+# Fine-grained category for the "Top mistakes" screen. Same list as packages/contracts (Correction.rule).
+RULES = (
+    "verb_tense", "subject_verb_agreement", "verb_pattern", "preposition", "article",
+    "plural_uncountable", "word_order", "word_form", "other",
+)
+RuleType = Literal[
+    "verb_tense", "subject_verb_agreement", "verb_pattern", "preposition", "article",
+    "plural_uncountable", "word_order", "word_form", "other",
+]
 
 
 class Correction(BaseModel):
@@ -17,6 +26,7 @@ class Correction(BaseModel):
     fixed: str = Field(min_length=1)
     type: ErrorType
     why: str = Field(min_length=1)  # in the session's explain_lang
+    rule: RuleType | None = None  # optional: the model may leave it out, and an unknown value becomes None
 
     @model_validator(mode="after")
     def must_change_something(self):
@@ -70,6 +80,8 @@ def sanitize(raw: dict, goals: list[str] | None = None, student_text: str | None
     for c in out.get("corrections") or []:
         if not isinstance(c, dict):
             c = c.model_dump() if isinstance(c, BaseModel) else {}
+        if c.get("rule") not in RULES:
+            c = {**c, "rule": None}  # an unknown rule must not cost the correction itself
         try:
             Correction.model_validate(c)  # malformed item (missing type, bad type...): dropped, the turn goes on
         except ValueError:

@@ -2,7 +2,7 @@ import time
 
 from langchain_core.messages import AIMessage, HumanMessage
 
-from fakes import FakeChat
+from tkallem_agent.testing import FakeChat
 from tkallem_agent.graph import build_graph, clean_reaction, next_question, reaction_problem
 from tkallem_agent.scenarios import load_scenario
 

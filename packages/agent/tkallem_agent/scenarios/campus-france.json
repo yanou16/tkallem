@@ -1,6 +1,10 @@
 {
   "id": "campus-france",
   "title": "Campus France interview",
+  "description": "Explain your study project to a Campus France advisor.",
+  "category": "study",
+  "level": "B2",
+  "icon": "university",
   "mode": "guided",
   "minutes": 8,
   "coach_role": "A Campus France advisor interviewing a student who applies to an English-taught master's programme in France: friendly, precise, short questions.",
@@ -12,6 +16,22 @@
     "How will you finance your stay in France?",
     "What is your professional project after this master's?"
   ],
-  "goals": ["self_introduction", "chosen_program", "academic_coherence", "why_france", "funding", "professional_project"],
-  "useful_words": ["bachelor's degree", "master's programme", "internship", "coherent", "career plan", "tuition fees", "accommodation", "sponsor"]
+  "goals": [
+    "self_introduction",
+    "chosen_program",
+    "academic_coherence",
+    "why_france",
+    "funding",
+    "professional_project"
+  ],
+  "useful_words": [
+    "bachelor's degree",
+    "master's programme",
+    "internship",
+    "coherent",
+    "career plan",
+    "tuition fees",
+    "accommodation",
+    "sponsor"
+  ]
 }
