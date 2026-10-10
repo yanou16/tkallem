@@ -108,3 +108,53 @@ def test_invalid_session_id_returns_422(client):
 
 def test_turn_requires_a_token():
     assert send(TestClient(app), uuid4().hex).status_code == 401
+
+
+def end(client, session_id):
+    return client.post(f"/sessions/{session_id}/end")
+
+
+def test_end_returns_report_and_saves_metrics(client, db, session_id):
+    use_llm(FakeChat([FOUND], [reply()], text=["Honest note."]))
+    send(client, session_id)
+
+    response = end(client, session_id)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body) == {"lines", "note", "metrics"}
+    assert body["note"]
+    assert "words" not in body["metrics"]
+    assert body["metrics"]["mistakes_per_100"] == pytest.approx(14.3)
+    student_lines = [line for line in body["lines"] if line["role"] == "student"]
+    assert student_lines[0]["status"] == "orange"
+
+    saved = db.execute(
+        "SELECT words, mistakes_per_100 FROM session_metrics WHERE session_id = %s", (UUID(session_id),)
+    ).fetchone()
+    assert saved["words"] == 7
+    assert saved["mistakes_per_100"] == pytest.approx(14.3)
+    ended_at = db.execute(
+        "SELECT ended_at FROM practice_sessions WHERE id = %s", (UUID(session_id),)
+    ).fetchone()["ended_at"]
+    assert ended_at is not None
+
+
+def test_end_without_any_answer_returns_409(client, session_id):
+    use_llm(FakeChat())
+
+    assert end(client, session_id).status_code == 409
+
+
+def test_end_twice_returns_409(client, session_id):
+    use_llm(FakeChat([NONE], [reply()], text=["Good."]))
+    send(client, session_id, text="I want to study in Boston.")
+
+    assert end(client, session_id).status_code == 200
+    assert end(client, session_id).status_code == 409
+
+
+def test_end_unknown_session_returns_404(client):
+    use_llm(FakeChat())
+
+    assert end(client, uuid4().hex).status_code == 404

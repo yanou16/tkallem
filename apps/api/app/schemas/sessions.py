@@ -27,3 +27,23 @@ class TurnResult(BaseModel):
     reply_audio_url: str | None = None
     corrections: list[Correction] = Field(max_length=3)
     sentence_status: Status
+
+
+class ReportLine(BaseModel):
+    role: Literal["coach", "student"]
+    text: str
+    status: Status | None = None
+    corrections: list[Correction] = Field(default_factory=list)
+
+
+class Metrics(BaseModel):
+    mistakes_per_100: float | None
+    words_per_answer: float | None
+    hesitations_per_min: float | None
+    speaking_seconds: float | None
+
+
+class SessionReport(BaseModel):
+    lines: list[ReportLine]
+    note: str
+    metrics: Metrics

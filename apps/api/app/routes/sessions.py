@@ -7,10 +7,10 @@ from tkallem_agent import AgentError, CoachSession, ScenarioNotFound
 
 from app.config import settings
 from app.db.connection import ConnFactory, get_conn, get_conn_factory
-from app.db.sessions import create_session, get_session_for_user, save_turn
+from app.db.sessions import create_session, end_session, get_session_for_user, save_turn
 from app.db.users import get_or_create_by_clerk_id
 from app.dependencies import get_current_user
-from app.schemas.sessions import SessionCreate, SessionStarted, TurnResult
+from app.schemas.sessions import SessionCreate, SessionReport, SessionStarted, TurnResult
 from app.security import ClerkClaims, get_clerk_claims
 
 logger = logging.getLogger(__name__)
@@ -107,3 +107,35 @@ def send_turn(
         "corrections": corrections,
         "sentence_status": turn.sentence_status,
     }
+
+
+@router.post("/{session_id}/end", response_model=SessionReport)
+def end_practice_session(
+    session_id: UUID,
+    claims: ClerkClaims = Depends(get_clerk_claims),
+    connect: ConnFactory = Depends(get_conn_factory),
+    llm=Depends(get_llm),
+) -> dict:
+    with connect() as conn:
+        user = get_or_create_by_clerk_id(conn, claims.user_id)
+        session = get_session_for_user(conn, session_id, user["id"])
+    if session is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    if session["ended_at"] is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
+    if not session["state"]["turns"]:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Answer at least one question before ending the session")
+
+    coach = CoachSession.from_state(session["state"], llm=llm, max_text_chars=settings.max_text_chars)
+    try:
+        report = coach.end()
+    except AgentError:
+        logger.exception("Report failed on session %s", session_id)
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "The report could not be generated, try again")
+
+    with connect() as conn:
+        ended = end_session(conn, session_id, report.note, report.metrics)
+    if not ended:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
+
+    return report.model_dump()
