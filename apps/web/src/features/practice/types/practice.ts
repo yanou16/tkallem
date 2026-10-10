@@ -31,21 +31,3 @@ export type SessionSummary = {
   /** Null in free talk (no fixed questions). */
   totalQuestions: number | null;
 };
-
-export type RecentSession = {
-  id: string;
-  scenarioId: string;
-  title: string;
-  subtitle: string; // e.g. "You were practicing introductions."
-  duration: number;
-  level: string;
-  icon: string;
-};
-
-export type PracticeFocus = {
-  scenarioId?: string;
-  title: string;
-  description: string;
-  reason: string;
-  icon: string;
-};

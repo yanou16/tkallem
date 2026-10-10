@@ -4,10 +4,6 @@
 export const endpoints = {
   me: "/me",
   mySessions: "/me/sessions",
-  practice: {
-    recent: "/api/practice/sessions/recent",
-    focus: "/api/practice/focus",
-  },
   ai: {
     sessions: "/sessions",
     turn: (id: string) => `/sessions/${id}/turn`,

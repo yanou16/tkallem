@@ -1,6 +1,6 @@
 import { api } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
-import type { PracticeFocus, RecentSession, Scenario, SessionSummary, SessionSummaryDto } from "../types/practice";
+import type { Scenario, SessionSummary, SessionSummaryDto } from "../types/practice";
 
 // TODO: GET /scenarios. The API does not list scenarios yet: these are copied from
 // packages/agent/tkallem_agent/scenarios/*.json (id, title, mode, minutes). Keep them in sync until then.
@@ -27,5 +27,3 @@ export const mapSessionSummary = (s: SessionSummaryDto): SessionSummary => ({
 /** The student's latest sessions, newest first (the API accepts 1 to 20). */
 export const getMySessions = (limit = 5) =>
   api.get<SessionSummaryDto[]>(endpoints.mySessions, { query: { limit } }).then((list) => list.map(mapSessionSummary));
-export const getRecentSessions = () => api.get<RecentSession[]>(endpoints.practice.recent);
-export const getFocus = () => api.get<PracticeFocus | null>(endpoints.practice.focus);
