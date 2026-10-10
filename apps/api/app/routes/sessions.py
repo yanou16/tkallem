@@ -106,6 +106,7 @@ def send_turn(
         "reply_audio_url": None,
         "corrections": corrections,
         "sentence_status": turn.sentence_status,
+        "finished": coach.finished,
     }
 
 

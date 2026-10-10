@@ -27,6 +27,7 @@ class TurnResult(BaseModel):
     reply_audio_url: str | None = None
     corrections: list[Correction] = Field(max_length=3)
     sentence_status: Status
+    finished: bool
 
 
 class ReportLine(BaseModel):
@@ -42,8 +43,15 @@ class Metrics(BaseModel):
     hesitations_per_min: float | None
     speaking_seconds: float | None
 
+class Levels(BaseModel):
+    mistakes_per_100: Status | None
+    words_per_answer: Status | None
+    hesitations_per_min: Status | None
+
 
 class SessionReport(BaseModel):
     lines: list[ReportLine]
     note: str
     metrics: Metrics
+    levels: Levels
+    redo_index: int | None
