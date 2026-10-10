@@ -1,6 +1,6 @@
 """LLM factory: provider and model are swappable by configuration (OpenRouter by default, or Groq)."""
 import os
-from functools import lru_cache
+from functools import cache, lru_cache
 
 from langchain_core.language_models import BaseChatModel
 
@@ -8,7 +8,21 @@ DEFAULT_PROVIDER = "openrouter"
 DEFAULT_MODEL = "qwen/qwen3-235b-a22b-2507"  # best accuracy/price on the 30-sentence correction set
 
 
+@cache
+def _load_dotenv_once() -> None:
+    """Read the `.env` of the working directory (the API runs from apps/api, as does pydantic-settings), without
+    overriding variables already set. Without it, keys that the API sees through its settings would be missing here."""
+    try:
+        from dotenv import find_dotenv, load_dotenv
+    except ImportError:
+        return
+    path = find_dotenv(usecwd=True)
+    if path:
+        load_dotenv(path, override=False)
+
+
 def get_llm(provider: str | None = None, model: str | None = None) -> BaseChatModel:
+    _load_dotenv_once()
     provider = provider or os.getenv("LLM_PROVIDER", DEFAULT_PROVIDER)
     model = model or os.getenv("LLM_MODEL", DEFAULT_MODEL)
     common = {

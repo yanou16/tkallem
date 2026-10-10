@@ -39,7 +39,7 @@ components:
         explain_lang: { type: string, enum: [en, fr] }
     Turn:
       type: object
-      required: [transcript, reply, corrections, sentence_status]
+      required: [transcript, reply, corrections, sentence_status, finished]
       properties:
         transcript: { type: string }
         reply: { type: string }
@@ -49,6 +49,9 @@ components:
           maxItems: 3
           items: { $ref: "#/components/schemas/Correction" }
         sentence_status: { $ref: "#/components/schemas/SentenceStatus" }
+        finished:
+          type: boolean
+          description: True once every question of a guided scenario is answered (show the report button). Always false in free talk.
 paths:
   /sessions:
     post:
@@ -62,8 +65,11 @@ paths:
               required: [scenario_id]
               properties:
                 scenario_id: { type: string }
-                mode: { type: string, enum: [text, voice] }
-                explain_lang: { type: string, enum: [en, fr], default: fr }
+                mode: { type: string, enum: [text, voice], default: text }
+                explain_lang:
+                  type: string
+                  enum: [en, fr]
+                  description: Defaults to the student's profile preference (GET /me).
       responses:
         "200":
           description: Session started
@@ -79,6 +85,10 @@ paths:
                     properties:
                       text: { type: string }
                       audio_url: { type: [string, "null"] }
+        "401": { description: Missing or invalid token }
+        "404": { description: Unknown scenario }
+        "409": { description: The student has not chosen a level yet (PATCH /me first) }
+        "422": { description: Invalid body }
   /sessions/{id}/turn:
     post:
       summary: Send one student turn (audio file or text)
@@ -99,6 +109,11 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Turn" }
+        "401": { description: Missing or invalid token }
+        "404": { description: Session not found }
+        "409": { description: Session already ended, or another answer was saved meanwhile (reload the session) }
+        "422": { description: Empty or too long answer, or invalid session id }
+        "502": { description: The coach failed. Nothing was saved, the student can send the same answer again }
   /sessions/{id}/end:
     post:
       summary: End the session and get the report
@@ -111,7 +126,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [lines, note, metrics]
+                required: [lines, note, metrics, levels, redo_index]
                 properties:
                   lines:
                     type: array
@@ -126,6 +141,20 @@ paths:
                           items: { $ref: "#/components/schemas/Correction" }
                   note: { type: string }
                   metrics: { $ref: "#/paths/~1me~1progress/get/responses/200/content/application~1json/schema/properties/current" }
+                  levels:
+                    type: object
+                    description: Traffic light per metric, null when the metric is not available (e.g. hesitations in text mode)
+                    properties:
+                      mistakes_per_100: { type: [string, "null"], enum: [green, orange, red, null] }
+                      words_per_answer: { type: [string, "null"], enum: [green, orange, red, null] }
+                      hesitations_per_min: { type: [string, "null"], enum: [green, orange, red, null] }
+                  redo_index:
+                    type: [integer, "null"]
+                    description: Index in lines of the answer to redo first, if any
+        "401": { description: Missing or invalid token }
+        "404": { description: Session not found }
+        "409": { description: Session already ended, or no answer given yet }
+        "502": { description: The report could not be generated. Nothing was saved, try again }
   /me/progress:
     get:
       summary: Progress numbers and frequent mistakes

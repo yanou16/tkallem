@@ -1,12 +1,8 @@
-from pathlib import Path
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=ENV_FILE, extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     llm_provider: str = "openrouter"
     llm_model: str = "qwen/qwen3-235b-a22b-2507"

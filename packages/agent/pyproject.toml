@@ -2,11 +2,10 @@
 name = "tkallem-agent"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = ["langgraph", "langchain", "langchain-core", "langchain-groq", "langchain-openai", "pydantic", "langfuse"]
+dependencies = ["langgraph", "langchain", "langchain-core", "langchain-groq", "langchain-openai", "pydantic", "langfuse", "python-dotenv"]
 
 [project.optional-dependencies]
 cefr-space = ["gradio_client"]
-cli = ["python-dotenv"]
 test = ["pytest", "jsonschema", "pyyaml"]
 
 [build-system]

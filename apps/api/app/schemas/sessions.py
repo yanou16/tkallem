@@ -1,13 +1,15 @@
+from datetime import datetime
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
-from app.schemas.enums import CorrectionType, ExplainLang, PracticeMode, SentenceStatus
+from tkallem_agent.schemas import Correction, ExplainLang, Status
 
-
-class StartSessionRequest(BaseModel):
+class SessionCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    scenario_id: str
-    mode: PracticeMode = PracticeMode.TEXT
-    explain_lang: ExplainLang = ExplainLang.FR
+    scenario_id: str = Field(min_length=1, max_length=100)
+    mode: Literal["text", "voice"] = "text"
+    explain_lang: ExplainLang | None = None
 
 
 class FirstQuestion(BaseModel):
@@ -15,27 +17,51 @@ class FirstQuestion(BaseModel):
     audio_url: str | None = None
 
 
-class StartSessionResponse(BaseModel):
+class SessionStarted(BaseModel):
     session_id: str
     first_question: FirstQuestion
 
-
-class CorrectionSchema(BaseModel):
-    original: str
-    fixed: str
-    type: CorrectionType
-    why: str
-
-
-class TurnResponse(BaseModel):
+class TurnResult(BaseModel):
     transcript: str
     reply: str
     reply_audio_url: str | None = None
-    corrections: list[CorrectionSchema]
-    sentence_status: SentenceStatus
+    corrections: list[Correction] = Field(max_length=3)
+    sentence_status: Status
+    finished: bool
 
 
-class EndSessionReport(BaseModel):
-    lines: list[dict]
+class ReportLine(BaseModel):
+    role: Literal["coach", "student"]
+    text: str
+    status: Status | None = None
+    corrections: list[Correction] = Field(default_factory=list)
+
+
+class Metrics(BaseModel):
+    mistakes_per_100: float | None
+    words_per_answer: float | None
+    hesitations_per_min: float | None
+    speaking_seconds: float | None
+
+class Levels(BaseModel):
+    mistakes_per_100: Status | None
+    words_per_answer: Status | None
+    hesitations_per_min: Status | None
+
+
+class SessionReport(BaseModel):
+    lines: list[ReportLine]
     note: str
-    metrics: dict
+    metrics: Metrics
+    levels: Levels
+    redo_index: int | None
+
+
+class SessionSummary(BaseModel):
+    session_id: str
+    scenario_id: str
+    title: str
+    started_at: datetime
+    ended_at: datetime | None
+    answered: int
+    total_questions: int | None
