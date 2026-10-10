@@ -1,14 +1,22 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSignUp } from "@clerk/nextjs";
+import { useAuth, useSignUp } from "@clerk/nextjs";
 import { AuthShell, AuthCard, AuthField, PrimaryButton, FormError, GoogleButton, OrDivider, clerkMessage } from "@/components/auth/AuthShell";
 
 export default function SignUpPage() {
   const { isLoaded, signUp, setActive } = useSignUp();
+  const { isSignedIn } = useAuth();
   const router = useRouter();
+
+  /* If already signed in, skip the form and go home */
+  useEffect(() => {
+    if (isSignedIn) {
+      router.replace("/");
+    }
+  }, [isSignedIn, router]);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");

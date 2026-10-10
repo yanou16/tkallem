@@ -27,7 +27,16 @@ export type User = {
 };
 
 export type MeResponse = {
-  first_name: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+  avatar_url?: string | null;
+  bio?: string | null;
+  learning_goal?: string | null;
+  daily_goal_minutes?: number | null;
+  preferred_practice_mode?: string | null;
+  focus_areas?: string[] | null;
+  learning_languages?: LearningLanguage[] | null;
   level: User["level"] | null;
   explain_lang: NonNullable<User["explainLang"]>;
 };
@@ -44,9 +53,18 @@ export function getActiveLanguage(user?: User | null): LearningLanguage | undefi
 export function toUser(me: MeResponse): User {
   return {
     id: "current-user",
-    firstName: me.first_name ?? "Student",
-    email: "",
-    learningLanguages: me.level
+    firstName: me.first_name ?? "",
+    lastName: me.last_name ?? undefined,
+    email: me.email ?? "",
+    avatarUrl: me.avatar_url ?? undefined,
+    bio: me.bio ?? undefined,
+    learningGoal: me.learning_goal ?? undefined,
+    dailyGoalMinutes: me.daily_goal_minutes ?? 15,
+    preferredPracticeMode: me.preferred_practice_mode ?? "text",
+    focusAreas: me.focus_areas ?? [],
+    learningLanguages: me.learning_languages?.length
+      ? me.learning_languages
+      : me.level
       ? [{ id: "profile", code: "en", name: "English", level: me.level }]
       : [],
     level: me.level ?? undefined,

@@ -1,10 +1,10 @@
 "use client";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Bookmark, BookOpen, ChevronDown, ChevronRight, CircleAlert, Lightbulb, Mic, MessageCircle, Send, Square, ArrowDown, ChartNoAxesColumn } from "lucide-react";
+import { ArrowDown, ChevronDown, ChevronRight, CircleAlert, Lightbulb, Mic, MessageCircle, Send, Square, ChartNoAxesColumn } from "lucide-react";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
-import { useAiSession, useCreateSession, useSaveCorrection, useSendMessage, useSendVoice } from "@/features/ai-chat/hooks/useAiChat";
+import { useAiSession, useCreateSession, useSendMessage, useSendVoice } from "@/features/ai-chat/hooks/useAiChat";
 import { useVoiceRecorder } from "@/features/ai-chat/hooks/useVoiceRecorder";
 import type { ChatMessage, Correction, VoiceState } from "@/features/ai-chat/types/ai";
 import { Avatar, Card, EmptyState, ErrorState, PageHeader, Skeleton } from "@/components/ui";
@@ -28,7 +28,6 @@ function Chat() {
   const session = useAiSession(sessionId);
   const send = useSendMessage(sessionId);
   const voice = useSendVoice(sessionId);
-  const save = useSaveCorrection(sessionId);
   const rec = useVoiceRecorder();
 
   const [mode, setMode] = useState<"text" | "voice">("text");
@@ -43,8 +42,8 @@ function Chat() {
     if (sessionId || !scenarioId || started.current === scenarioId) return;
     started.current = scenarioId;
     create.mutate(
-      { scenarioId, mode, level: activeLanguage?.level },
-      { onSuccess: (s) => router.replace(`/ai-chat?sessionId=${s.id}`) },
+      { scenario_id: scenarioId, mode, explain_lang: user?.explainLang ?? "fr" },
+      { onSuccess: (s) => router.replace(`/ai-chat?sessionId=${s.session_id}&scenarioId=${scenarioId}`) },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scenarioId, sessionId]);
@@ -59,23 +58,22 @@ function Chat() {
     const msg = text.trim();
     if (!msg || !sessionId || busy) return;
     setText("");
-    send.mutate({ sessionId, message: msg, mode: "text" });
+    send.mutate({ text: msg });
   }
   async function toggleMic() {
     if (!sessionId) return;
     if (rec.isRecording) {
       const blob = await rec.stop();
       if (blob) voice.mutate(blob, { onSuccess: (r) => {
-        if (r.message.audioUrl) { const a = new Audio(r.message.audioUrl); setSpeaking(true); a.onended = a.onerror = () => setSpeaking(false); a.play().catch(() => setSpeaking(false)); }
+        if (r.reply_audio_url) { const a = new Audio(r.reply_audio_url); setSpeaking(true); a.onended = a.onerror = () => setSpeaking(false); a.play().catch(() => setSpeaking(false)); }
       } });
     } else rec.start();
   }
 
-  const grammar = useMemo(() => [...(s?.corrections ?? [])].reverse().find((c) => c.kind === "grammar"), [s?.corrections]);
-  const phrasing = useMemo(() => [...(s?.corrections ?? [])].reverse().find((c) => c.kind === "phrasing"), [s?.corrections]);
-  const toSave = [grammar, phrasing].find((c) => c && !c.saved);
+  const grammar = useMemo(() => [...(s?.corrections ?? [])].reverse().find((c) => c.type === "grammar"), [s?.corrections]);
+  const phrasing = useMemo(() => [...(s?.corrections ?? [])].reverse().find((c) => c.type !== "grammar"), [s?.corrections]);
   const title = s?.scenarioTitle ?? scenarios.data?.find((x) => x.id === scenarioId)?.title;
-  const icon = s?.scenarioIcon ?? scenarios.data?.find((x) => x.id === scenarioId)?.icon;
+  const icon = scenarios.data?.find((x) => x.id === scenarioId)?.icon;
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -101,7 +99,7 @@ function Chat() {
           </div>
           <div className="flex items-center gap-3 rounded-2xl bg-mint p-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-mint-deep"><ChartNoAxesColumn size={20} /></span>
-            <span><span className="block text-xs text-muted">Level</span><span className="font-semibold">{s?.level ?? activeLanguage?.level ?? "—"}</span></span>
+            <span><span className="block text-xs text-muted">Level</span><span className="font-semibold">{activeLanguage?.level ?? "—"}</span></span>
           </div>
           <div className="flex items-center gap-2 rounded-2xl bg-black/[0.03] p-2">
             {(["text", "voice"] as const).map((m) => (
@@ -152,12 +150,7 @@ function Chat() {
           {!grammar && !phrasing && <EmptyState title="No corrections yet" text="Send a message and your tutor will suggest improvements here." />}
           {grammar && <CorrectionCard c={grammar} tone="rose" title="Grammar correction" icon={<CircleAlert size={18} />} better="Better version" />}
           {phrasing && <CorrectionCard c={phrasing} tone="butter" title="Better phrasing" icon={<Lightbulb size={18} />} better="More natural" />}
-          <SummaryRow icon={<Bookmark size={18} />} tone="bg-blue-100" title="Saved mistakes" sub={`${s?.savedMistakesCount ?? 0} this session`} />
-          <SummaryRow icon={<BookOpen size={18} />} tone="bg-peach-deep" title="New vocabulary" sub={`${s?.vocabulary.length ?? 0} words`} />
-          <button disabled={!toSave || save.isPending} onClick={() => toSave && save.mutate(toSave.id)}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-ink py-3.5 text-sm font-semibold text-white disabled:opacity-40">
-            <Bookmark size={16} /> Save this correction
-          </button>
+          <SummaryRow icon={<CircleAlert size={18} />} tone="bg-rose" title="Corrections this turn" sub={`${s?.corrections.length ?? 0} suggestions`} />
         </Card>
       </aside>
     </div>
@@ -191,8 +184,8 @@ function CorrectionCard({ c, tone, title, icon, better }: { c: Correction; tone:
       <p className="mb-1 rounded-lg bg-rose-deep/60 px-3 py-1.5 text-sm">{c.original}</p>
       <ArrowDown size={14} className="mx-auto my-1" />
       <p className="text-xs font-medium">{better}</p>
-      <p className="mb-2 rounded-lg bg-mint-deep/70 px-3 py-1.5 text-sm">{c.improved}</p>
-      {c.explanation && <p className="rounded-lg bg-white/60 px-3 py-2 text-xs text-muted">{c.explanation}</p>}
+      <p className="mb-2 rounded-lg bg-mint-deep/70 px-3 py-1.5 text-sm">{c.fixed}</p>
+      <p className="rounded-lg bg-white/60 px-3 py-2 text-xs text-muted">{c.why}</p>
     </div>
   );
 }
