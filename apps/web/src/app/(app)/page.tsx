@@ -77,7 +77,7 @@ function StatCards({ p }: { p: Progress }) {
         </p>
       </div>
       <div className="rounded-card bg-mint p-5">
-        <p className="text-sm text-muted">Speaking this week</p>
+        <p className="text-sm text-muted">Practice this week</p>
         <div className="mt-2 flex items-end justify-between">
           <span className="text-4xl font-extrabold">{formatMinutes(p.weekSpeakingSeconds / 60)}</span>
           <ChartNoAxesColumn className="text-success" size={36} />
@@ -111,7 +111,7 @@ function DailyGoalCard() {
                 </ProgressRing>
                 <div>
                   <p className="text-2xl font-bold">{done} / {goal} min</p>
-                  <p className="text-muted">Speaking practice</p>
+                  <p className="text-muted">Practice today</p>
                 </div>
               </div>
               <GoalHint goal={goal} done={done} />
