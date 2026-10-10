@@ -8,6 +8,9 @@ from app.config import settings
 from app.db.connection import close_pool, open_pool
 
 from app.routes.me import router as me_router
+from app.routes.sessions import router as sessions_router
+
+
 ogger = logging.getLogger(__name__)
 
 
@@ -33,6 +36,8 @@ app.add_middleware(
 )
 
 app.include_router(me_router)
+app.include_router(sessions_router)
+
 
 @app.get("/health")
 def health() -> dict[str, str]:
