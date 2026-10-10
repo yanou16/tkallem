@@ -1,7 +1,7 @@
 # Tkallem web
 
 Next.js 14 (App Router) + TypeScript + Tailwind + TanStack Query. **No mock users or fixtures**: every value on screen comes
-from the backend (`apps/api`). One temporary exception: the scenario list (see below).
+from the backend (`apps/api`).
 
 ## Run
 ```bash
@@ -24,16 +24,19 @@ Sign up at `/sign-up`, then sign in at `/sign-in`. Every API call sends the Cler
 
 ## API routes used
 - `GET /me`, `PATCH /me` (only the changed fields): learning setup on the profile.
-- `GET /me/progress`: home and progress screens. Times are in seconds, shown in minutes.
+- `GET /me/progress`: home and progress screens. Times are in seconds, shown in minutes; practice time counts spoken
+  time, or the length of a text session (30 minutes at most).
 - `GET /me/sessions?limit=`: recent sessions on home, practice and profile.
+- `GET /me/achievements`: badges on the profile (the full catalog, locked ones greyed out).
+- `GET /scenarios`: scenario cards. `description`, `category`, `level` and `icon` are null until the agent has them
+  (the icon then falls back to the scenario id, mapped in `src/lib/icons.tsx`).
 - `POST /sessions`, `POST /sessions/{id}/turn` (form field `text`), `POST /sessions/{id}/end`: a practice session and its report.
+- `GET /sessions/{id}`: continue a session or reload it after a page refresh. For an ended session, only the note,
+  metrics and answers are stored: no traffic light per metric, no answer to redo.
 
-Not in the API yet (TODO in the code, the block is hidden or uses the temporary data):
-- `GET /scenarios`: until then, the list is copied from `packages/agent/tkallem_agent/scenarios/*.json`
-  (`src/features/practice/api/practice.ts`).
-- `GET /sessions/{id}`: continue a session, or reload it after a page refresh.
+Not in the API yet (TODO in the code, the block is hidden):
 - Audio in `POST /sessions/{id}/turn`: the mic is hidden.
-- `GET /me/achievements`, recommendations, today's focus, notifications: hidden.
+- Recommendations, today's focus, notifications.
 - Groups (`/api/groups/*`): hidden on home; the Groups pages show their error state until the API exists.
 
 Missing data → the block shows its empty state or is hidden. Never fake data.
