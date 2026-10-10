@@ -3,6 +3,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from tkallem_agent.scenarios import load_scenario
 
 from app.db.connection import get_conn, get_conn_factory
 from app.db.sessions import create_session
@@ -58,6 +59,7 @@ def test_turn_returns_coach_reply_and_saves_it(client, db, session_id):
     assert body["reply"].startswith("Good.")
     assert body["sentence_status"] == "orange"
     assert body["corrections"][0]["fixed"] == "to study"
+    assert body["finished"] is False
 
     turns = db.execute(
         "SELECT position, sentence_status FROM turns WHERE session_id = %s", (UUID(session_id),)
@@ -122,7 +124,9 @@ def test_end_returns_report_and_saves_metrics(client, db, session_id):
 
     assert response.status_code == 200
     body = response.json()
-    assert set(body) == {"lines", "note", "metrics"}
+    assert set(body) == {"lines", "note", "metrics", "levels", "redo_index"}
+    assert body["levels"] == {"mistakes_per_100": "red", "words_per_answer": "orange", "hesitations_per_min": None}
+    assert body["lines"][body["redo_index"]]["role"] == "student"
     assert body["note"]
     assert "words" not in body["metrics"]
     assert body["metrics"]["mistakes_per_100"] == pytest.approx(14.3)
@@ -158,3 +162,12 @@ def test_end_unknown_session_returns_404(client):
     use_llm(FakeChat())
 
     assert end(client, uuid4().hex).status_code == 404
+
+
+def test_turn_is_finished_after_the_last_question(client, session_id):
+    questions = len(load_scenario("visa-us").questions)
+    use_llm(FakeChat([NONE] * questions, [reply()] * questions))
+
+    responses = [send(client, session_id, text="My answer is fine.") for _ in range(questions)]
+
+    assert [r.json()["finished"] for r in responses] == [False] * (questions - 1) + [True]
