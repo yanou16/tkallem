@@ -1,17 +1,15 @@
 import logging
 from contextlib import asynccontextmanager
-from venv import logger
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.db.connection import close_pool, open_pool
-
 from app.routes.me import router as me_router
 from app.routes.sessions import router as sessions_router
 
-
-ogger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
