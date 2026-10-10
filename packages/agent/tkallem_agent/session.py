@@ -86,7 +86,12 @@ class CoachSession:
 
     @property
     def llm(self) -> BaseChatModel:
-        return self._llm or default_llm()
+        if self._llm is not None:
+            return self._llm
+        try:
+            return default_llm()
+        except (KeyError, ValueError) as e:  # missing API key, unknown provider: a configuration problem
+            raise AgentError(f"LLM is not configured ({type(e).__name__}: {e})") from e
 
     @property
     def opening(self) -> str:
