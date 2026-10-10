@@ -195,3 +195,9 @@ def test_my_progress_combines_activity_metrics_and_mistakes(client, db):
 
 def test_my_progress_requires_a_token():
     assert TestClient(app).get("/me/progress").status_code == 401
+
+def test_my_progress_uses_the_chosen_daily_goal(client):
+    client.patch("/me", json={"daily_goal_minutes": 20})
+
+    assert client.get("/me/progress").json()["daily_goal_seconds"] == 1200
+

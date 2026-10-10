@@ -13,7 +13,7 @@ from app.db.progress import get_activity, get_metrics, get_top_mistakes
 from app.schemas.progress import Progress
 
 router = APIRouter(prefix="/me", tags=["me"])
-DAILY_GOAL_SECONDS = 600
+
 
 @router.get("", response_model=Me)
 def read_me(user: dict = Depends(get_current_user)) -> dict:
@@ -83,6 +83,6 @@ def read_my_progress(
         "top_mistakes": [{"id": m["category"], **m} for m in mistakes],
         "week_speaking_seconds": activity["week_seconds"],
         "today_speaking_seconds": activity["today_seconds"],
-        "daily_goal_seconds": DAILY_GOAL_SECONDS,
+        "daily_goal_seconds": user["daily_goal_minutes"] * 60,
         "streak_days": activity["streak_days"],
     }
