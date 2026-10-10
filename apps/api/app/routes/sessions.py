@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Form, HTTPException, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from psycopg import Connection
 from tkallem_agent import AgentError, CoachSession, ScenarioNotFound
 
@@ -58,13 +58,32 @@ def start_session(
 
 
 @router.post("/{session_id}/turn", response_model=TurnResult)
-def send_turn(
+async def send_turn(
     session_id: UUID,
-    text: str = Form(...),
+    text: str | None = Form(None),
+    audio: UploadFile | None = File(None),
     claims: ClerkClaims = Depends(get_clerk_claims),
     connect: ConnFactory = Depends(get_conn_factory),
     llm=Depends(get_llm),
 ) -> dict:
+    if not text:
+        if audio is not None:
+            if settings.groq_api_key:
+                from groq import Groq
+                client = Groq(api_key=settings.groq_api_key)
+                audio_bytes = await audio.read()
+                transcription = client.audio.transcriptions.create(
+                    file=(audio.filename or "recording.webm", audio_bytes),
+                    model=settings.stt_model,
+                )
+                text = transcription.text.strip()
+            else:
+                raise HTTPException(
+                    status.HTTP_501_NOT_IMPLEMENTED,
+                    "Voice STT requires GROQ_API_KEY in backend .env",
+                )
+        if not text:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Text or audio is required")
     with connect() as conn:
         user = get_or_create_by_clerk_id(conn, claims.user_id)
         session = get_session_for_user(conn, session_id, user["id"])

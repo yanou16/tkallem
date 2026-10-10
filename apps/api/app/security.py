@@ -54,7 +54,7 @@ def verify_clerk_token(token: str) -> ClerkClaims:
         raise _unauthorized("Invalid or expired token")
 
     azp = claims.get("azp")
-    if azp and azp != settings.frontend_origin:
+    if azp and azp.rstrip("/") not in settings.allowed_frontend_origins:
         logger.warning("Rejected token from unexpected origin: %s", azp)
         raise _unauthorized("Invalid or expired token")
 

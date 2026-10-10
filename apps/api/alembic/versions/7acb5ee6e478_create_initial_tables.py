@@ -23,7 +23,7 @@ def upgrade() -> None:
         CREATE TABLE users (
             id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
             clerk_user_id TEXT NOT NULL UNIQUE,
-            img TEXT ,
+           
             email TEXT,
             first_name TEXT,
             level TEXT CHECK (level IN ('A2', 'B1', 'B2', 'C1')),

@@ -1,7 +1,7 @@
 "use client";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Camera, ChevronDown, ChevronRight, Pencil, Plus, Settings, Shield, UserRound, Mail, Bell, Users, Trophy, Megaphone } from "lucide-react";
+import { ArrowRight, Camera, ChevronDown, ChevronRight, Pencil, Plus, Settings, Shield, UploadCloud, UserRound, Mail, Bell, Users, Trophy, Megaphone, X } from "lucide-react";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useAchievements, useActivity, useAddLanguage, usePreferences, useUpdateNotifications, useUpdateProfile, useUploadAvatar } from "@/features/profile/hooks/useProfile";
 import type { UpdateProfileInput } from "@/features/profile/types/profile";
@@ -51,7 +51,8 @@ export default function ProfilePage() {
   const [value2, setValue2] = useState("");
   const [focusItems, setFocusItems] = useState<string[]>([]);
   const [focusInput, setFocusInput] = useState("");
-  const file = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragPreview, setDragPreview] = useState<string | null>(null);
   if (!user) return null;
 
   const open = (e: NonNullable<Edit>, v = "", v2 = "") => {
@@ -98,8 +99,6 @@ export default function ProfilePage() {
         return patch({ level: (value || "B1") as NonNullable<UpdateProfileInput["level"]> });
       case "explainLang":
         return patch({ explainLang: (value || "fr") as NonNullable<UpdateProfileInput["explainLang"]> });
-      case "avatar":
-        return patch({ avatarUrl: value.trim() });
     }
   }
 
@@ -118,18 +117,19 @@ export default function ProfilePage() {
     }
   };
 
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
+  const handleAvatarFile = useCallback((f: File) => {
     const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setValue(reader.result);
-      }
-    };
+    reader.onload = () => { if (typeof reader.result === "string") setDragPreview(reader.result); };
     reader.readAsDataURL(f);
-    upload.mutate(f);
-  };
+    upload.mutate(f, { onSuccess: () => { setDragPreview(null); close(); } });
+  }, [upload]);
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const f = e.dataTransfer.files?.[0];
+    if (f && f.type.startsWith("image/")) handleAvatarFile(f);
+  }, [handleAvatarFile]);
 
   const dialogTitle = {
     name: "Edit personal information",
@@ -151,30 +151,25 @@ export default function ProfilePage() {
         <h1 className="mb-6 text-5xl font-extrabold tracking-tight">{user.firstName}</h1>
 
         <div className="flex flex-wrap items-center gap-6">
-          <div className="relative">
-            <Avatar src={user.avatarUrl} first={user.firstName} last={user.lastName} size={132} />
-            <button onClick={() => open({ kind: "avatar" }, user.avatarUrl ?? "")} aria-label="Change photo" className="absolute bottom-0 right-0 flex h-11 w-11 items-center justify-center rounded-full bg-ink text-white hover:opacity-90">
-              <Camera size={18} />
-            </button>
-            <input ref={file} type="file" accept="image/*" hidden onChange={onFileChange} />
+          <div
+            className={cn("group relative cursor-pointer rounded-full", isDragging && "ring-4 ring-ink ring-offset-2")}
+            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={onDrop}
+            onClick={() => open({ kind: "avatar" })}
+            title="Drag & drop or click to change photo"
+          >
+            <Avatar src={dragPreview || user.avatarUrl} first={user.firstName} last={user.lastName} size={132} />
+            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+              <UploadCloud size={28} className="text-white" />
+            </div>
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-3xl font-bold">{fullName}</h2>
               <Pen label="name" onClick={() => open({ kind: "name" }, user.firstName, user.lastName ?? "")} />
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              {user.learningLanguages.length > 0 && (
-                <label className="flex items-center gap-2 rounded-full bg-black/[0.05] px-4 py-2 text-sm font-medium">
-                  {activeLanguage?.flagUrl && /* eslint-disable-next-line @next/next/no-img-element */ <img src={activeLanguage.flagUrl} alt="" className="h-4 w-5 rounded-sm" />}
-                  <select aria-label="Active language" value={activeLanguage?.id} onChange={(e) => update.mutate({ activeLanguageId: e.target.value })} className="bg-transparent outline-none cursor-pointer">
-                    {user.learningLanguages.map((l) => <option key={l.id} value={l.id}>Learning {l.name}</option>)}
-                  </select>
-                  <ChevronDown size={14} />
-                </label>
-              )}
-              {activeLanguage?.level && <Pill className="bg-black/[0.05] px-4 py-2 text-sm">{activeLanguage.level}</Pill>}
-            </div>
+          
             <p className="mt-3 flex items-center gap-2 text-muted">
               {user.bio || <span className="italic">Add a short bio</span>}
               <Pen label="bio" onClick={() => open({ kind: "bio" }, user.bio ?? "")} />
@@ -453,51 +448,83 @@ export default function ProfilePage() {
           {edit?.kind === "avatar" && (
             <div className="space-y-4">
               <div className="flex items-center gap-4">
-                <Avatar src={value || user.avatarUrl} first={user.firstName} last={user.lastName} size={76} />
+                <Avatar src={dragPreview || user.avatarUrl} first={user.firstName} last={user.lastName} size={76} />
                 <div className="text-sm">
                   <p className="font-semibold">Profile Photo</p>
-                  <p className="text-xs text-muted">Use a Cloudinary URL or pick an image file.</p>
+                  <p className="text-xs text-muted">Drag & drop an image or click the zone below to upload.</p>
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Cloudinary image URL</label>
-                <input
-                  type="url"
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  placeholder="https://res.cloudinary.com/.../image.jpg"
-                  className="w-full rounded-xl border border-line px-3 py-2.5 outline-none focus:border-ink text-sm"
-                />
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => file.current?.click()}
-                  className="rounded-xl border border-line px-4 py-2 text-sm font-medium hover:bg-black/5"
-                >
-                  Choose local file
-                </button>
-                {value && (
-                  <button
-                    type="button"
-                    onClick={() => setValue("")}
-                    className="text-xs text-red-600 hover:underline"
-                  >
-                    Clear photo URL
-                  </button>
-                )}
-              </div>
+              <DragDropZone
+                isDragging={isDragging}
+                isUploading={upload.isPending}
+                onDrop={onDrop}
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onFileSelect={handleAvatarFile}
+              />
+              {upload.isError && <p className="text-xs text-red-600">{(upload.error as Error).message}</p>}
             </div>
           )}
 
           {error && <p role="alert" className="text-sm text-red-600">{error.message}</p>}
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button dark={false} onClick={close}>Cancel</Button>
-            <Button onClick={save} disabled={pending}>{pending ? "Saving…" : "Save changes"}</Button>
-          </div>
+          {edit?.kind !== "avatar" && (
+            <div className="flex justify-end gap-2 pt-2">
+              <Button dark={false} onClick={close}>Cancel</Button>
+              <Button onClick={save} disabled={pending}>{pending ? "Saving…" : "Save changes"}</Button>
+            </div>
+          )}
+          {edit?.kind === "avatar" && (
+            <div className="flex justify-end gap-2 pt-2">
+              <Button dark={false} onClick={close}>Close</Button>
+            </div>
+          )}
         </div>
       </Dialog>
+    </div>
+  );
+}
+
+function DragDropZone({
+  isDragging,
+  isUploading,
+  onDrop,
+  onDragOver,
+  onDragLeave,
+  onFileSelect,
+}: {
+  isDragging: boolean;
+  isUploading: boolean;
+  onDrop: (e: React.DragEvent) => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: () => void;
+  onFileSelect: (f: File) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  return (
+    <div
+      onDrop={onDrop}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onClick={() => !isUploading && fileRef.current?.click()}
+      className={cn(
+        "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-10 transition-colors",
+        isDragging ? "border-ink bg-ink/5" : "border-line bg-black/[0.02] hover:border-ink/40 hover:bg-black/[0.04]",
+        isUploading && "pointer-events-none opacity-60",
+      )}
+    >
+      <UploadCloud size={32} className={isDragging ? "text-ink" : "text-muted"} />
+      <div className="text-center">
+        <p className="text-sm font-medium">{isUploading ? "Uploading to Cloudinary…" : "Drop your photo here"}</p>
+        <p className="text-xs text-muted">or click to browse · JPG, PNG, WebP · max 5 MB</p>
+      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        hidden
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) onFileSelect(f); }}
+      />
     </div>
   );
 }

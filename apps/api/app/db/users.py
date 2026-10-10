@@ -1,6 +1,25 @@
+import json
 from psycopg import Connection, sql
 
-USER_COLUMNS = "id, clerk_user_id, email, first_name, level, explain_lang, created_at"
+USER_COLUMNS = (
+    "id, clerk_user_id, email, first_name, last_name, level, explain_lang, "
+    "avatar_url, bio, learning_goal, daily_goal_minutes, preferred_practice_mode, "
+    "focus_areas, learning_languages, preferences, created_at"
+)
+
+DB_UPDATABLE_COLUMNS = {
+    "first_name", "last_name", "level", "explain_lang", "email",
+    "avatar_url", "bio", "learning_goal", "daily_goal_minutes",
+    "preferred_practice_mode", "focus_areas", "learning_languages",
+    "preferences",
+}
+
+
+def _serialize(key: str, value) -> object:
+    """Convert Python value to psycopg-compatible type for JSONB/array columns."""
+    if key in ("learning_languages", "preferences") and isinstance(value, (dict, list)):
+        return json.dumps(value)
+    return value
 
 
 def get_by_clerk_id(conn: Connection, clerk_user_id: str) -> dict | None:
@@ -30,21 +49,27 @@ def get_or_create_by_clerk_id(conn: Connection, clerk_user_id: str) -> dict:
     return get_by_clerk_id(conn, clerk_user_id)
 
 
-UPDATABLE_COLUMNS = {"level", "explain_lang"}
-
-
 def update_profile(conn: Connection, user_id: int, changes: dict) -> dict:
     if not changes:
         raise ValueError("nothing to update")
-    unknown = set(changes) - UPDATABLE_COLUMNS
-    if unknown:
-        raise ValueError(f"cannot update: {sorted(unknown)}")
 
+    unknown = set(changes) - DB_UPDATABLE_COLUMNS
+    if unknown:
+        changes = {k: v for k, v in changes.items() if k not in unknown}
+
+    if not changes:
+        return conn.execute(
+            f"SELECT {USER_COLUMNS} FROM users WHERE id = %s", (user_id,)
+        ).fetchone()
+
+    values = [_serialize(k, v) for k, v in changes.items()]
     assignments = sql.SQL(", ").join(
-        sql.SQL("{} = %s").format(sql.Identifier(column)) for column in changes
+        sql.SQL("{} = %s").format(sql.Identifier(col)) for col in changes
     )
-    query = sql.SQL("UPDATE users SET {assignments} WHERE id = %s RETURNING {columns}").format(
+    query = sql.SQL(
+        "UPDATE users SET {assignments} WHERE id = %s RETURNING {columns}"
+    ).format(
         assignments=assignments,
         columns=sql.SQL(USER_COLUMNS),
     )
-    return conn.execute(query, [*changes.values(), user_id]).fetchone()
+    return conn.execute(query, [*values, user_id]).fetchone()
