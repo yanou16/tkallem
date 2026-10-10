@@ -2,12 +2,7 @@
  * Every backend path in the app. If the backend differs, change it HERE only.
  */
 export const endpoints = {
-  auth: {
-    login: "/api/auth/login",
-    register: "/api/auth/register",
-    logout: "/api/auth/logout",
-    me: "/me",
-  },
+  me: "/me",
   user: {
     me: "/me",
     languages: "/api/users/me/languages",
