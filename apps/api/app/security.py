@@ -33,11 +33,7 @@ def _unauthorized(detail: str) -> HTTPException:
 
 
 def verify_clerk_token(token: str) -> ClerkClaims:
-    if not settings.clerk_jwks_url:
-        logger.error("Authentication rejected because CLERK_JWKS_URL is not configured")
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Authentication is not configured")
-    if not settings.clerk_issuer:
-        logger.error("Authentication rejected because CLERK_ISSUER is not configured")
+    if not settings.clerk_jwks_url or not settings.clerk_issuer:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Authentication is not configured")
 
     try:
@@ -46,7 +42,7 @@ def verify_clerk_token(token: str) -> ClerkClaims:
             token,
             signing_key.key,
             algorithms=["RS256"],
-            issuer=settings.clerk_issuer.rstrip("/"),
+            issuer=settings.clerk_issuer,
             options={"require": ["exp", "nbf", "iat", "iss", "sub"]},
             leeway=5,
         )
@@ -58,7 +54,7 @@ def verify_clerk_token(token: str) -> ClerkClaims:
         raise _unauthorized("Invalid or expired token")
 
     azp = claims.get("azp")
-    if azp and azp.rstrip("/") != settings.frontend_origin.rstrip("/"):
+    if azp and azp != settings.frontend_origin:
         logger.warning("Rejected token from unexpected origin: %s", azp)
         raise _unauthorized("Invalid or expired token")
 
