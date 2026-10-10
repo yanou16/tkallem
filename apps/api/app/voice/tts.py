@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 import httpx
 
 from app.config import settings
+from app.voice.errors import provider_message
 
 GROQ_MAX_CHARS = 190  # the documented limit is 200
 GROQ_VOICE = "hannah"  # autumn, diana, hannah, austin, daniel, troy
@@ -134,7 +135,7 @@ def synthesize(
     except TtsError:
         raise
     except httpx.HTTPStatusError as e:
-        raise TtsError(f"{name} answered {e.response.status_code}") from e
+        raise TtsError(f"{name} answered {e.response.status_code}{provider_message(e.response)}") from e
     except (httpx.HTTPError, ValueError) as e:
         raise TtsError(f"{name} failed: {type(e).__name__}") from e
     finally:

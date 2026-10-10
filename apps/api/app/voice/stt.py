@@ -11,9 +11,11 @@ from dataclasses import dataclass, field
 import httpx
 
 from app.config import settings
+from app.voice.errors import provider_message
 
-# Whisper tends to drop "um", "uh": a prompt written with disfluencies pushes it to keep them (to be tested on real
-# voices). Needed for the "hesitations per minute" figure.
+# Optional prompt written with disfluencies, meant to make Whisper keep "um", "uh" (off by default: on clean synthetic
+# voices Whisper kept them anyway and the prompt changed nothing; prompts can also be hallucinated on silence).
+# Re-test on real recordings before turning it on.
 KEEP_FILLERS_PROMPT = "Umm, let me think like, hmm... Okay, here's what I'm, like, thinking."
 LONG_PAUSE_SECONDS = 0.7  # silence between two words that counts as a hesitation
 
@@ -99,7 +101,7 @@ def transcribe(
     *,
     provider: str | None = None,
     language: str = "en",
-    keep_fillers: bool = True,
+    keep_fillers: bool = False,
     client: httpx.Client | None = None,
 ) -> Transcription:
     """Audio bytes in, text out. Raises SttError on any failure (the route answers 502 and nothing is saved)."""
@@ -118,7 +120,7 @@ def transcribe(
     except SttError:
         raise
     except httpx.HTTPStatusError as e:
-        raise SttError(f"{name} answered {e.response.status_code}") from e
+        raise SttError(f"{name} answered {e.response.status_code}{provider_message(e.response)}") from e
     except (httpx.HTTPError, ValueError) as e:  # network, timeout, invalid JSON
         raise SttError(f"{name} failed: {type(e).__name__}") from e
     finally:

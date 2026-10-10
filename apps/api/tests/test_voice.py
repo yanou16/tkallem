@@ -34,7 +34,7 @@ def test_groq_transcription_request_and_words():
         seen["url"], seen["auth"], seen["body"] = str(request.url), request.headers["authorization"], request.content
         return httpx.Response(200, json={"text": " I go to study. ", "duration": 2.4, "words": WORDS})
 
-    t = transcribe(AUDIO, "a.webm", "audio/webm", provider="groq", client=client(handler))
+    t = transcribe(AUDIO, "a.webm", "audio/webm", provider="groq", keep_fillers=True, client=client(handler))
     assert seen["url"] == "https://api.groq.com/openai/v1/audio/transcriptions"
     assert seen["auth"] == "Bearer gsk_test"
     for expected in (b"whisper-large-v3-turbo", b"verbose_json", b"timestamp_granularities[]", b"word", b"Umm, let me think", AUDIO):
@@ -44,11 +44,12 @@ def test_groq_transcription_request_and_words():
     assert t.long_pauses() == 1 and t.long_pauses(min_gap=1.5) == 0
 
 
-def test_keep_fillers_prompt_can_be_turned_off():
+def test_filler_prompt_is_off_by_default():
     bodies = []
-    transcribe(AUDIO, provider="groq", keep_fillers=False,
-               client=client(lambda r: bodies.append(r.content) or httpx.Response(200, json={"text": "x"})))
-    assert b"Umm" not in bodies[0]
+    for keep in (False, None):
+        kwargs = {} if keep is None else {"keep_fillers": keep}
+        transcribe(AUDIO, provider="groq", client=client(lambda r: bodies.append(r.content) or httpx.Response(200, json={"text": "x"})), **kwargs)
+    assert all(b"Umm" not in b for b in bodies)
 
 
 def test_deepinfra_transcription_uses_its_own_endpoint_and_length_in_ms():
@@ -76,6 +77,17 @@ def test_stt_errors_are_wrapped_and_never_leak_the_key():
         transcribe(AUDIO, provider="groq", client=client(boom))
     with pytest.raises(SttError, match="not JSON|failed"):
         transcribe(AUDIO, provider="groq", client=client(lambda r: httpx.Response(200, text="<html>")))
+
+
+def test_provider_message_is_shown_and_the_key_is_hidden():
+    body = {"error": {"message": "The model requires terms acceptance. Key gsk_test was used."}}
+    with pytest.raises(TtsError, match="terms acceptance") as e:
+        synthesize("hi", provider="groq", client=client(lambda r: httpx.Response(400, json=body)))
+    assert "gsk_test" not in str(e.value) and "<key>" in str(e.value)
+    with pytest.raises(TtsError, match="positive balance"):
+        synthesize("hi", provider="deepinfra", client=client(lambda r: httpx.Response(402, json={"detail": {"error": "You need positive balance"}})))
+    with pytest.raises(SttError, match="502$"):
+        transcribe(AUDIO, provider="groq", client=client(lambda r: httpx.Response(502, text="")))
 
 
 def test_stt_input_checks(monkeypatch):
