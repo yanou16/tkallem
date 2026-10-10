@@ -33,11 +33,10 @@ export default function PracticePage() {
       <aside className="space-y-5">
         <Card>
           <h2 className="text-lg font-semibold">Recent sessions</h2>
-          {/* TODO: GET /sessions/{id} to continue an unfinished session instead of starting the scenario again. */}
-          <p className="mb-2 text-sm text-muted">Practice the same situation again.</p>
+          <p className="mb-2 text-sm text-muted">Continue where you stopped, or practice the same situation again.</p>
           <Async query={recent} skeleton={<Skeleton className="h-40" />} isEmpty={(d) => d.length === 0}
             empty={<EmptyState title="No sessions yet" text="Start a scenario. Your sessions will show up here." />}>
-            {(list) => <SessionList sessions={list} restart />}
+            {(list) => <SessionList sessions={list} actions />}
           </Async>
         </Card>
         {/* TODO: "Recommended for you" and "Today's focus" need API routes (recommendations, weak points). */}

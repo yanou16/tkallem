@@ -8,6 +8,7 @@ export const endpoints = {
   scenarios: "/scenarios",
   ai: {
     sessions: "/sessions",
+    session: (id: string) => `/sessions/${id}`,
     turn: (id: string) => `/sessions/${id}/turn`,
     end: (id: string) => `/sessions/${id}/end`,
   },

@@ -2,7 +2,8 @@ import { api } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
 import { mapMetrics } from "@/features/progress/api/progress";
 import type {
-  ReportLineDto, SessionReport, SessionReportDto, SessionStarted, SessionStartedDto, StartSessionDto, Turn, TurnDto,
+  AiSession, ChatMessage, ReportLine, ReportLineDto, SessionDetailDto, SessionReport, SessionReportDto, SessionStarted,
+  SessionStartedDto, StartSessionDto, Turn, TurnDto,
 } from "../types/ai";
 
 export const mapSessionStarted = (s: SessionStartedDto): SessionStarted => ({
@@ -31,6 +32,40 @@ export const mapReport = (r: SessionReportDto): SessionReport => ({
   },
   redoIndex: r.redo_index,
 });
+
+/** Rebuilds the chat from GET /sessions/{id}: the first question, then each answer and the coach reply. */
+export function mapSessionDetail(s: SessionDetailDto): AiSession {
+  const messages: ChatMessage[] = [];
+  const add = (message: Omit<ChatMessage, "id">) => messages.push({ id: `${s.session_id}-${messages.length}`, ...message });
+  if (s.first_question) add({ role: "assistant", content: s.first_question });
+  for (const t of s.turns) {
+    add({ role: "user", content: t.transcript, status: t.sentence_status, corrections: t.corrections });
+    add({ role: "assistant", content: t.reply });
+  }
+
+  // An ended session shows what /end stored. levels and redo_index are not stored, so they stay empty.
+  const lines: ReportLine[] = messages.map((m) => ({
+    role: m.role === "user" ? "student" : "coach",
+    text: m.content,
+    status: m.status ?? null,
+    corrections: m.corrections ?? [],
+  }));
+  const report: SessionReport | undefined =
+    s.ended_at && s.metrics
+      ? {
+          lines,
+          note: s.note ?? "",
+          metrics: mapMetrics(s.metrics),
+          levels: { mistakesPer100: null, wordsPerAnswer: null, hesitationsPerMin: null },
+          redoIndex: null,
+        }
+      : undefined;
+
+  return { id: s.session_id, scenarioId: s.scenario_id, title: s.title, messages, finished: s.finished, report };
+}
+
+export const getSession = (sessionId: string) =>
+  api.get<SessionDetailDto>(endpoints.ai.session(sessionId)).then(mapSessionDetail);
 
 /** Text sessions only for now. explain_lang is left out so the API uses the profile preference. */
 export const startSession = (scenarioId: string) => {

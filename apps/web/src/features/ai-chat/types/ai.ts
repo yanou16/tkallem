@@ -10,7 +10,32 @@ export type Correction = {
 /** Traffic light of one answer: green clean, orange small fixes, red redo it. */
 export type SentenceStatus = "green" | "orange" | "red";
 
-/* ---------- POST /sessions, /sessions/{id}/turn and /sessions/{id}/end as sent by the API ---------- */
+/* ---------- GET /sessions/{id}, POST /sessions, /sessions/{id}/turn and /sessions/{id}/end as sent by the API ---------- */
+export type TurnDetailDto = {
+  position: number;
+  transcript: string;
+  reply: string;
+  sentence_status: SentenceStatus;
+  corrections: Correction[];
+};
+
+export type SessionDetailDto = {
+  session_id: string;
+  scenario_id: string;
+  title: string;
+  mode: "text" | "voice";
+  started_at: string;
+  ended_at: string | null;
+  finished: boolean;
+  total_questions: number | null;
+  /** Null when the scenario no longer exists. */
+  first_question: string | null;
+  turns: TurnDetailDto[];
+  /** What /end stored, null before. levels and redo_index are not stored. */
+  note: string | null;
+  metrics: ProgressMetricsDto | null;
+};
+
 export type StartSessionDto = {
   scenario_id: string;
   mode: "text" | "voice";
@@ -89,7 +114,8 @@ export type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
-  createdAt: string;
+  /** Unknown for a reloaded session: the API does not send the time of each turn. */
+  createdAt?: string;
   /** Student answers only. */
   status?: SentenceStatus;
   corrections?: Correction[];
@@ -98,8 +124,10 @@ export type ChatMessage = {
 export type AiSession = {
   id: string;
   scenarioId: string;
+  /** From GET /sessions/{id}; a new session takes its title from the scenario list. */
+  title?: string;
   messages: ChatMessage[];
   finished: boolean;
-  /** Set once the session is ended. */
+  /** Set once the session is ended. For a reloaded session, only what the API stored (no levels, no redo). */
   report?: SessionReport;
 };

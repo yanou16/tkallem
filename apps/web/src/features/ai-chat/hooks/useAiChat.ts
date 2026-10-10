@@ -1,6 +1,6 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { endSession, sendAnswer, startSession } from "../api/ai";
+import { endSession, getSession, sendAnswer, startSession } from "../api/ai";
 import { MY_SESSIONS_KEY } from "@/features/practice/hooks/usePractice";
 import { ACHIEVEMENTS_KEY } from "@/features/profile/hooks/useProfile";
 import type { AiSession, Turn } from "../types/ai";
@@ -21,8 +21,10 @@ export function addTurn(session: AiSession, turn: Turn, at = new Date().toISOStr
   };
 }
 
-// The conversation lives in this cache only: there is no GET /sessions/{id} yet to reload it.
-export const useAiSession = (id?: string) => useQuery<AiSession>({ queryKey: key(id), enabled: false });
+/** A session started here is already in the cache (kept up to date by the mutations below); after a page refresh
+ * or a "Continue" link, it is loaded once with GET /sessions/{id}. */
+export const useAiSession = (id?: string) =>
+  useQuery<AiSession>({ queryKey: key(id), queryFn: () => getSession(id!), enabled: !!id, staleTime: Infinity });
 
 export const useStartSession = () => {
   const qc = useQueryClient();

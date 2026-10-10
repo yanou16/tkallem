@@ -59,6 +59,11 @@ function endHelp(e: unknown): Help {
   return { text: e.message, retry: true };
 }
 
+function loadHelp(e: unknown): Help {
+  if (e instanceof ApiError && e.status === 404) return { text: "This session doesn't exist anymore.", restart: true };
+  return { text: e instanceof ApiError ? e.message : "Something went wrong.", retry: true };
+}
+
 export default function AiChatPage() {
   return <Suspense fallback={<Skeleton className="mt-6 h-96" />}><Chat /></Suspense>;
 }
@@ -67,13 +72,15 @@ function Chat() {
   const router = useRouter();
   const params = useSearchParams();
   const sessionId = params.get("sessionId") ?? undefined;
-  const scenarioId = params.get("scenarioId") ?? undefined;
+  const urlScenarioId = params.get("scenarioId") ?? undefined;
   const { user } = useCurrentUser();
   const scenarios = useScenarios();
   const start = useStartSession();
   const session = useAiSession(sessionId);
   const send = useSendAnswer(sessionId);
   const end = useEndSession(sessionId);
+  const s = session.data;
+  const scenarioId = s?.scenarioId ?? urlScenarioId;
 
   const [text, setText] = useState("");
   const [menu, setMenu] = useState(false);
@@ -87,14 +94,13 @@ function Chat() {
     });
   };
 
-  // Start a backend session when arriving with ?scenarioId=…
+  // Start a backend session when arriving with ?scenarioId=… only (with ?sessionId=…, the session is loaded instead).
   useEffect(() => {
-    if (sessionId || !scenarioId || started.current === scenarioId) return;
-    begin(scenarioId);
+    if (sessionId || !urlScenarioId || started.current === urlScenarioId) return;
+    begin(urlScenarioId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scenarioId, sessionId]);
+  }, [urlScenarioId, sessionId]);
 
-  const s = session.data;
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [s?.messages.length]);
 
   /** A new session for this scenario, or for another one. */
@@ -103,7 +109,7 @@ function Chat() {
     send.reset();
     end.reset();
     if (!id) return router.push("/practice");
-    if (!sessionId && id === scenarioId) return begin(id);
+    if (!sessionId && id === urlScenarioId) return begin(id);
     started.current = null;
     router.replace(startHref(id));
   };
@@ -118,7 +124,9 @@ function Chat() {
     if (sessionId && !end.isPending) end.mutate();
   };
 
-  const title = scenarios.data?.find((x) => x.id === scenarioId)?.title ?? scenarioId;
+  const scenario = scenarios.data?.find((x) => x.id === scenarioId);
+  const title = s?.title ?? scenario?.title ?? scenarioId;
+  const icon = scenario?.icon ?? scenarioId;
   if (s?.report) return <Report report={s.report} title={title} onRestart={() => restart()} />;
 
   const answers = s?.messages.filter((m) => m.role === "user") ?? [];
@@ -130,16 +138,12 @@ function Chat() {
     body = <EmptyState title="Start your first conversation" text="Pick a scenario above and your tutor will ask the first question." />;
   } else if (start.error) {
     body = <Problem help={startHelp(start.error)} onRetry={() => scenarioId && begin(scenarioId)} />;
-  } else if (!sessionId || start.isPending) {
-    body = <div className="space-y-4"><Skeleton className="h-20 w-2/3" /><Skeleton className="ml-auto h-20 w-2/3" /></div>;
+  } else if (session.error) {
+    body = <Problem help={loadHelp(session.error)} onRetry={() => session.refetch()} onRestart={() => restart()} />;
   } else if (!s) {
-    // TODO: GET /sessions/{id}, to reload a conversation after a page refresh.
-    body = (
-      <EmptyState title="This conversation can't be reopened" text="Sessions can't be reloaded yet. Start this scenario again."
-        action={<Button onClick={() => restart()}>Start again</Button>} />
-    );
+    body = <div className="space-y-4"><Skeleton className="h-20 w-2/3" /><Skeleton className="ml-auto h-20 w-2/3" /></div>;
   } else {
-    body = s.messages.map((m) => <Bubble key={m.id} m={m} icon={s.scenarioId} user={user} />);
+    body = s.messages.map((m) => <Bubble key={m.id} m={m} icon={icon} user={user} />);
   }
 
   return (
@@ -150,7 +154,7 @@ function Chat() {
         <div className="mb-4 grid gap-3 md:grid-cols-[1.3fr_0.8fr]">
           <div className="relative">
             <button onClick={() => setMenu((m) => !m)} className="flex w-full items-center gap-3 rounded-2xl bg-peach p-3 text-left">
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-peach-deep"><Icon name={scenarioId ?? "briefcase"} /></span>
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-peach-deep"><Icon name={icon ?? "briefcase"} /></span>
               <span className="flex-1"><span className="block text-xs text-muted">Scenario</span><span className="font-semibold">{title ?? "Choose a scenario"}</span></span>
               <ChevronDown size={18} />
             </button>
@@ -251,7 +255,7 @@ function StatusPill({ status, label }: { status: SentenceStatus; label: string }
 
 function Bubble({ m, icon, user }: { m: ChatMessage; icon?: string; user?: ReturnType<typeof useCurrentUser>["user"] }) {
   const mine = m.role === "user";
-  const time = new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const time = m.createdAt && new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   return (
     <div className={cn("flex items-start gap-3", mine && "justify-end")}>
       {!mine && <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-mint"><Icon name={icon ?? "briefcase"} /></span>}
@@ -259,7 +263,7 @@ function Bubble({ m, icon, user }: { m: ChatMessage; icon?: string; user?: Retur
         <p className={cn("whitespace-pre-wrap rounded-3xl px-5 py-4 text-left", mine ? "bg-mint" : "bg-black/[0.05]")}>{m.content}</p>
         <div className={cn("mt-1 flex items-center gap-2", mine && "justify-end")}>
           {m.status && <StatusPill status={m.status} label={answerLabel(m.status, m.corrections?.length ?? 0)} />}
-          <span className="text-xs text-muted">{time}</span>
+          {time && <span className="text-xs text-muted">{time}</span>}
         </div>
       </div>
       {mine && <Avatar src={user?.avatarUrl} first={user?.firstName} last={user?.lastName} size={44} />}

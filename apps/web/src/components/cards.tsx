@@ -51,23 +51,29 @@ export function ScenarioCard({ s, tone }: { s: Scenario; tone: Tone }) {
   );
 }
 
+/** Opens a session: the conversation, or its report once it is finished. */
+export const sessionHref = (s: SessionSummary) =>
+  `/ai-chat?sessionId=${encodeURIComponent(s.id)}&scenarioId=${encodeURIComponent(s.scenarioId)}`;
+
 function answered(s: SessionSummary) {
   return s.totalQuestions === null ? plural(s.answered, "answer") : `${s.answered}/${s.totalQuestions} answers`;
 }
 
-/** The student's sessions from GET /me/sessions. `restart` adds a button that starts the same scenario again. */
-export function SessionList({ sessions, restart }: { sessions: SessionSummary[]; restart?: boolean }) {
+/** The student's sessions from GET /me/sessions. `actions` adds "Continue" (unfinished) or "Practice again" (finished). */
+export function SessionList({ sessions, actions }: { sessions: SessionSummary[]; actions?: boolean }) {
   return (
     <ul className="divide-y divide-line">
       {sessions.map((s) => (
         <li key={s.id} className="flex items-center gap-3 py-3">
           <div className="min-w-0 flex-1">
-            <p className="truncate font-medium">{s.title}</p>
+            <Link href={sessionHref(s)} className="block truncate font-medium hover:underline">{s.title}</Link>
             <p className="text-sm text-muted">
               {answered(s)} · {s.endedAt ? "Finished" : "Not finished"} · {timeAgo(s.startedAt)}
             </p>
           </div>
-          {restart && <StartButton href={startHref(s.scenarioId)} label="Practice again" />}
+          {actions && (s.endedAt
+            ? <StartButton href={startHref(s.scenarioId)} label="Practice again" />
+            : <StartButton href={sessionHref(s)} label="Continue" />)}
         </li>
       ))}
     </ul>

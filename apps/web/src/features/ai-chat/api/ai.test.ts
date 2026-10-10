@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { endSession, mapReport, mapTurn, sendAnswer, startSession } from "./ai";
-import type { SessionReportDto, TurnDto } from "../types/ai";
+import { endSession, getSession, mapReport, mapSessionDetail, mapTurn, sendAnswer, startSession } from "./ai";
+import type { SessionDetailDto, SessionReportDto, TurnDto } from "../types/ai";
 
 const TURN: TurnDto = {
   transcript: "I go to the US for study.",
@@ -85,5 +85,76 @@ describe("session calls", () => {
     expect(fetchMock.mock.calls[0][0]).toMatch(/\/sessions\/s1\/end$/);
     expect(fetchMock.mock.calls[0][1].method).toBe("POST");
     expect(report.redoIndex).toBe(1);
+  });
+});
+
+const OPEN_SESSION: SessionDetailDto = {
+  session_id: "s1",
+  scenario_id: "visa-us",
+  title: "Visa interview",
+  mode: "text",
+  started_at: "2026-10-10T10:00:00Z",
+  ended_at: null,
+  finished: false,
+  total_questions: 6,
+  first_question: "What is the purpose of your trip?",
+  turns: [
+    { position: 1, transcript: "I go to the US for study.", reply: "Good. Which university?", sentence_status: "orange", corrections: TURN.corrections },
+  ],
+  note: null,
+  metrics: null,
+};
+
+describe("mapSessionDetail", () => {
+  it("rebuilds the chat: first question, then each answer and the coach reply", () => {
+    const session = mapSessionDetail(OPEN_SESSION);
+
+    expect(session).toMatchObject({ id: "s1", scenarioId: "visa-us", title: "Visa interview", finished: false });
+    expect(session.messages).toEqual([
+      { id: "s1-0", role: "assistant", content: "What is the purpose of your trip?" },
+      { id: "s1-1", role: "user", content: "I go to the US for study.", status: "orange", corrections: TURN.corrections },
+      { id: "s1-2", role: "assistant", content: "Good. Which university?" },
+    ]);
+    expect(session.report).toBeUndefined();
+  });
+
+  it("shows what /end stored for an ended session, without levels or answer to redo", () => {
+    const session = mapSessionDetail({
+      ...OPEN_SESSION,
+      ended_at: "2026-10-10T10:08:00Z",
+      note: "Honest note.",
+      metrics: { mistakes_per_100: 14.3, words_per_answer: 7, hesitations_per_min: null, speaking_seconds: null },
+    });
+
+    expect(session.report).toEqual({
+      lines: [
+        { role: "coach", text: "What is the purpose of your trip?", status: null, corrections: [] },
+        { role: "student", text: "I go to the US for study.", status: "orange", corrections: TURN.corrections },
+        { role: "coach", text: "Good. Which university?", status: null, corrections: [] },
+      ],
+      note: "Honest note.",
+      metrics: { mistakesPer100: 14.3, wordsPerAnswer: 7, hesitationsPerMin: null, speakingSeconds: null },
+      levels: { mistakesPer100: null, wordsPerAnswer: null, hesitationsPerMin: null },
+      redoIndex: null,
+    });
+  });
+
+  it("starts with the first answer when the scenario no longer exists", () => {
+    const session = mapSessionDetail({ ...OPEN_SESSION, title: "old-scenario", first_question: null });
+
+    expect(session.messages.map((m) => m.role)).toEqual(["user", "assistant"]);
+    expect(session.messages[0].id).toBe("s1-0");
+  });
+});
+
+describe("getSession", () => {
+  it("reads GET /sessions/{id}", async () => {
+    const fetchMock = serverReplies(OPEN_SESSION);
+
+    const session = await getSession("s1");
+
+    expect(fetchMock.mock.calls[0][0]).toMatch(/\/sessions\/s1$/);
+    expect(fetchMock.mock.calls[0][1].method).toBe("GET");
+    expect(session.messages).toHaveLength(3);
   });
 });
