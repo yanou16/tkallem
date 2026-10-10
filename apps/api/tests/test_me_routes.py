@@ -201,3 +201,59 @@ def test_my_progress_uses_the_chosen_daily_goal(client):
 
     assert client.get("/me/progress").json()["daily_goal_seconds"] == 1200
 
+
+ACHIEVEMENT_IDS = ["first_session", "sessions_10", "streak_3", "streak_7", "first_voice", "level_b1"]
+
+
+def unlocked_badges(client) -> dict[str, bool]:
+    return {a["id"]: a["unlocked"] for a in client.get("/me/achievements").json()}
+
+
+def test_achievements_are_all_locked_for_a_new_student(client):
+    response = client.get("/me/achievements")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [a["id"] for a in body] == ACHIEVEMENT_IDS
+    assert not any(a["unlocked"] for a in body)
+    assert all(a["title"] and a["description"] and a["icon"] for a in body)
+
+
+def test_achievements_unlock_from_real_sessions(client, db):
+    user = get_or_create_by_clerk_id(db, "user_route_test")
+    for days_back in (2, 1, 0):
+        add_finished_session(db, user["id"], days_back, mistakes=5)
+    add_finished_session(db, user["id"], days_back=0, mistakes=5, speaking=95)
+
+    badges = unlocked_badges(client)
+
+    assert {badge for badge, unlocked in badges.items() if unlocked} == {"first_session", "streak_3", "first_voice"}
+
+
+def test_ten_finished_sessions_unlock_a_badge(client, db):
+    user = get_or_create_by_clerk_id(db, "user_route_test")
+    for _ in range(10):
+        add_finished_session(db, user["id"], days_back=0, mistakes=5)
+
+    assert unlocked_badges(client)["sessions_10"] is True
+
+
+def test_a_streak_badge_stays_unlocked_after_the_streak(client, db):
+    user = get_or_create_by_clerk_id(db, "user_route_test")
+    for days_back in (12, 11, 10):
+        add_finished_session(db, user["id"], days_back, mistakes=5)
+
+    assert client.get("/me/progress").json()["streak_days"] == 0
+    assert unlocked_badges(client)["streak_3"] is True
+
+
+@pytest.mark.parametrize("level, unlocked", [("A2", False), ("B1", True), ("C1", True)])
+def test_level_badge_from_b1(client, level, unlocked):
+    client.patch("/me", json={"level": level})
+
+    assert unlocked_badges(client)["level_b1"] is unlocked
+
+
+def test_achievements_require_a_token():
+    assert TestClient(app).get("/me/achievements").status_code == 401
+

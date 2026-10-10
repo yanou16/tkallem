@@ -33,6 +33,43 @@ def get_session_for_user(conn: Connection, session_id: UUID, user_id: int) -> di
     ).fetchone()
 
 
+def get_session_detail(conn: Connection, session_id: UUID, user_id: int) -> dict | None:
+    """The session with what /end stored (note and metrics, NULL until then). None if it is not the user's."""
+    return conn.execute(
+        """
+        SELECT s.id, s.scenario_id, s.mode, s.state, s.note, s.started_at, s.ended_at,
+               m.mistakes_per_100, m.words_per_answer, m.hesitations_per_min, m.speaking_seconds
+        FROM practice_sessions s
+        LEFT JOIN session_metrics m ON m.session_id = s.id
+        WHERE s.id = %s AND s.user_id = %s
+        """,
+        (session_id, user_id),
+    ).fetchone()
+
+
+def list_turns(conn: Connection, session_id: UUID, user_id: int) -> list[dict]:
+    """The student's answers in order, each with its corrections (an empty list when there is none)."""
+    return conn.execute(
+        """
+        SELECT t.position, t.transcript, t.reply, t.sentence_status,
+               COALESCE(
+                   json_agg(
+                       json_build_object('original', c.original, 'fixed', c.fixed, 'type', c.type, 'why', c.why)
+                       ORDER BY c.id
+                   ) FILTER (WHERE c.id IS NOT NULL),
+                   '[]'::json
+               ) AS corrections
+        FROM turns t
+        JOIN practice_sessions s ON s.id = t.session_id
+        LEFT JOIN corrections c ON c.turn_id = t.id
+        WHERE t.session_id = %s AND s.user_id = %s
+        GROUP BY t.id
+        ORDER BY t.position
+        """,
+        (session_id, user_id),
+    ).fetchall()
+
+
 def save_turn(
     conn: Connection,
     session_id: UUID,
