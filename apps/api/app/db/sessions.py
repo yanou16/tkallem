@@ -111,3 +111,16 @@ def end_session(conn: Connection, session_id: UUID, note: str, metrics: dict) ->
         ),
     )
     return True
+
+def list_sessions_for_user(conn: Connection, user_id: int, limit: int) -> list[dict]:
+    return conn.execute(
+        """
+        SELECT id, scenario_id, started_at, ended_at,
+               jsonb_array_length(state -> 'turns') AS answered
+        FROM practice_sessions
+        WHERE user_id = %s
+        ORDER BY started_at DESC, id DESC
+        LIMIT %s
+        """,
+        (user_id, limit),
+    ).fetchall()
