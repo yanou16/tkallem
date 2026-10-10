@@ -65,3 +65,27 @@ class SessionSummary(BaseModel):
     ended_at: datetime | None
     answered: int
     total_questions: int | None
+
+
+class TurnDetail(BaseModel):
+    position: int
+    transcript: str
+    reply: str
+    sentence_status: Status
+    corrections: list[Correction]
+
+
+class SessionDetail(BaseModel):
+    session_id: str
+    scenario_id: str
+    title: str
+    mode: Literal["text", "voice"]
+    started_at: datetime
+    ended_at: datetime | None
+    finished: bool
+    total_questions: int | None
+    first_question: str | None
+    turns: list[TurnDetail]
+    # What /end stored, null before. The rest of the report (levels, redo_index) is not stored.
+    note: str | None
+    metrics: Metrics | None
