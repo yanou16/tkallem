@@ -1,8 +1,8 @@
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from tkallem_agent.schemas import Correction, ExplainLang, Status
-
 
 class SessionCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -55,3 +55,13 @@ class SessionReport(BaseModel):
     metrics: Metrics
     levels: Levels
     redo_index: int | None
+
+
+class SessionSummary(BaseModel):
+    session_id: str
+    scenario_id: str
+    title: str
+    started_at: datetime
+    ended_at: datetime | None
+    answered: int
+    total_questions: int | None
