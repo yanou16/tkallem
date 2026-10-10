@@ -68,7 +68,7 @@ export default function HomePage() {
           >
             {(list) => (
               <div className="grid gap-4 md:grid-cols-2">
-                {list.slice(0, 4).map((s, i) => <ScenarioCard key={s.id} s={s} tone={toneAt(i)} compact />)}
+                {list.slice(0, 4).map((s, i) => <ScenarioCard key={s.id} s={s} tone={toneAt(i)} />)}
               </div>
             )}
           </Async>

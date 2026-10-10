@@ -1,12 +1,11 @@
+/** A practice scenario, as the agent describes it (id, title, mode, minutes). */
 export type Scenario = {
   id: string;
   title: string;
-  subtitle?: string;
-  description: string;
-  duration: number; // minutes
-  level: string;
-  category: string; // speaking | vocabulary | grammar | exams | work | travel ...
-  icon: string; // identifier mapped to a Lucide icon in lib/icons.tsx
+  /** guided: fixed questions, then a report. free: open conversation, ended by the student. */
+  mode: "guided" | "free";
+  /** Shown on the card. Null for free talk. */
+  minutes: number | null;
 };
 
 export type RecentSession = {

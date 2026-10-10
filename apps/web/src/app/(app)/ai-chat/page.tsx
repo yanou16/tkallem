@@ -73,7 +73,7 @@ function Chat() {
   const grammar = useMemo(() => [...(s?.corrections ?? [])].reverse().find((c) => c.type === "grammar"), [s?.corrections]);
   const phrasing = useMemo(() => [...(s?.corrections ?? [])].reverse().find((c) => c.type !== "grammar"), [s?.corrections]);
   const title = s?.scenarioTitle ?? scenarios.data?.find((x) => x.id === scenarioId)?.title;
-  const icon = scenarios.data?.find((x) => x.id === scenarioId)?.icon;
+  const icon = scenarioId;
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">

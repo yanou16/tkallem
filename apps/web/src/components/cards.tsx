@@ -26,20 +26,19 @@ export function StartButton({ href, label = "Start" }: { href: string; label?: s
   );
 }
 
-export function ScenarioCard({ s, tone, compact }: { s: Scenario; tone: Tone; compact?: boolean }) {
+export function ScenarioCard({ s, tone }: { s: Scenario; tone: Tone }) {
   return (
     <article className={cn("flex flex-col justify-between gap-4 rounded-card p-5", toneBg[tone])}>
       <div className="flex gap-4">
-        <IconBadge name={s.icon} tone={tone} />
+        <IconBadge name={s.id} tone={tone} />
         <div className="min-w-0">
           <h3 className="font-semibold leading-tight">{s.title}</h3>
-          {s.subtitle && <p className="text-sm text-muted">{s.subtitle} • {s.duration} min</p>}
+          <p className="text-sm text-muted">{s.mode === "free" ? "Free conversation" : "Guided questions"}</p>
         </div>
       </div>
-      <p className="text-sm text-muted">{s.description}</p>
       <div className="flex items-center justify-between">
-        {!compact ? (
-          <span className="flex items-center gap-2 text-sm text-muted"><Clock size={14} /> {s.duration} min <Pill>{s.level}</Pill></span>
+        {s.minutes !== null ? (
+          <span className="flex items-center gap-2 text-sm text-muted"><Clock size={14} /> {s.minutes} min</span>
         ) : <span />}
         <StartButton href={startHref(s.id)} />
       </div>
