@@ -7,6 +7,8 @@ TIMEZONE = "Africa/Algiers"
 CURRENT_SIZE = 5
 BASELINE_SIZE = 3
 TOP_MISTAKES_SIZE = 3
+# A text session counts its length, but 30 minutes at most (a tab left open is not practice).
+MAX_TEXT_SESSION_SECONDS = 1800
 
 
 def count_streak(days: list[date], today: date) -> int:
@@ -20,21 +22,35 @@ def count_streak(days: list[date], today: date) -> int:
 
 
 def get_activity(conn: Connection, user_id: int) -> dict:
-    params = {"user_id": user_id, "tz": TIMEZONE}
+    """Practice time today and over the last 7 days, and the current streak.
+    Practice time of a finished session: the spoken time when every answer was spoken, else its length."""
+    params = {"user_id": user_id, "tz": TIMEZONE, "max_text_seconds": MAX_TEXT_SESSION_SECONDS}
 
     totals = conn.execute(
         """
+        WITH practice AS (
+            SELECT
+                s.started_at,
+                COALESCE(
+                    m.speaking_seconds,
+                    -- LEAST ignores NULL: without this CASE, a session with no ended_at would count 30 minutes.
+                    CASE WHEN s.ended_at IS NOT NULL
+                         THEN LEAST(EXTRACT(EPOCH FROM s.ended_at - s.started_at), %(max_text_seconds)s)
+                    END
+                ) AS seconds
+            FROM practice_sessions s
+            JOIN session_metrics m ON m.session_id = s.id
+            WHERE s.user_id = %(user_id)s
+        )
         SELECT
             (now() AT TIME ZONE %(tz)s)::date AS today,
-            COALESCE(SUM(m.speaking_seconds) FILTER (
-                WHERE s.started_at >= now() - interval '7 days'
+            COALESCE(SUM(seconds) FILTER (
+                WHERE started_at >= now() - interval '7 days'
             ), 0) AS week_seconds,
-            COALESCE(SUM(m.speaking_seconds) FILTER (
-                WHERE (s.started_at AT TIME ZONE %(tz)s)::date = (now() AT TIME ZONE %(tz)s)::date
+            COALESCE(SUM(seconds) FILTER (
+                WHERE (started_at AT TIME ZONE %(tz)s)::date = (now() AT TIME ZONE %(tz)s)::date
             ), 0) AS today_seconds
-        FROM practice_sessions s
-        JOIN session_metrics m ON m.session_id = s.id
-        WHERE s.user_id = %(user_id)s
+        FROM practice
         """,
         params,
     ).fetchone()

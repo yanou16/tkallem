@@ -45,7 +45,15 @@ def user(db):
     return get_or_create_by_clerk_id(db, "user_progress_test")
 
 
-def add_session(db, user_id: int, days_back: int, speaking_seconds: float | None = None, finished: bool = True):
+def add_session(
+    db,
+    user_id: int,
+    days_back: int,
+    speaking_seconds: float | None = None,
+    finished: bool = True,
+    minutes: int | None = None,
+):
+    """`minutes`: the session ended that long after it started (ended_at is set)."""
     sid = uuid4()
     create_session(db, sid, user_id, "visa-us", "text", "fr", STATE)
     db.execute(
@@ -57,6 +65,11 @@ def add_session(db, user_id: int, days_back: int, speaking_seconds: float | None
             "INSERT INTO session_metrics (session_id, words, speaking_seconds) VALUES (%s, %s, %s)",
             (sid, 50, speaking_seconds),
         )
+    if minutes is not None:
+        db.execute(
+            "UPDATE practice_sessions SET ended_at = started_at + make_interval(mins => %s) WHERE id = %s",
+            (minutes, sid),
+        )
     return sid
 
 
@@ -64,16 +77,50 @@ def test_activity_is_empty_for_a_new_user(db, user):
     assert get_activity(db, user["id"]) == {"week_seconds": 0, "today_seconds": 0, "streak_days": 0}
 
 
-def test_activity_sums_speaking_time_for_today_and_the_week(db, user):
-    add_session(db, user["id"], days_back=0, speaking_seconds=60)
-    add_session(db, user["id"], days_back=3, speaking_seconds=120)
-    add_session(db, user["id"], days_back=10, speaking_seconds=300)
-    add_session(db, user["id"], days_back=0, speaking_seconds=None)
+def test_activity_sums_spoken_time_for_today_and_the_week(db, user):
+    add_session(db, user["id"], days_back=0, speaking_seconds=60, minutes=5)
+    add_session(db, user["id"], days_back=3, speaking_seconds=120, minutes=5)
+    add_session(db, user["id"], days_back=10, speaking_seconds=300, minutes=10)
 
     activity = get_activity(db, user["id"])
 
     assert activity["today_seconds"] == pytest.approx(60)
     assert activity["week_seconds"] == pytest.approx(180)
+
+
+def test_text_session_counts_its_length(db, user):
+    add_session(db, user["id"], days_back=0, minutes=12)
+    add_session(db, user["id"], days_back=2, minutes=5)
+
+    activity = get_activity(db, user["id"])
+
+    assert activity["today_seconds"] == pytest.approx(12 * 60)
+    assert activity["week_seconds"] == pytest.approx(17 * 60)
+
+
+def test_text_session_counts_thirty_minutes_at_most(db, user):
+    add_session(db, user["id"], days_back=0, minutes=180)
+
+    assert get_activity(db, user["id"])["today_seconds"] == pytest.approx(1800)
+
+
+def test_spoken_time_wins_over_the_session_length(db, user):
+    add_session(db, user["id"], days_back=0, speaking_seconds=90, minutes=20)
+
+    assert get_activity(db, user["id"])["today_seconds"] == pytest.approx(90)
+
+
+def test_unfinished_sessions_add_no_practice_time(db, user):
+    add_session(db, user["id"], days_back=0, finished=False)
+
+    assert get_activity(db, user["id"])["today_seconds"] == 0
+
+
+def test_text_time_needs_an_end_time(db, user):
+    # Metrics without ended_at: LEAST would ignore the missing length and count 30 minutes.
+    add_session(db, user["id"], days_back=0, speaking_seconds=None)
+
+    assert get_activity(db, user["id"])["today_seconds"] == 0
 
 
 def test_unfinished_sessions_count_for_the_streak(db, user):
