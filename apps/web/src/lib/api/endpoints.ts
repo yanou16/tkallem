@@ -12,8 +12,7 @@ export const endpoints = {
     preferences: "/api/users/me/preferences",
     notificationsUnread: "/api/notifications/unread-count",
   },
-  dashboard: "/api/dashboard",
-  mistakes: { top: "/api/mistakes/top" },
+  mySessions: "/me/sessions",
   practice: {
     recent: "/api/practice/sessions/recent",
     focus: "/api/practice/focus",

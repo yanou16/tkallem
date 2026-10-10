@@ -4,10 +4,10 @@ import { useProgress } from "@/features/progress/hooks/useProgress";
 import { Card, EmptyState, ErrorState, PageHeader, Skeleton } from "@/components/ui";
 
 const labels = [
-  ["mistakes_per_100", "Mistakes per 100 words"],
-  ["words_per_answer", "Words per answer"],
-  ["hesitations_per_min", "Hesitations per minute"],
-  ["speaking_seconds", "Speaking seconds"],
+  ["mistakesPer100", "Mistakes per 100 words"],
+  ["wordsPerAnswer", "Words per answer"],
+  ["hesitationsPerMin", "Hesitations per minute"],
+  ["speakingSeconds", "Speaking seconds"],
 ] as const;
 
 export default function ProgressPage() {
@@ -36,11 +36,11 @@ export default function ProgressPage() {
           </div>
           <Card>
             <h2 className="text-xl font-semibold">Top mistakes</h2>
-            {q.data.top_mistakes.length === 0 ? (
+            {q.data.topMistakes.length === 0 ? (
               <EmptyState className="mt-4" title="No mistakes yet" text="Complete a practice session to start tracking corrections." />
             ) : (
               <ul className="mt-4 divide-y divide-line">
-                {q.data.top_mistakes.map((mistake, index) => (
+                {q.data.topMistakes.map((mistake, index) => (
                   <li key={index} className="py-3 text-sm">
                     {Object.entries(mistake).map(([name, value]) => <span key={name} className="mr-4"><strong>{name}:</strong> {String(value)}</span>)}
                   </li>

@@ -3,8 +3,8 @@ import Link from "next/link";
 import { ArrowRight, Clock } from "lucide-react";
 import { Icon } from "@/lib/icons";
 import { AvatarStack, Pill, Skeleton, toneBg, toneDeep, type Tone } from "@/components/ui";
-import { cn } from "@/lib/utils";
-import type { Scenario } from "@/features/practice/types/practice";
+import { cn, plural, timeAgo } from "@/lib/utils";
+import type { Scenario, SessionSummary } from "@/features/practice/types/practice";
 import type { GroupSummary } from "@/features/groups/types/groups";
 import { useToggleMembership } from "@/features/groups/hooks/useGroups";
 
@@ -43,6 +43,29 @@ export function ScenarioCard({ s, tone }: { s: Scenario; tone: Tone }) {
         <StartButton href={startHref(s.id)} />
       </div>
     </article>
+  );
+}
+
+function answered(s: SessionSummary) {
+  return s.totalQuestions === null ? plural(s.answered, "answer") : `${s.answered}/${s.totalQuestions} answers`;
+}
+
+/** The student's sessions from GET /me/sessions. `restart` adds a button that starts the same scenario again. */
+export function SessionList({ sessions, restart }: { sessions: SessionSummary[]; restart?: boolean }) {
+  return (
+    <ul className="divide-y divide-line">
+      {sessions.map((s) => (
+        <li key={s.id} className="flex items-center gap-3 py-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-medium">{s.title}</p>
+            <p className="text-sm text-muted">
+              {answered(s)} · {s.endedAt ? "Finished" : "Not finished"} · {timeAgo(s.startedAt)}
+            </p>
+          </div>
+          {restart && <StartButton href={startHref(s.scenarioId)} label="Practice again" />}
+        </li>
+      ))}
+    </ul>
   );
 }
 
