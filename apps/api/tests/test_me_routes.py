@@ -25,7 +25,15 @@ def test_get_me_creates_profile_on_first_visit(client):
     response = client.get("/me")
 
     assert response.status_code == 200
-    assert response.json() == {"first_name": None, "level": None, "explain_lang": "fr"}
+    assert response.json() == {
+        "first_name": None,
+        "level": None,
+        "explain_lang": "fr",
+        "daily_goal_minutes": 10,
+        "learning_goal": None,
+        "practice_mode": None,
+        "focus_areas": [],
+    }
 
 
 def test_patch_me_updates_level(client):
@@ -42,6 +50,46 @@ def test_patch_me_updates_level(client):
     ids=["empty", "forbidden_field", "invalid_level", "null_level"],
 )
 def test_patch_me_rejects_invalid_body(client, body):
+    assert client.patch("/me", json=body).status_code == 422
+
+def test_patch_me_updates_learning_setup(client):
+    response = client.patch("/me", json={
+        "daily_goal_minutes": 20,
+        "learning_goal": "  Pass my visa interview  ",
+        "practice_mode": "Real-life situations",
+        "focus_areas": ["grammar", "fluency", "grammar"],
+    })
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["daily_goal_minutes"] == 20
+    assert body["learning_goal"] == "Pass my visa interview"
+    assert body["practice_mode"] == "Real-life situations"
+    assert body["focus_areas"] == ["grammar", "fluency"]
+
+
+@pytest.mark.parametrize("value", [None, "   ", ""], ids=["null", "spaces", "empty"])
+def test_patch_me_clears_learning_goal(client, value):
+    client.patch("/me", json={"learning_goal": "Speak at work"})
+
+    response = client.patch("/me", json={"learning_goal": value})
+
+    assert response.status_code == 200
+    assert response.json()["learning_goal"] is None
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"daily_goal_minutes": 7},
+        {"daily_goal_minutes": None},
+        {"focus_areas": ["hacking"]},
+        {"focus_areas": None},
+        {"learning_goal": "x" * 201},
+    ],
+    ids=["goal_not_allowed", "goal_null", "unknown_focus", "focus_null", "goal_too_long"],
+)
+def test_patch_me_rejects_invalid_learning_setup(client, body):
     assert client.patch("/me", json=body).status_code == 422
 
 

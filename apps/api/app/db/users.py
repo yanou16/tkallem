@@ -1,6 +1,9 @@
 from psycopg import Connection, sql
 
-USER_COLUMNS = "id, clerk_user_id, email, first_name, level, explain_lang, created_at"
+USER_COLUMNS = (
+    "id, clerk_user_id, email, first_name, level, explain_lang, created_at, "
+    "daily_goal_minutes, learning_goal, practice_mode, focus_areas"
+)
 
 
 def get_by_clerk_id(conn: Connection, clerk_user_id: str) -> dict | None:
@@ -30,7 +33,7 @@ def get_or_create_by_clerk_id(conn: Connection, clerk_user_id: str) -> dict:
     return get_by_clerk_id(conn, clerk_user_id)
 
 
-UPDATABLE_COLUMNS = {"level", "explain_lang"}
+UPDATABLE_COLUMNS = {"level", "explain_lang", "daily_goal_minutes", "learning_goal", "practice_mode", "focus_areas"}
 
 
 def update_profile(conn: Connection, user_id: int, changes: dict) -> dict:
