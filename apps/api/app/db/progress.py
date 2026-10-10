@@ -21,6 +21,32 @@ def count_streak(days: list[date], today: date) -> int:
     return streak
 
 
+def best_streak(days: list[date]) -> int:
+    """Longest run of consecutive practice days ever, even if it is over (for badges)."""
+    best = run = 0
+    previous = None
+    for day in sorted(set(days)):
+        run = run + 1 if previous is not None and day - previous == timedelta(days=1) else 1
+        best = max(best, run)
+        previous = day
+    return best
+
+
+def get_practice_days(conn: Connection, user_id: int) -> list[date]:
+    """Days with at least one session (finished or not), in Algiers time, newest first."""
+    rows = conn.execute(
+        """
+        SELECT DISTINCT (started_at AT TIME ZONE %(tz)s)::date AS day
+        FROM practice_sessions
+        WHERE user_id = %(user_id)s
+        ORDER BY day DESC
+        LIMIT 400
+        """,
+        {"user_id": user_id, "tz": TIMEZONE},
+    ).fetchall()
+    return [row["day"] for row in rows]
+
+
 def get_activity(conn: Connection, user_id: int) -> dict:
     """Practice time today and over the last 7 days, and the current streak.
     Practice time of a finished session: the spoken time when every answer was spoken, else its length."""
@@ -55,21 +81,10 @@ def get_activity(conn: Connection, user_id: int) -> dict:
         params,
     ).fetchone()
 
-    days = conn.execute(
-        """
-        SELECT DISTINCT (started_at AT TIME ZONE %(tz)s)::date AS day
-        FROM practice_sessions
-        WHERE user_id = %(user_id)s
-        ORDER BY day DESC
-        LIMIT 400
-        """,
-        params,
-    ).fetchall()
-
     return {
         "week_seconds": float(totals["week_seconds"]),
         "today_seconds": float(totals["today_seconds"]),
-        "streak_days": count_streak([row["day"] for row in days], totals["today"]),
+        "streak_days": count_streak(get_practice_days(conn, user_id), totals["today"]),
     }
 
 def combine_metrics(rows: list[dict]) -> dict:

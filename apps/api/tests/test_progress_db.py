@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.db.progress import combine_metrics, count_streak, get_activity, get_metrics, get_top_mistakes
+from app.db.progress import best_streak, combine_metrics, count_streak, get_activity, get_metrics, get_top_mistakes
 from app.db.sessions import create_session
 from app.db.users import get_or_create_by_clerk_id
 
@@ -38,6 +38,25 @@ def test_streak_stops_at_the_first_gap():
 
 def test_streak_ignores_duplicate_days():
     assert count_streak(days_ago(0, 0, 1), TODAY) == 2
+
+
+def test_best_streak_is_zero_without_practice():
+    assert best_streak([]) == 0
+
+
+def test_best_streak_is_the_longest_run_ever():
+    assert best_streak(days_ago(0, 10, 11, 12, 13, 20, 21)) == 4
+
+
+def test_best_streak_keeps_a_run_that_is_over():
+    days = days_ago(5, 6, 7)
+
+    assert count_streak(days, TODAY) == 0
+    assert best_streak(days) == 3
+
+
+def test_best_streak_ignores_order_and_duplicates():
+    assert best_streak(days_ago(2, 0, 1, 1)) == 3
 
 
 @pytest.fixture
