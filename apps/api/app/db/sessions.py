@@ -54,7 +54,9 @@ def list_turns(conn: Connection, session_id: UUID, user_id: int) -> list[dict]:
         SELECT t.position, t.transcript, t.reply, t.sentence_status,
                COALESCE(
                    json_agg(
-                       json_build_object('original', c.original, 'fixed', c.fixed, 'type', c.type, 'why', c.why)
+                       json_build_object(
+                           'original', c.original, 'fixed', c.fixed, 'type', c.type, 'why', c.why, 'rule', c.rule
+                       )
                        ORDER BY c.id
                    ) FILTER (WHERE c.id IS NOT NULL),
                    '[]'::json
@@ -112,10 +114,11 @@ def save_turn(
         with conn.cursor() as cur:
             cur.executemany(
                 """
-                INSERT INTO corrections (turn_id, original, fixed, type, why)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO corrections (turn_id, original, fixed, type, why, rule)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 """,
-                [(turn["id"], c["original"], c["fixed"], c["type"], c["why"]) for c in corrections],
+                # rule is optional: NULL when the agent left it out.
+                [(turn["id"], c["original"], c["fixed"], c["type"], c["why"], c.get("rule")) for c in corrections],
             )
     return turn["id"]
 
