@@ -46,7 +46,7 @@ def test_free_talk_has_no_questions_count(client):
 
     assert free["mode"] == "free"
     assert free["total_questions"] is None
-    assert free["minutes"] is None
+    assert free["minutes"] == load_scenario("free-talk").minutes
 
 
 def test_scenarios_require_a_token():
