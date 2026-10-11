@@ -20,7 +20,7 @@ export const endpoints = {
   dashboard: "/api/dashboard",
   mistakes: { top: "/api/mistakes/top" },
   practice: {
-    scenarios: "/api/practice/scenarios",
+    scenarios: "/scenarios",
     recent: "/api/practice/sessions/recent",
     recommended: "/api/practice/recommended",
     focus: "/api/practice/focus",

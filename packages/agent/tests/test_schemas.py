@@ -38,8 +38,8 @@ def test_three_corrections_is_red():
 
 def test_eval_set_integrity():
     rows = json.loads((Path(__file__).parents[1] / "evals/correction_set.json").read_text())
-    assert len(rows) == 30
-    assert len({r["id"] for r in rows}) == 30
+    assert len(rows) == 33
+    assert len({r["id"] for r in rows}) == 33
     assert all(r["level"] in {"A2", "B1", "B2", "C1"} for r in rows)
     assert all(e["wrong"] != e["fixed"] for r in rows for e in r["errors"])
 

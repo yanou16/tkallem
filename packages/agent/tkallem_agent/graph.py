@@ -75,6 +75,7 @@ def hedged_invoke(runnable, messages, config=None, after: float | None = None):
 class Reply(BaseModel):
     reaction: str
     goal_covered: str | None  # required (may be null): the model must always decide
+    skip_next: bool = False  # the answer shows the next questions cannot apply to this student (code checks they are skippable)
 
 
 class Found(BaseModel):
@@ -109,14 +110,32 @@ def answered_count(history: list[BaseMessage]) -> int:
     return sum(isinstance(m, HumanMessage) for m in history)
 
 
-def next_question(scenario: dict, history: list[BaseMessage]) -> str | None:
-    """Scenario questions come in order, verbatim. The session opened with question 0, so the next one follows
-    the number of student answers (including the one being processed)."""
+def asked_position(scenario: dict, history: list[BaseMessage]) -> int:
+    """Index of the last scenario question the coach asked: found in the coach lines of the history (questions are
+    appended verbatim). Derived from the history, so skipped questions need no extra state."""
+    pos = 0
+    for m in history:
+        if isinstance(m, AIMessage):
+            for i, q in enumerate(scenario["questions"]):
+                if i > pos and q in m.content:
+                    pos = i
+    return max(pos, answered_count(history))  # a skipped question only moves the position further than the count
+
+
+def already_closed(scenario: dict, history: list[BaseMessage]) -> bool:
+    return answered_count(history) >= len(scenario["questions"]) or any(isinstance(m, AIMessage) and CLOSING in m.content for m in history)
+
+
+def next_question(scenario: dict, history: list[BaseMessage], skip: bool = False) -> str | None:
+    """Scenario questions come in order, verbatim. With `skip`, the questions the scenario marks as skippable are
+    passed over (the student's answer showed they cannot apply). Never skips a question not marked skippable."""
     if is_free(scenario):
         return None
-    answered = answered_count(history) + 1
-    questions = scenario["questions"]
-    return questions[answered] if answered < len(questions) else None
+    questions, goals = scenario["questions"], scenario.get("goals", [])
+    nxt = asked_position(scenario, history) + 1
+    while skip and nxt < len(questions) and nxt < len(goals) and goals[nxt] in scenario.get("skippable", []):
+        nxt += 1
+    return questions[nxt] if nxt < len(questions) else None
 
 
 def build_system_prompt(level: Level, scenario: dict) -> str:
@@ -166,10 +185,9 @@ def learner_text(text: str) -> str:
 def compose_reply(reply: dict, scenario: dict, history: list[BaseMessage]) -> str:
     """Final coach line: the model's reaction, then (guided mode) the next scenario question or the closing."""
     free = is_free(scenario)
-    question = next_question(scenario, history)
+    question = next_question(scenario, history, bool(reply.get("skip_next")))
     if question is None and not free:
-        already_closed = answered_count(history) + 1 > len(scenario["questions"])
-        question = "" if already_closed else CLOSING  # close once, then only react
+        question = "" if already_closed(scenario, history) else CLOSING  # close once, then only react
     return f"{clean_reaction(reply['reaction'], free)} {question or ''}".strip() or "Thank you."
 
 

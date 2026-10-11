@@ -23,7 +23,7 @@ from dataclasses import asdict, dataclass, field
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 
-from .graph import build_graph, compose_reply, final_corrections
+from .graph import CLOSING, build_graph, compose_reply, final_corrections
 from .levels import MAX_WORDS
 from .llm import default_llm
 from .report import Report, TurnRecord, build_report
@@ -101,7 +101,7 @@ class CoachSession:
     @property
     def finished(self) -> bool:
         """Guided scenario: every question has been answered. Free talk never finishes by itself."""
-        return self.scenario.mode == "guided" and len(self.turns) >= len(self.scenario.questions)
+        return self.scenario.mode == "guided" and any(CLOSING in t.reply for t in self.turns)
 
     def history(self) -> list[BaseMessage]:
         messages: list[BaseMessage] = [AIMessage(self.opening)]

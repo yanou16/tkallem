@@ -195,3 +195,44 @@ def test_pauses_are_stored_validated_and_survive_the_state_roundtrip():
     assert again.end().metrics["hesitations_per_min"] == 3.0  # 3 pauses / 1 minute of speech
     with pytest.raises(ValueError):
         s.turn("Hello again.", pauses=-1)
+
+
+def test_coach_skips_study_questions_when_the_student_does_not_study():
+    qs = load_scenario("visa-us").questions
+    skip = {"reaction": "I see, you will work.", "goal_covered": "purpose_of_trip", "skip_next": True}
+    llm = FakeChat([NONE] * 3, [skip, reply(), reply()])
+    s = CoachSession("visa-us", "B1", "fr", llm=llm)
+    first = s.turn("I go to work, not to study.")
+    assert first.reply.endswith(qs[4])  # university, funding and why-abroad are skipped: ties to Algeria
+    second = s.turn("My family lives in Oran.")
+    assert second.reply.endswith(qs[5])
+    s.turn("I will keep my job.")
+    assert s.finished
+
+
+def test_a_question_not_marked_skippable_is_never_skipped():
+    qs = load_scenario("visa-us").questions
+    skip = {"reaction": "Fine.", "goal_covered": None, "skip_next": True}
+    llm = FakeChat([NONE] * 3, [skip, skip, skip])
+    s = CoachSession("visa-us", "B1", "fr", llm=llm)
+    s.turn("a")
+    assert s.turns[-1].reply.endswith(qs[4])
+    s.turn("b")
+    assert s.turns[-1].reply.endswith(qs[5])  # ties_to_algeria is not skippable, so the plans question follows it
+    s.turn("c")
+    assert s.finished
+
+
+def test_skipping_survives_the_state_roundtrip():
+    qs = load_scenario("visa-us").questions
+    skip = {"reaction": "OK.", "goal_covered": None, "skip_next": True}
+    s = CoachSession("visa-us", "B1", "fr", llm=FakeChat([NONE] * 2, [skip, reply()]))
+    s.turn("I work.")
+    again = CoachSession.from_state(s.to_state(), llm=FakeChat([NONE], [reply()]))
+    assert again.turn("My family is here.").reply.endswith(qs[5])
+
+
+def test_study_studies_swap_is_not_a_correction():
+    from tkallem_agent.schemas import sanitize
+    raw = {"corrections": [{"original": "not studies", "fixed": "not study", "type": "grammar", "why": "x"}], "sentence_status": "orange"}
+    assert sanitize(raw, None, "it's not studies")["corrections"] == []

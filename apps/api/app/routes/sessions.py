@@ -81,6 +81,9 @@ def _answer(session_id: UUID, session: dict, text: str | None, audio: UploadFile
             raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Speech recognition is unavailable, try again or type your answer")
         if not heard.text.strip():
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "We did not hear anything, try again")
+        if heard.unclear:
+            logger.info("Unclear transcription on session %s: %r", session_id, heard.text[:80])
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "We could not understand this recording, speak a little closer and try again")
         text, audio_seconds, pauses, stt_s = heard.text, heard.duration_s, heard.long_pauses(), heard.latency_s
 
     expected_turns = len(session["state"]["turns"])

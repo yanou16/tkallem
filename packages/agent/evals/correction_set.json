@@ -467,5 +467,40 @@
     "accepted": [
       "Can you repeat the question please?"
     ]
+  },
+  {
+    "id": "s31",
+    "sentence": "It's not studies, it's work. I finished my studies two years ago.",
+    "level": "B1",
+    "errors": [],
+    "accepted": [
+      "It's not studies, it's work. I finished my studies two years ago."
+    ]
+  },
+  {
+    "id": "s32",
+    "sentence": "I told you that it's not studies.",
+    "level": "B1",
+    "errors": [],
+    "accepted": [
+      "I told you that it's not studies."
+    ]
+  },
+  {
+    "id": "s33",
+    "sentence": "I finished my study two years before.",
+    "level": "B1",
+    "errors": [
+      {
+        "wrong": "two years before",
+        "fixed": "two years ago",
+        "type": "word_choice",
+        "rule": "other"
+      }
+    ],
+    "accepted": [
+      "I finished my study two years ago.",
+      "I finished my studies two years ago."
+    ]
   }
 ]

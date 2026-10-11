@@ -67,6 +67,14 @@ def _norm(text: str) -> str:
     return " ".join(re.sub(r"[.,!?;:]", " ", text.lower()).split())
 
 
+def _only_study_number(original: str, fixed: str) -> bool:
+    """"studies" is a correct noun ("it's not studies", "my studies"): turning it into "study" is noise. The other way
+    ("my study" -> "my studies") stays allowed, it is often a real mistake."""
+    a, b = _norm(original).split(), _norm(fixed).split()
+    swap = {"studies": "study"}
+    return len(a) == len(b) and a != b and all(x == y or swap.get(x) == y for x, y in zip(a, b))
+
+
 def sanitize(raw: dict, goals: list[str] | None = None, student_text: str | None = None) -> dict:
     """Guardrails applied to raw model output before validation.
 
@@ -94,6 +102,8 @@ def sanitize(raw: dict, goals: list[str] | None = None, student_text: str | None
         if _protected(original) - _protected(fixed):
             continue
         if len(fixed.split()) > len(original.split()) + 3:
+            continue
+        if _only_study_number(original, fixed):
             continue
         kept.append(c)
     kept = kept[:3]

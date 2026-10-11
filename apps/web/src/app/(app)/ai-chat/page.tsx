@@ -76,6 +76,7 @@ function Chat() {
   const phrasing = useMemo(() => [...(s?.corrections ?? [])].reverse().find((c) => c.type !== "grammar"), [s?.corrections]);
   const title = s?.scenarioTitle ?? scenarios.data?.find((x) => x.id === scenarioId)?.title;
   const icon = scenarios.data?.find((x) => x.id === scenarioId)?.icon;
+  const roleNote = scenarios.data?.find((x) => x.id === scenarioId)?.description;
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -89,11 +90,12 @@ function Chat() {
               <span className="flex-1"><span className="block text-xs text-muted">Scenario</span><span className="font-semibold">{title ?? "Choose a scenario"}</span></span>
               <ChevronDown size={18} />
             </button>
+            {roleNote && <p className="mt-2 px-1 text-xs text-muted">{roleNote}</p>}
             {menu && (
               <ul className="absolute z-20 mt-2 max-h-72 w-full overflow-auto rounded-2xl border border-line bg-white p-1.5 shadow-soft">
                 {(scenarios.data ?? []).map((sc) => (
                   <li key={sc.id}><button className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-black/5"
-                    onClick={() => { setMenu(false); started.current = null; router.replace(`/ai-chat?scenarioId=${sc.id}`); }}>{sc.title}</button></li>
+                    onClick={() => { setMenu(false); started.current = null; router.replace(`/ai-chat?scenarioId=${sc.id}`); }}><span className="block font-medium">{sc.title}</span><span className="block text-xs text-muted">{sc.description}</span></button></li>
                 ))}
                 {scenarios.data?.length === 0 && <li className="px-3 py-2 text-sm text-muted">No scenarios available</li>}
               </ul>

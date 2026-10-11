@@ -17,6 +17,7 @@ from app.voice.errors import provider_message
 # voices Whisper kept them anyway and the prompt changed nothing; prompts can also be hallucinated on silence).
 # Re-test on real recordings before turning it on.
 KEEP_FILLERS_PROMPT = "Umm, let me think like, hmm... Okay, here's what I'm, like, thinking."
+MIN_AVG_LOGPROB = -1.0  # Whisper's mean log-probability per segment: below this the words are mostly guesses
 LONG_PAUSE_SECONDS = 0.7  # silence between two words that counts as a hesitation
 
 
@@ -40,6 +41,21 @@ class Transcription:
     latency_s: float
     duration_s: float | None = None  # audio length, when the provider reports it
     words: list[dict] = field(default_factory=list)  # [{"text", "start", "end"}], empty if not provided
+    segments: list[dict] = field(default_factory=list)  # Whisper's own confidence per segment, empty if not provided
+
+    @property
+    def unclear(self) -> bool:
+        """Whisper heard noise or speech it could not follow and wrote something anyway (it then often invents text in
+        another language). Better to ask the student to repeat than to send that text to the coach."""
+        letters = [c for c in self.text if c.isalpha()]
+        if letters and sum(not (c.isascii()) for c in letters) / len(letters) > 0.08:
+            return True  # accented/foreign letters in an English answer: a hallucination, not an Algerian learner's English
+        segs = [s for s in self.segments if "avg_logprob" in s]
+        if not segs:
+            return False
+        if all(s.get("no_speech_prob", 0) > 0.6 for s in segs):
+            return True
+        return sum(s["avg_logprob"] for s in segs) / len(segs) < MIN_AVG_LOGPROB
 
     def long_pauses(self, min_gap: float = LONG_PAUSE_SECONDS) -> int:
         """Silences longer than `min_gap` between consecutive words: a hesitation signal Whisper cannot erase."""
@@ -76,7 +92,7 @@ def _groq(client: httpx.Client, audio: bytes, filename: str, content_type: str, 
     )
     r.raise_for_status()
     body = r.json()
-    return body.get("text", ""), body.get("duration"), _words(body.get("words"))
+    return body.get("text", ""), body.get("duration"), _words(body.get("words")), body.get("segments") or []
 
 
 def _deepinfra(client: httpx.Client, audio: bytes, filename: str, content_type: str, language: str, keep_fillers: bool):
@@ -97,7 +113,7 @@ def _deepinfra(client: httpx.Client, audio: bytes, filename: str, content_type: 
     duration = body.get("duration")
     if duration is None and body.get("input_length_ms") is not None:
         duration = body["input_length_ms"] / 1000
-    return body.get("text", ""), duration, _words(body.get("words"))
+    return body.get("text", ""), duration, _words(body.get("words")), body.get("segments") or []
 
 
 PROVIDERS = {"groq": _groq, "deepinfra": _deepinfra}
@@ -125,7 +141,7 @@ def transcribe(
     http = client or httpx.Client(timeout=settings.voice_timeout)
     t0 = time.perf_counter()
     try:
-        text, duration, words = PROVIDERS[name](http, audio, filename, content_type, language, keep_fillers)
+        text, duration, words, segments = PROVIDERS[name](http, audio, filename, content_type, language, keep_fillers)
     except SttError:
         raise
     except httpx.HTTPStatusError as e:
@@ -135,4 +151,4 @@ def transcribe(
     finally:
         if own:
             http.close()
-    return Transcription(text.strip(), name, time.perf_counter() - t0, duration, words)
+    return Transcription(text.strip(), name, time.perf_counter() - t0, duration, words, segments)

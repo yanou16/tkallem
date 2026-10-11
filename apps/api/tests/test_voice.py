@@ -166,3 +166,15 @@ def test_split_text_respects_the_limit_and_keeps_every_word():
     assert all(len(c) <= 100 for c in chunks)
     assert "".join("".join(chunks).split()) == "".join(text.split())
     assert split_text("Short reply.") == ["Short reply."]
+
+
+def test_garbled_or_foreign_transcription_is_unclear():
+    from app.voice.stt import Transcription
+    assert Transcription("Jale Kailt útíu að heyra stórk.", "groq", 0.4).unclear
+    assert not Transcription("I would like to study in the US.", "groq", 0.4).unclear
+    low = [{"avg_logprob": -1.4, "no_speech_prob": 0.1}]
+    assert Transcription("Maybe it was ok.", "groq", 0.4, segments=low).unclear
+    silent = [{"avg_logprob": -0.3, "no_speech_prob": 0.9}]
+    assert Transcription("Thank you.", "groq", 0.4, segments=silent).unclear
+    good = [{"avg_logprob": -0.2, "no_speech_prob": 0.01}]
+    assert not Transcription("I live in Algiers.", "groq", 0.4, segments=good).unclear

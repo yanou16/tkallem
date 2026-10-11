@@ -34,6 +34,7 @@ class Scenario(BaseModel):
     questions: list[str] = []
     goals: list[str] = []
     useful_words: list[str] = []
+    skippable: list[str] = []  # goal ids the coach may skip when the student's answer makes them meaningless
 
     @model_validator(mode="after")
     def coherent(self):
@@ -44,7 +45,13 @@ class Scenario(BaseModel):
                 raise ValueError("one goal id per question")
             if len(set(self.goals)) != len(self.goals):
                 raise ValueError("goal ids must be unique")
+            if self.goals and self.goals[0] in self.skippable:
+                raise ValueError("the first question cannot be skipped")
+            if not set(self.skippable) <= set(self.goals):
+                raise ValueError("skippable ids must be goal ids")
         else:
+            if self.skippable:
+                raise ValueError("a free scenario has nothing to skip")
             if self.questions or self.goals:
                 raise ValueError("a free scenario has no fixed questions or goals")
             if not self.opening:
