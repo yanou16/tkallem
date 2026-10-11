@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#FFC93C">
+  <title>Tkallem · Offline</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body { display: grid; place-items: center; background: #fff; color: #111; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { max-width: 22rem; padding: 2rem 1.5rem; text-align: center; }
+    .logo { width: 64px; height: 64px; margin: 0 auto 1.5rem; border-radius: 16px; background: #FFC93C; display: grid; place-items: center; font-weight: 800; font-size: 34px; }
+    h1 { font-size: 1.4rem; margin: 0 0 .5rem; }
+    p { color: #6b6b76; line-height: 1.5; margin: 0 0 1.5rem; }
+    button { background: #111; color: #fff; border: 0; border-radius: 999px; padding: .8rem 1.6rem; font-size: 1rem; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="logo" aria-hidden="true">T</div>
+    <h1>You are offline</h1>
+    <p>Tkallem needs the internet to talk with your coach. Check your connection and try again.</p>
+    <button onclick="location.reload()">Try again</button>
+  </main>
+</body>
+</html>
