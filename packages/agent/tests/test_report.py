@@ -74,3 +74,10 @@ def test_redo_falls_back_to_the_most_corrected_orange_answer():
     r = build_report(turns, FakeLLM("ok"), "B1")
     assert r.lines[r.redo_index]["text"] == "d e f"
     assert build_report([TurnRecord("ok fine", [], "green")], FakeLLM("ok"), "B1").redo_index is None
+
+
+def test_long_pauses_count_as_hesitations():
+    turns = [TurnRecord("I go to the US.", [], "green", pauses=2), TurnRecord("Um I think so.", [], "green", pauses=1)]
+    m = compute_metrics(turns, speaking_seconds=60)
+    assert m["hesitations_per_min"] == 4.0  # 1 filler ("Um") + 3 long pauses in one minute
+    assert compute_metrics([TurnRecord("I go.", [], "green")], speaking_seconds=60)["hesitations_per_min"] == 0.0

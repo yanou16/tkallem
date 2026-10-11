@@ -8,8 +8,11 @@ Neither answer format could be confirmed without a key: the DeepInfra audio fiel
 (data URI, raw base64 or URL) and must be checked once with scripts/voice_bench.py.
 """
 import base64
+import io
 import re
+import struct
 import time
+import wave
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
@@ -38,8 +41,58 @@ class Speech:
     part_latencies: list[float] = field(default_factory=list)
 
     @property
+    def audio(self) -> bytes:
+        """The whole reply as one file (several WAV parts are joined)."""
+        return merge_wav(self.parts) if self.mime == "audio/wav" else self.parts[0]  # also repairs a streaming header
+
+    @property
+    def data_uri(self) -> str:
+        """The audio as a `data:` URL the front can put in `<audio src>`: nothing is stored on the server."""
+        return f"data:{self.mime};base64,{base64.b64encode(self.audio).decode()}"
+
+    @property
     def cost_usd(self) -> float:
         return self.chars * PRICE_PER_MILLION_CHARS[self.provider] / 1_000_000
+
+
+def _wav_pcm(data: bytes) -> tuple[tuple[int, int, int], bytes]:
+    """((channels, sample width in bytes, rate), raw samples) of a WAV file, tolerating the "streaming" header some
+    providers send (RIFF and data sizes set to 0xFFFFFFFF, extra chunks before the samples)."""
+    if data[:4] != b"RIFF" or data[8:12] != b"WAVE":
+        raise TtsError("unreadable WAV part: not a RIFF/WAVE file")
+    fmt, pos = None, 12
+    while pos + 8 <= len(data):
+        chunk_id, size = data[pos:pos + 4], struct.unpack("<I", data[pos + 4:pos + 8])[0]
+        body = pos + 8
+        if chunk_id == b"fmt ":
+            tag, channels, rate, _, _, bits = struct.unpack("<HHIIHH", data[body:body + 16])
+            if tag != 1 or bits % 8:
+                raise TtsError("unreadable WAV part: only PCM is supported")
+            fmt = (channels, bits // 8, rate)
+        elif chunk_id == b"data":
+            if fmt is None:
+                raise TtsError("unreadable WAV part: data before fmt")
+            end = body + size if body + size <= len(data) else len(data)  # a size past the end means "until the end"
+            return fmt, data[body:end]
+        pos = body + size + (size & 1)
+    raise TtsError("unreadable WAV part: no data chunk")
+
+
+def merge_wav(parts: list[bytes]) -> bytes:
+    """One clean WAV file from one or several providers' files of the same format (header sizes rewritten)."""
+    fmt, frames = None, []
+    for part in parts:
+        part_fmt, pcm = _wav_pcm(part)
+        if fmt is not None and part_fmt != fmt:
+            raise TtsError("audio parts have different formats")
+        fmt = part_fmt
+        frames.append(pcm)
+    out = io.BytesIO()
+    with wave.open(out, "wb") as w:
+        w.setnchannels(fmt[0]), w.setsampwidth(fmt[1]), w.setframerate(fmt[2])
+        for f in frames:
+            w.writeframes(f)
+    return out.getvalue()
 
 
 def split_text(text: str, limit: int = GROQ_MAX_CHARS) -> list[str]:

@@ -184,3 +184,14 @@ def test_missing_llm_key_is_an_agent_error_not_a_crash(monkeypatch):
     s.turns.append(TurnLog("I go to the US to study.", "Good.", [], "green"))
     with pytest.raises(AgentError, match="not configured"):
         s.end()
+
+
+def test_pauses_are_stored_validated_and_survive_the_state_roundtrip():
+    s = CoachSession("visa-us", "B1", llm=FakeChat([NONE, NONE], [reply(), reply()], text=["ok"]))
+    s.turn("I go to the US.", audio_seconds=30, pauses=3)
+    s.turn("To study.", audio_seconds=30)  # default: no pause information
+    again = CoachSession.from_state(json.loads(json.dumps(s.to_state())), llm=s.llm)
+    assert [t.pauses for t in again.turns] == [3, 0]
+    assert again.end().metrics["hesitations_per_min"] == 3.0  # 3 pauses / 1 minute of speech
+    with pytest.raises(ValueError):
+        s.turn("Hello again.", pauses=-1)

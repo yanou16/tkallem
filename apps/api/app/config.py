@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     stt_model: str = "whisper-large-v3-turbo"
     stt_provider: str = "groq"  # groq | deepinfra
-    tts_provider: str = "deepinfra"  # deepinfra (Kokoro) | groq (Orpheus)
+    tts_provider: str = "groq"  # groq (Orpheus, limited to 100 voices/day) | deepinfra (Kokoro, needs a balance)
     deepinfra_api_key: str = ""
     voice_timeout: float = 20.0
     database_url: str = ""

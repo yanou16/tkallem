@@ -2,7 +2,7 @@
 
     session = CoachSession("visa-us", level="B1", explain_lang="fr")
     session.opening                        # first coach line (question 0, or the free-talk opener)
-    turn = session.turn("I go to the US for study.", audio_seconds=3.2)   # -> AgentTurn (contract)
+    turn = session.turn("I go to the US for study.", audio_seconds=3.2, pauses=1)   # -> AgentTurn (contract)
     for event in session.turn_events("..."): ...   # same turn, coach reply first (start the voice early)
     report = session.end()                 # -> Report (transcript, metrics, colors, honest note)
 
@@ -50,6 +50,7 @@ class TurnLog:
     status: str
     goal_covered: str | None = None
     audio_seconds: float | None = None
+    pauses: int = 0  # long silences counted on the audio by the voice pipeline
     timings: dict = field(default_factory=dict)
 
 
@@ -111,7 +112,7 @@ class CoachSession:
     def _tracing(self, run_name: str) -> dict:
         return run_config(run_name, self.session_id, [self.scenario.id, self.level, self.explain_lang])
 
-    def _clean_input(self, student_text: str, audio_seconds: float | None) -> str:
+    def _clean_input(self, student_text: str, audio_seconds: float | None, pauses: int = 0) -> str:
         text = " ".join(str(student_text).split())
         if not text:
             raise ValueError("empty answer")
@@ -119,9 +120,11 @@ class CoachSession:
             raise ValueError(f"answer too long ({len(text)} characters, max {self.max_text_chars})")
         if audio_seconds is not None and audio_seconds < 0:
             raise ValueError("audio_seconds must be positive")
+        if pauses < 0:
+            raise ValueError("pauses must be positive")
         return text
 
-    def turn_events(self, student_text: str, audio_seconds: float | None = None) -> Iterator[dict]:
+    def turn_events(self, student_text: str, audio_seconds: float | None = None, pauses: int = 0) -> Iterator[dict]:
         """Same as turn(), but yields each part as soon as it is ready, so the app can start the coach's voice
         before the corrections are done (DESIGN.md: corrections animate in after the coach reply starts).
 
@@ -133,7 +136,7 @@ class CoachSession:
         while the reply was already sent). The turn is then not recorded: tell the student to repeat the answer;
         the coach will react to it again and ask the same next question.
         """
-        text = self._clean_input(student_text, audio_seconds)
+        text = self._clean_input(student_text, audio_seconds, pauses)
         scenario, history = self.scenario.model_dump(), self.history()
         state = {
             "level": self.level,
@@ -177,15 +180,16 @@ class CoachSession:
                 status=turn.sentence_status,
                 goal_covered=turn.goal_covered,
                 audio_seconds=audio_seconds,
+                pauses=pauses,
                 timings=timings,
             )
         )
         self.last_timings = timings
         yield {"type": "done", "turn": turn, "timings": timings}
 
-    def turn(self, student_text: str, audio_seconds: float | None = None) -> AgentTurn:
+    def turn(self, student_text: str, audio_seconds: float | None = None, pauses: int = 0) -> AgentTurn:
         """One student answer in, the full coach turn out (reply + corrections + status), as in the contract."""
-        for event in self.turn_events(student_text, audio_seconds):
+        for event in self.turn_events(student_text, audio_seconds, pauses):
             if event["type"] == "done":
                 return event["turn"]
         raise AgentError("no turn produced")  # unreachable: turn_events ends with "done" or raises
@@ -197,7 +201,7 @@ class CoachSession:
         return round(sum(t.audio_seconds for t in self.turns), 1)  # type: ignore[misc]
 
     def end(self) -> Report:
-        records = [TurnRecord(t.student_text, [Correction(**c) for c in t.corrections], t.status) for t in self.turns]  # type: ignore[arg-type]
+        records = [TurnRecord(t.student_text, [Correction(**c) for c in t.corrections], t.status, t.pauses) for t in self.turns]  # type: ignore[arg-type]
         coach_lines = [self.opening] + [t.reply for t in self.turns]
         t0 = time.perf_counter()
         report = build_report(
@@ -212,9 +216,9 @@ class CoachSession:
         self.last_timings = {"report": time.perf_counter() - t0}
         return report
 
-    async def aturn(self, student_text: str, audio_seconds: float | None = None) -> AgentTurn:
+    async def aturn(self, student_text: str, audio_seconds: float | None = None, pauses: int = 0) -> AgentTurn:
         """Async wrapper for FastAPI: runs the blocking LLM calls in a worker thread."""
-        return await asyncio.to_thread(self.turn, student_text, audio_seconds)
+        return await asyncio.to_thread(self.turn, student_text, audio_seconds, pauses)
 
     async def aend(self) -> Report:
         return await asyncio.to_thread(self.end)

@@ -21,7 +21,16 @@ LONG_PAUSE_SECONDS = 0.7  # silence between two words that counts as a hesitatio
 
 
 class SttError(RuntimeError):
-    """The transcription failed (provider down, bad key, unreadable audio)."""
+    """The transcription failed (provider down, bad key, unreadable audio). `status` is the provider's HTTP status."""
+
+    def __init__(self, message: str, status: int | None = None):
+        super().__init__(message)
+        self.status = status
+
+    @property
+    def bad_audio(self) -> bool:
+        """The provider could not read the file (400, 415, 422): the student's problem, not an outage."""
+        return self.status in (400, 415, 422)
 
 
 @dataclass
@@ -120,7 +129,7 @@ def transcribe(
     except SttError:
         raise
     except httpx.HTTPStatusError as e:
-        raise SttError(f"{name} answered {e.response.status_code}{provider_message(e.response)}") from e
+        raise SttError(f"{name} answered {e.response.status_code}{provider_message(e.response)}", e.response.status_code) from e
     except (httpx.HTTPError, ValueError) as e:  # network, timeout, invalid JSON
         raise SttError(f"{name} failed: {type(e).__name__}") from e
     finally:

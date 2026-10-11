@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Form, HTTPException, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from psycopg import Connection
 from tkallem_agent import AgentError, CoachSession, ScenarioNotFound
 
@@ -12,6 +12,7 @@ from app.db.users import get_or_create_by_clerk_id
 from app.dependencies import get_current_user
 from app.schemas.sessions import SessionCreate, SessionReport, SessionStarted, TurnResult
 from app.security import ClerkClaims, get_clerk_claims
+from app.voice import SttError, TtsError, run_turn, synthesize, transcribe
 
 logger = logging.getLogger(__name__)
 
@@ -51,20 +52,30 @@ def start_session(
         explain_lang,
         coach.to_state(),
     )
+    audio_url = None
+    if body.mode == "voice":  # the coach's first question is spoken too; a voice failure only means no audio
+        try:
+            audio_url = synthesize(coach.opening).data_uri
+        except TtsError as exc:
+            logger.warning("First question without audio: %s", exc)
     return {
         "session_id": coach.session_id,
-        "first_question": {"text": coach.opening, "audio_url": None},
+        "first_question": {"text": coach.opening, "audio_url": audio_url},
     }
 
 
 @router.post("/{session_id}/turn", response_model=TurnResult)
 def send_turn(
     session_id: UUID,
-    text: str = Form(...),
+    text: str | None = Form(None),
+    audio: UploadFile | None = File(None),
     claims: ClerkClaims = Depends(get_clerk_claims),
     connect: ConnFactory = Depends(get_conn_factory),
     llm=Depends(get_llm),
 ) -> dict:
+    """One answer, typed (`text`) or spoken (`audio`, webm from Chrome, mp4 from Safari): exactly one of the two."""
+    if (text is None) == (audio is None):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Send exactly one of `text` or `audio`")
     with connect() as conn:
         user = get_or_create_by_clerk_id(conn, claims.user_id)
         session = get_session_for_user(conn, session_id, user["id"])
@@ -73,10 +84,27 @@ def send_turn(
     if session["ended_at"] is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
 
+    audio_seconds, pauses, stt_s = None, 0, None
+    if audio is not None:
+        data = audio.file.read(settings.max_audio_bytes + 1)
+        if len(data) > settings.max_audio_bytes:
+            raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, "Recording too long, answer in a shorter message")
+        try:
+            heard = transcribe(data, audio.filename or "answer.webm", audio.content_type or "audio/webm")
+        except SttError as exc:
+            logger.warning("Transcription failed on session %s: %s", session_id, exc)
+            if exc.bad_audio:
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "We could not read this recording, try again")
+            raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Speech recognition is unavailable, try again or type your answer")
+        if not heard.text.strip():
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "We did not hear anything, try again")
+        text, audio_seconds, pauses, stt_s = heard.text, heard.duration_s, heard.long_pauses(), heard.latency_s
+
     expected_turns = len(session["state"]["turns"])
     coach = CoachSession.from_state(session["state"], llm=llm, max_text_chars=settings.max_text_chars)
     try:
-        turn = coach.turn(text)
+        result = run_turn(coach, text, audio_seconds=audio_seconds, pauses=pauses, want_audio=session["mode"] == "voice")
+        turn = result.turn
     except ValueError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc))
     except AgentError:
@@ -100,10 +128,16 @@ def send_turn(
     if saved is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "This session changed meanwhile, reload it")
 
+    logger.info(
+        "turn session=%s mode=%s stt=%s agent_reply=%.2fs agent_total=%.2fs tts=%s",
+        session_id, session["mode"], f"{stt_s:.2f}s" if stt_s else "-",
+        result.timings.get("reply_ready", 0), result.timings.get("total", 0),
+        f"{result.timings['tts_s']:.2f}s" if result.timings.get("tts_s") else "-",
+    )
     return {
         "transcript": transcript,
         "reply": turn.reply,
-        "reply_audio_url": None,
+        "reply_audio_url": result.speech.data_uri if result.speech else None,
         "corrections": corrections,
         "sentence_status": turn.sentence_status,
         "finished": coach.finished,
