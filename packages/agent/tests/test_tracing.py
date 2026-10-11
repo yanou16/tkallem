@@ -16,3 +16,23 @@ def test_tracing_on_with_keys(monkeypatch):
     monkeypatch.setenv("LANGFUSE_TRACING_ENABLED", "false")  # build the handler without sending anything
     config = tracing.run_config("coach_turn")
     assert len(config["callbacks"]) == 1
+
+
+def test_llm_reads_the_dotenv_of_the_working_directory(tmp_path, monkeypatch):
+    import os
+
+    from tkallem_agent import llm as llm_module
+
+    (tmp_path / ".env").write_text("OPENROUTER_API_KEY=sk-or-from-dotenv\nLLM_MODEL=some/model\n")
+    monkeypatch.setattr(os, "environ", os.environ.copy())  # whatever the loader sets is undone after the test
+    os.environ.pop("OPENROUTER_API_KEY", None)
+    os.environ.pop("LLM_MODEL", None)
+    monkeypatch.chdir(tmp_path)
+    llm_module._load_dotenv_once.cache_clear()
+    model = llm_module.get_llm(provider="openrouter")
+    assert model.model_name == "some/model"
+    assert model.openai_api_key.get_secret_value() == "sk-or-from-dotenv"
+    os.environ["OPENROUTER_API_KEY"] = "already-set"  # variables already set are never overridden
+    llm_module._load_dotenv_once.cache_clear()
+    assert llm_module.get_llm(provider="openrouter").openai_api_key.get_secret_value() == "already-set"
+    llm_module._load_dotenv_once.cache_clear()
