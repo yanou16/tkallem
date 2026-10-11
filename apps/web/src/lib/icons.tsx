@@ -12,6 +12,8 @@ const map: Record<string, LucideIcon> = {
   book: BookOpen, vocabulary: BookOpen, grammar: FileText, target: Target, mic: Mic, pronunciation: Mic,
   flame: Flame, streak: Flame, trophy: Trophy, globe: Globe, sparkles: Sparkles, chart: ChartNoAxesColumn,
   warning: TriangleAlert, growth: Sprout, video: Video, languages: Languages, star: Star, bell: Bell, megaphone: Megaphone,
+  // Scenario ids: scenarios come without an icon, so the frontend picks one per scenario.
+  "visa-us": Plane, "campus-france": GraduationCap, "job-remote": Laptop, "ielts-part2": Mic, "free-talk": MessageCircle,
 };
 
 export function getIcon(name?: string): LucideIcon {

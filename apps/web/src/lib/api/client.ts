@@ -1,4 +1,4 @@
-import { API_URL, AUTH_MODE } from "@/lib/config";
+import { API_URL } from "@/lib/config";
 
 export class ApiError extends Error {
   status: number;
@@ -11,28 +11,12 @@ export class ApiError extends Error {
   }
 }
 
-/* ---------- token storage (only used when AUTH_MODE === "bearer") ---------- */
-const TOKEN_KEY = "tkallem.token";
+/* ---------- auth: the Clerk session token, sent as a Bearer token ---------- */
 let authTokenProvider: (() => Promise<string | null>) | null = null;
 
 export function setAuthTokenProvider(provider: (() => Promise<string | null>) | null) {
   authTokenProvider = provider;
 }
-
-export const tokenStore = {
-  get(): string | null {
-    if (AUTH_MODE !== "bearer" || typeof window === "undefined") return null;
-    try { return window.localStorage.getItem(TOKEN_KEY); } catch { return null; }
-  },
-  set(token: string) {
-    if (AUTH_MODE !== "bearer" || typeof window === "undefined") return;
-    try { window.localStorage.setItem(TOKEN_KEY, token); } catch {}
-  },
-  clear() {
-    if (typeof window === "undefined") return;
-    try { window.localStorage.removeItem(TOKEN_KEY); } catch {}
-  },
-};
 
 /* ---------- 401 handling ---------- */
 let onUnauthorized: (() => void) | null = null;
@@ -42,7 +26,7 @@ type Options = Omit<RequestInit, "body"> & {
   body?: unknown;
   query?: Record<string, string | number | boolean | undefined | null>;
   token?: string | null;
-  /** Skip the global 401 redirect (used by login forms). */
+  /** Skip the global 401 redirect. */
   skipAuthRedirect?: boolean;
 };
 
@@ -57,6 +41,19 @@ function buildUrl(endpoint: string, query?: Options["query"]) {
   return qs ? `${url}?${qs}` : url;
 }
 
+/** FastAPI puts the reason in `detail`: a string, or a list of issues for a validation error (422). */
+export function errorMessage(data: unknown, status: number): string {
+  const detail = data && typeof data === "object" ? (data as { detail?: unknown }).detail : undefined;
+  if (typeof detail === "string" && detail) return detail;
+  if (Array.isArray(detail)) {
+    const first: unknown = detail[0];
+    if (first && typeof first === "object" && typeof (first as { msg?: unknown }).msg === "string") {
+      return (first as { msg: string }).msg;
+    }
+  }
+  return `Request failed (${status})`;
+}
+
 export async function apiFetch<T>(endpoint: string, options: Options = {}): Promise<T> {
   const { body, query, skipAuthRedirect, headers, token: requestToken, ...rest } = options;
   const isForm = typeof FormData !== "undefined" && body instanceof FormData;
@@ -64,7 +61,7 @@ export async function apiFetch<T>(endpoint: string, options: Options = {}): Prom
   const finalHeaders = new Headers(headers);
   finalHeaders.set("Accept", "application/json");
   if (body !== undefined && !isForm) finalHeaders.set("Content-Type", "application/json");
-  const token = requestToken ?? (await authTokenProvider?.()) ?? tokenStore.get();
+  const token = requestToken ?? (await authTokenProvider?.()) ?? null;
   if (token) finalHeaders.set("Authorization", `Bearer ${token}`);
 
   let res: Response;
@@ -72,7 +69,7 @@ export async function apiFetch<T>(endpoint: string, options: Options = {}): Prom
     res = await fetch(buildUrl(endpoint, query), {
       ...rest,
       headers: finalHeaders,
-      credentials: AUTH_MODE === "cookie" ? "include" : "omit",
+      credentials: "omit",
       body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
     });
   } catch {
@@ -84,12 +81,8 @@ export async function apiFetch<T>(endpoint: string, options: Options = {}): Prom
   if (text) { try { data = JSON.parse(text); } catch { data = text; } }
 
   if (!res.ok) {
-    if (res.status === 401 && !skipAuthRedirect) { tokenStore.clear(); onUnauthorized?.(); }
-    const msg =
-      (data && typeof data === "object" && ("message" in data || "detail" in data)
-        ? String((data as any).message ?? (data as any).detail)
-        : null) ?? `Request failed (${res.status})`;
-    throw new ApiError(msg, res.status, data);
+    if (res.status === 401 && !skipAuthRedirect) onUnauthorized?.();
+    throw new ApiError(errorMessage(data, res.status), res.status, data);
   }
   return data as T;
 }

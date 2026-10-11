@@ -3,11 +3,11 @@ import { useAuth, useUser } from "@clerk/nextjs";
 import { useQuery } from "@tanstack/react-query";
 import { getCurrentUser } from "../api/getCurrentUser";
 import { ApiError } from "@/lib/api/client";
-import { getActiveLanguage, type User } from "../types/user";
+import type { User } from "../types/user";
 
 export const CURRENT_USER_KEY = ["current-user"] as const;
 
-/** Single source of truth for the signed-in account. Cached globally by TanStack Query. */
+/** Single source of truth for the signed-in student. Cached globally by TanStack Query. */
 export function useCurrentUser() {
   const { getToken, isLoaded: isAuthLoaded, isSignedIn } = useAuth();
   const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
@@ -19,29 +19,20 @@ export function useCurrentUser() {
     retry: (count, err) => !(err instanceof ApiError && err.status === 401) && count < 2,
   });
 
-  const combinedUser: User | undefined = q.data
-    ? {
-        ...q.data,
-        firstName: q.data.firstName || clerkUser?.firstName || clerkUser?.fullName || "Student",
-        lastName: q.data.lastName || clerkUser?.lastName || undefined,
-        email: q.data.email || clerkUser?.primaryEmailAddress?.emailAddress || "",
-        avatarUrl: q.data.avatarUrl || clerkUser?.imageUrl || undefined,
-      }
-    : clerkUser
-    ? {
-        id: "current-user",
-        firstName: clerkUser.firstName || clerkUser.fullName || "Student",
-        lastName: clerkUser.lastName || undefined,
-        email: clerkUser.primaryEmailAddress?.emailAddress || "",
-        avatarUrl: clerkUser.imageUrl || undefined,
-        learningLanguages: [],
-        explainLang: "fr",
-      }
-    : undefined;
+  // Name, photo and email are managed by Clerk; our API only stores the learning setup.
+  const user: User | undefined =
+    q.data && clerkUser
+      ? {
+          ...q.data,
+          firstName: clerkUser.firstName || q.data.firstName || clerkUser.fullName || "Student",
+          lastName: clerkUser.lastName || undefined,
+          email: clerkUser.primaryEmailAddress?.emailAddress ?? "",
+          avatarUrl: clerkUser.imageUrl || undefined,
+        }
+      : undefined;
 
   return {
-    user: combinedUser,
-    activeLanguage: getActiveLanguage(combinedUser),
+    user,
     isLoading: q.isLoading || (!isUserLoaded && isSignedIn === true),
     error: q.error as ApiError | null,
     refetch: q.refetch,
