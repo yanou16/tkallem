@@ -115,7 +115,9 @@ export async function apiFetch<T>(endpoint: string, options: Options = {}): Prom
   if (text) { try { data = JSON.parse(text); } catch { data = text; } }
 
   if (!res.ok) {
-    if (res.status === 401 && !skipAuthRedirect) { tokenStore.clear(); onUnauthorized?.(); }
+    if (res.status === 401 && finalHeaders.get("Authorization")?.startsWith("Guest ")) {
+      guestStore.clear(); // the API does not know this visitor (database reset): GuestBootstrap asks for a new one
+    } else if (res.status === 401 && !skipAuthRedirect) { tokenStore.clear(); onUnauthorized?.(); }
     const detail = data && typeof data === "object" ? (data as any).detail : undefined;
     const detailText = detail && typeof detail === "object" ? (detail.message ?? detail.code) : detail; // 402/429 send an object
     const msg =

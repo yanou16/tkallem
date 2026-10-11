@@ -188,3 +188,11 @@ def test_claim_endpoint_rules(client):
     as_signed_in("user_claim_rules")
     assert client.post("/me/claim-guest", json={"guest_token": "g1." + "a" * 32 + "." + "b" * 64}).status_code == 422
     assert client.post("/me/claim-guest", json={"guest_token": token, "extra": 1}).status_code == 422
+
+
+def test_a_valid_token_without_a_guest_row_is_refused_not_recreated(client, db):
+    before = db.execute("SELECT count(*) AS n FROM users").fetchone()["n"]
+    token = guests.issue(guests.new_guest_id())  # signed correctly, but POST /guests never created it
+    r = client.get("/me", headers={"Authorization": f"Guest {token}"})
+    assert r.status_code == 401
+    assert db.execute("SELECT count(*) AS n FROM users").fetchone()["n"] == before
