@@ -4,6 +4,7 @@ import { useState, useEffect, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth, useSignUp } from "@clerk/nextjs";
+import TryWithoutAccount from "@/components/auth/TryWithoutAccount";
 import { completeUsername } from "@/features/auth/lib/username";
 import { AuthShell, AuthCard, AuthField, PrimaryButton, FormError, GoogleButton, OrDivider, clerkMessage } from "@/components/auth/AuthShell";
 
@@ -113,7 +114,8 @@ export default function SignUpPage() {
           </form>
         </AuthCard>
       ) : (
-        <AuthCard title="Create your account" subtitle="Start practicing a language with AI and real learners.">
+        <AuthCard title="Create your account" subtitle="Practise real interviews with your AI coach.">
+          <TryWithoutAccount />
           <form onSubmit={onSubmit} className="space-y-4">
             <GoogleButton onClick={onGoogle} loading={!isLoaded} label="Sign up with Google" />
             <OrDivider />

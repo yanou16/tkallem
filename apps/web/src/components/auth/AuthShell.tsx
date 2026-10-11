@@ -261,12 +261,12 @@ export function AuthShell({ mode, children }: { mode: "sign-in" | "sign-up"; chi
 
             <div className="mt-12 lg:mt-16">
               <h1 className="max-w-[420px] text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#16161a] sm:text-[40px]">
-                {isSignUp ? "Start your language journey" : "A better way to learn a language"}
+                {isSignUp ? "Get ready for your interview in English" : "Your English speaking coach"}
               </h1>
               <p className="mt-4 max-w-[400px] text-[15px] leading-relaxed text-[#6b6b75]">
                 {isSignUp
-                  ? "Learn through real conversations with AI and a global community."
-                  : "Practice with AI, join global communities, and reach your goals with real conversations."}
+                  ? "Free account: 60 answers to start, then 15 new answers every day. Your progress is saved."
+                  : "Rehearse visa, Campus France and job interviews by voice, with every mistake explained in French."}
               </p>
             </div>
 

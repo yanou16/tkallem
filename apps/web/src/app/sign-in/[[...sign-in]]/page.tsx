@@ -4,6 +4,7 @@ import { useState, useEffect, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth, useClerk, useSignIn } from "@clerk/nextjs";
+import TryWithoutAccount from "@/components/auth/TryWithoutAccount";
 import { AuthShell, AuthCard, AuthField, PrimaryButton, FormError, GoogleButton, OrDivider, clerkMessage } from "@/components/auth/AuthShell";
 
 export default function SignInPage() {
@@ -75,7 +76,8 @@ export default function SignInPage() {
 
   return (
     <AuthShell mode="sign-in">
-      <AuthCard title="Welcome back" subtitle="Continue your language learning journey.">
+      <AuthCard title="Welcome back" subtitle="Pick up where you stopped.">
+        <TryWithoutAccount />
         <form onSubmit={onSubmit} className="space-y-4">
           <GoogleButton onClick={onGoogle} loading={!isLoaded} />
           <OrDivider />
@@ -116,11 +118,6 @@ export default function SignInPage() {
             Don&apos;t have an account?{" "}
             <Link href="/sign-up" className="font-medium text-[#5b3fd6] hover:underline">
               Create an account
-            </Link>
-          </p>
-          <p className="text-center text-[13px] text-[#6b6b75]">
-            <Link href="/ai-chat?scenarioId=visa-us" className="font-medium text-ink hover:underline">
-              Try it first, no account needed
             </Link>
           </p>
         </form>
