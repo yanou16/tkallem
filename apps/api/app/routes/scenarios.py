@@ -11,6 +11,10 @@ def _summary(scenario: Scenario) -> dict:
     return {
         "id": scenario.id,
         "title": scenario.title,
+        "description": scenario.description,
+        "category": scenario.category,
+        "level": scenario.level,
+        "icon": scenario.icon,
         "mode": scenario.mode,
         "minutes": scenario.minutes,
         "total_questions": len(scenario.questions) if scenario.mode == "guided" else None,
