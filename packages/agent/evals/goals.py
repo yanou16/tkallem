@@ -37,6 +37,14 @@ CASES = [
 ]
 
 
+# (scenario, question index, answer, goal expected in goal_covered or also_covered, the other one expected too)
+DOUBLE = [
+    ("visa-business", 0, "I'm going to a conference in Boston for two weeks.", "purpose_of_trip", "length_of_stay"),
+    ("visa-business", 1, "Ten days. My company pays for everything.", "length_of_stay", "funding"),
+    ("visa-us", 1, "Georgia Tech, computer science, and I have a full scholarship.", "chosen_program", "funding"),
+]
+
+
 def at_question(scenario_id: str, index: int) -> CoachSession:
     """A session where the coach has just asked question `index` (earlier answers are placeholders)."""
     qs = load_scenario(scenario_id).questions
@@ -62,6 +70,16 @@ def main(runs: int = 2) -> None:
         results[f"{kind}_total"] += runs
         mark = "OK " if ok == runs else "BAD"
         print(f"{mark} [{scenario_id} q{index}] {answer!r}: expected {expected}, got {got}")
+    both = 0
+    for scenario_id, index, answer, first, second in DOUBLE:
+        for _ in range(runs):
+            s = at_question(scenario_id, index)
+            s.turn(answer)
+            got = {s.turns[-1].goal_covered, *s.turns[-1].also_covered}
+            ok = {first, second} <= got
+            both += ok
+            print(f"{'OK ' if ok else 'BAD'} [{scenario_id} q{index}] two goals {answer!r}: got {sorted(g for g in got if g)}")
+    print(f"answers covering two questions: both goals found {both}/{len(DOUBLE) * runs}")
     print(
         f"\nSUMMARY {results['ok']}/{results['total']} | answered the asked question {results['asked_ok']}/{results['asked_total']}"
         f" | answered another question {results['other_ok']}/{results['other_total']}"

@@ -7,6 +7,7 @@ at the same moment cannot spend the same credit. Grants carry a `ref` (unique pe
 The functions take an open connection and never commit: the caller decides the transaction. `now` is a parameter so
 the day boundaries can be tested.
 """
+import time
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from uuid import UUID
@@ -65,6 +66,21 @@ def _wallet(conn: Connection, user_id: int, lock: bool = False) -> dict | None:
 def _apply(conn: Connection, user_id: int, delta: int, reason: str, *, ref: str | None = None, session_id: UUID | None = None) -> int | None:
     """Add `delta` to the wallet and log it. Returns the new balance, or None when nothing was applied: the balance
     would go below zero, or a line with the same `ref` already exists."""
+    if ref is None:  # answers and refunds (the hot path): one statement, one round trip, atomic on its own
+        row = conn.execute(
+            """
+            WITH w AS (
+                UPDATE credit_wallets SET balance = balance + %(delta)s
+                WHERE user_id = %(user)s AND balance + %(delta)s >= 0
+                RETURNING balance
+            )
+            INSERT INTO credit_ledger (user_id, delta, reason, balance_after, session_id, ref)
+            SELECT %(user)s, %(delta)s, %(reason)s, balance, %(session)s, NULL FROM w
+            RETURNING balance_after
+            """,
+            {"user": user_id, "delta": delta, "reason": reason, "session": session_id},
+        ).fetchone()
+        return row["balance_after"] if row else None
     try:
         with conn.transaction():  # a savepoint: a duplicate ref undoes the balance change too
             row = conn.execute(
@@ -132,15 +148,30 @@ def spent_today(conn: Connection, now: datetime | None = None) -> int:
     ).fetchone()["n"]
 
 
+_budget = {"day": None, "value": 0, "at": 0.0}  # today's global spending, re-read at most every budget_cache_s
+
+
+def _spent_today_cached(conn: Connection, now: datetime | None) -> int:
+    day, t = _utc(now).date(), time.monotonic()
+    if settings.budget_cache_s <= 0 or _budget["day"] != day or t - _budget["at"] > settings.budget_cache_s:
+        _budget.update(day=day, value=spent_today(conn, now), at=t)
+    return _budget["value"]
+
+
 def spend(conn: Connection, user: dict, session_id: UUID | None = None, now: datetime | None = None) -> CreditStatus:
-    """Take one credit before the paid providers are called. Raises NoCredits or DailyBudgetReached."""
-    current = status(conn, user, now)
-    if spent_today(conn, now) >= settings.daily_spend_cap:
+    """Take one credit before the paid providers are called. Raises NoCredits or DailyBudgetReached.
+    Two or three round trips: it runs before every answer."""
+    ensure_wallet(conn, user, now)
+    refill(conn, user, now)
+    if _spent_today_cached(conn, now) >= settings.daily_spend_cap:  # a safety switch: a few seconds late is fine
         raise DailyBudgetReached()
+    guest = is_guest(user)
+    next_refill_at = None if guest else _midnight_after(_utc(now).date())
     balance = _apply(conn, user["id"], -1, "turn_spent", session_id=session_id)
     if balance is None:
-        raise NoCredits(current.next_refill_at)
-    return CreditStatus(balance, current.is_guest, current.next_refill_at)
+        raise NoCredits(next_refill_at)
+    _budget["value"] += 1
+    return CreditStatus(balance, guest, next_refill_at)
 
 
 def refund(conn: Connection, user: dict, session_id: UUID | None = None) -> None:

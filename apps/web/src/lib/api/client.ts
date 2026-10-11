@@ -83,6 +83,35 @@ function buildUrl(endpoint: string, query?: Options["query"]) {
   return qs ? `${url}?${qs}` : url;
 }
 
+async function authorize(headers: Headers, requestToken?: string | null) {
+  const token = requestToken ?? (await authTokenProvider?.()) ?? tokenStore.get();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  } else {
+    const guest = guestStore.get(); // signed out: a visitor identifies itself with its guest token
+    if (guest) headers.set("Authorization", `Guest ${guest}`);
+  }
+}
+
+function toApiError(res: Response, data: unknown, headers: Headers, skipAuthRedirect?: boolean): ApiError {
+  if (res.status === 401 && headers.get("Authorization")?.startsWith("Guest ")) {
+    guestStore.clear(); // the API does not know this visitor (database reset): GuestBootstrap asks for a new one
+  } else if (res.status === 401 && !skipAuthRedirect) { tokenStore.clear(); onUnauthorized?.(); }
+  const detail = data && typeof data === "object" ? (data as any).detail : undefined;
+  const detailText = detail && typeof detail === "object" ? (detail.message ?? detail.code) : detail; // 402/429 send an object
+  const msg =
+    (data && typeof data === "object" && ("message" in data || "detail" in data)
+      ? String((data as any).message ?? detailText)
+      : null) ?? `Request failed (${res.status})`;
+  return new ApiError(msg, res.status, data);
+}
+
+async function readJson(res: Response): Promise<unknown> {
+  const text = await res.text();
+  if (!text) return undefined;
+  try { return JSON.parse(text); } catch { return text; }
+}
+
 export async function apiFetch<T>(endpoint: string, options: Options = {}): Promise<T> {
   const { body, query, skipAuthRedirect, headers, token: requestToken, ...rest } = options;
   const isForm = typeof FormData !== "undefined" && body instanceof FormData;
@@ -90,13 +119,7 @@ export async function apiFetch<T>(endpoint: string, options: Options = {}): Prom
   const finalHeaders = new Headers(headers);
   finalHeaders.set("Accept", "application/json");
   if (body !== undefined && !isForm) finalHeaders.set("Content-Type", "application/json");
-  const token = requestToken ?? (await authTokenProvider?.()) ?? tokenStore.get();
-  if (token) {
-    finalHeaders.set("Authorization", `Bearer ${token}`);
-  } else {
-    const guest = guestStore.get(); // signed out: a visitor identifies itself with its guest token
-    if (guest) finalHeaders.set("Authorization", `Guest ${guest}`);
-  }
+  await authorize(finalHeaders, requestToken);
 
   let res: Response;
   try {
@@ -110,23 +133,50 @@ export async function apiFetch<T>(endpoint: string, options: Options = {}): Prom
     throw new ApiError("Can't reach the server. Check your connection and try again.", 0);
   }
 
-  const text = await res.text();
-  let data: unknown = undefined;
-  if (text) { try { data = JSON.parse(text); } catch { data = text; } }
-
-  if (!res.ok) {
-    if (res.status === 401 && finalHeaders.get("Authorization")?.startsWith("Guest ")) {
-      guestStore.clear(); // the API does not know this visitor (database reset): GuestBootstrap asks for a new one
-    } else if (res.status === 401 && !skipAuthRedirect) { tokenStore.clear(); onUnauthorized?.(); }
-    const detail = data && typeof data === "object" ? (data as any).detail : undefined;
-    const detailText = detail && typeof detail === "object" ? (detail.message ?? detail.code) : detail; // 402/429 send an object
-    const msg =
-      (data && typeof data === "object" && ("message" in data || "detail" in data)
-        ? String((data as any).message ?? detailText)
-        : null) ?? `Request failed (${res.status})`;
-    throw new ApiError(msg, res.status, data);
-  }
+  const data = await readJson(res);
+  if (!res.ok) throw toApiError(res, data, finalHeaders, skipAuthRedirect);
   return data as T;
+}
+
+/**
+ * POST a form and read the answer as Server-Sent Events, calling `onEvent(name, data)` for each one as it arrives.
+ * Errors before the stream starts (401, 402, 422...) come as JSON and are thrown as ApiError, like apiFetch.
+ */
+export async function apiStream(endpoint: string, form: FormData, onEvent: (name: string, data: any) => void): Promise<void> {
+  const headers = new Headers({ Accept: "text/event-stream" });
+  await authorize(headers);
+  let res: Response;
+  try {
+    res = await fetch(buildUrl(endpoint), { method: "POST", headers, body: form, credentials: AUTH_MODE === "cookie" ? "include" : "omit" });
+  } catch {
+    throw new ApiError("Can't reach the server. Check your connection and try again.", 0);
+  }
+  if (!res.ok || !res.body || !(res.headers.get("content-type") ?? "").includes("text/event-stream")) {
+    const data = await readJson(res);
+    if (!res.ok) throw toApiError(res, data, headers);
+    onEvent("done", data); // a server without streaming answered with plain JSON
+    return;
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+    let cut: number;
+    while ((cut = buffer.indexOf("\n\n")) >= 0) {
+      const block = buffer.slice(0, cut);
+      buffer = buffer.slice(cut + 2);
+      let name = "message";
+      const lines: string[] = [];
+      for (const line of block.split("\n")) {
+        if (line.startsWith("event: ")) name = line.slice(7);
+        else if (line.startsWith("data: ")) lines.push(line.slice(6));
+      }
+      if (lines.length) onEvent(name, JSON.parse(lines.join("\n")));
+    }
+    if (done) return;
+  }
 }
 
 export const api = {

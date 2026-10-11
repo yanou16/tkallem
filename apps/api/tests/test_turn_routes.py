@@ -20,8 +20,12 @@ FOUND = {"corrections": [{"original": "for study", "fixed": "to study", "type": 
 NONE = {"corrections": []}
 
 
-def reply(text="Good."):
-    return {"reaction": text, "goal_covered": None}
+GOALS = load_scenario("visa-us").goals
+
+
+def reply(text="Good.", goal=None):
+    """Fake coach output; `goal` is the scenario goal the answer covered (None: the question is asked again)."""
+    return {"reaction": text, "goal_covered": goal}
 
 
 def use_llm(fake):
@@ -166,7 +170,7 @@ def test_end_unknown_session_returns_404(client):
 
 def test_turn_is_finished_after_the_last_question(client, session_id):
     questions = len(load_scenario("visa-us").questions)
-    use_llm(FakeChat([NONE] * questions, [reply()] * questions))
+    use_llm(FakeChat([NONE] * questions, [reply(goal=g) for g in GOALS]))
 
     responses = [send(client, session_id, text="My answer is fine.") for _ in range(questions)]
 
@@ -174,7 +178,7 @@ def test_turn_is_finished_after_the_last_question(client, session_id):
 
 def test_reloading_a_session_returns_the_conversation_so_far(client, db, session_id):
     qs = load_scenario("visa-us").questions
-    use_llm(FakeChat([FOUND], [reply()]))
+    use_llm(FakeChat([FOUND], [reply(goal=GOALS[0])]))
     assert send(client, session_id).status_code == 200
 
     body = client.get(f"/sessions/{session_id}").json()

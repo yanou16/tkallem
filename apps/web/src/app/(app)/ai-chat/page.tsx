@@ -6,7 +6,7 @@ import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOf
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { CoachAvatar } from "@/components/CoachAvatar";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
-import { useAiSession, useCreateSession, useEndSession, useSendMessage, useSendVoice, useSessionReport, useSpeakLastLine } from "@/features/ai-chat/hooks/useAiChat";
+import { useAiSession, useCreateSession, useEndSession, useSessionReport, useSpeakLastLine, useTurn } from "@/features/ai-chat/hooks/useAiChat";
 import SessionReportView from "@/features/ai-chat/components/SessionReportView";
 import VoiceState, { formatTime, type CoachState } from "@/features/ai-chat/components/VoiceState";
 import { MAX_RECORDING_S, useVoiceRecorder, type Recording } from "@/features/ai-chat/hooks/useVoiceRecorder";
@@ -44,8 +44,6 @@ function Chat() {
   const scenarios = useScenarios();
   const create = useCreateSession();
   const session = useAiSession(sessionId);
-  const send = useSendMessage(sessionId);
-  const voice = useSendVoice(sessionId);
   const end = useEndSession(sessionId);
   const speakLast = useSpeakLastLine(sessionId);
   const report = useSessionReport(sessionId).data;
@@ -53,6 +51,8 @@ function Chat() {
   const [mode, setMode] = useState<"text" | "voice">(readMode);
   const [avatarOn, setAvatarOn] = useState(true);
   const coach = useCoachVoice(mode === "voice" && avatarOn);
+  // The coach's voice is played as soon as it arrives, while the corrections are still being written.
+  const turn = useTurn(sessionId, (url, line) => coach.play(url, line));
   const [text, setText] = useState("");
   const [pending, setPending] = useState<Pending | null>(null);
   const [menu, setMenu] = useState(false);
@@ -89,10 +89,10 @@ function Chat() {
   }, [lost, scenarioId, router]);
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [s?.messages.length, pending]);
 
-  const busy = send.isPending || voice.isPending || end.isPending;
+  const busy = turn.isPending || end.isPending;
   const answered = s?.messages.filter((m) => m.role === "user").length ?? 0;
   const closed = !!report || !!s?.ended; // no more answers once the report is made
-  const coachState: CoachState = rec.isRecording ? "listening" : send.isPending || voice.isPending || speakLast.isPending ? "thinking" : coach.speaking ? "speaking" : "idle";
+  const coachState: CoachState = rec.isRecording ? "listening" : coach.speaking ? "speaking" : turn.isPending || speakLast.isPending ? "thinking" : "idle";
   const barState: CoachState = coachState === "thinking" && pending ? "idle" : coachState; // "Thinking…" already shows in the chat
 
   function chooseMode(m: "text" | "voice") {
@@ -114,8 +114,7 @@ function Chat() {
     setText("");
     coach.stop();
     setPending({ kind: "text", text: msg });
-    send.mutate({ text: msg }, {
-      onSuccess: (r) => { if (mode === "voice") coach.play(r.reply_audio_url, r.reply); },
+    turn.mutate({ text: msg }, {
       onError: () => setText(msg), // the answer is not lost: it goes back in the field
       onSettled: () => setPending(null),
     });
@@ -124,8 +123,8 @@ function Chat() {
   function sendRecording(r: Recording) {
     lastRecording.current = r;
     setPending({ kind: "voice", seconds: r.seconds });
-    voice.mutate(r.blob, {
-      onSuccess: (res) => { lastRecording.current = null; coach.play(res.reply_audio_url, res.reply); }, // a spoken answer is answered aloud
+    turn.mutate({ audio: r.blob }, {
+      onSuccess: () => { lastRecording.current = null; },
       onSettled: () => setPending(null),
     });
   }
@@ -146,7 +145,8 @@ function Chat() {
   const title = s?.scenarioTitle ?? scenarios.data?.find((x) => x.id === scenarioId)?.title;
   const icon = scenarios.data?.find((x) => x.id === scenarioId)?.icon;
   const roleNote = scenarios.data?.find((x) => x.id === scenarioId)?.description;
-  const answerError = send.error ?? voice.error;
+  const answerError = turn.error;
+  const live = turn.live;
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -205,13 +205,17 @@ function Chat() {
 
             {pending && !report && (
               <>
-                {pending.kind === "text"
-                  ? <Bubble m={{ id: "pending", role: "user", content: pending.text }} icon={icon} user={user} />
+                {live?.transcript || pending.kind === "text"
+                  ? <Bubble m={{ id: "pending", role: "user", content: live?.transcript ?? (pending.kind === "text" ? pending.text : "") }} icon={icon} user={user} />
                   : <Bubble m={{ id: "pending", role: "user", content: `Voice answer (${formatTime(pending.seconds)})`, pending: true }} icon={icon} user={user} />}
-                <div className="flex items-center gap-3">
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-mint"><Icon name={icon ?? "briefcase"} /></span>
-                  <VoiceState state="thinking" className="rounded-3xl bg-black/[0.05] px-5 py-4" />
-                </div>
+                {live?.reply ? (
+                  <Bubble m={{ id: "pending-reply", role: "assistant", content: live.reply }} icon={icon} user={user} />
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-mint"><Icon name={icon ?? "briefcase"} /></span>
+                    <VoiceState state="thinking" className="rounded-3xl bg-black/[0.05] px-5 py-4" />
+                  </div>
+                )}
               </>
             )}
 
@@ -244,7 +248,7 @@ function Chat() {
                 : (
                   <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-rose/60 px-4 py-3 text-sm">
                     <span><span className="font-semibold">Your answer was not sent.</span> {(answerError as Error).message}</span>
-                    {voice.error && lastRecording.current && <button onClick={() => sendRecording(lastRecording.current!)} className="rounded-full bg-ink px-4 py-1.5 text-xs font-semibold text-white">Send again</button>}
+                    {lastRecording.current && <button onClick={() => sendRecording(lastRecording.current!)} className="rounded-full bg-ink px-4 py-1.5 text-xs font-semibold text-white">Send again</button>}
                   </div>
                 ))}
             </div>

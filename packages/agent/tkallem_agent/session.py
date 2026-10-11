@@ -49,6 +49,7 @@ class TurnLog:
     corrections: list[dict]
     status: str
     goal_covered: str | None = None
+    also_covered: list[str] = field(default_factory=list)  # other goals the same answer covered (question order only)
     audio_seconds: float | None = None
     pauses: int = 0  # long silences counted on the audio by the voice pipeline
     timings: dict = field(default_factory=dict)
@@ -138,7 +139,7 @@ class CoachSession:
         """
         text = self._clean_input(student_text, audio_seconds, pauses)
         scenario, history = self.scenario.model_dump(), self.history()
-        covered = [t.goal_covered for t in self.turns if t.goal_covered]
+        covered = [g for t in self.turns for g in [t.goal_covered, *t.also_covered] if g]
         state = {
             "level": self.level,
             "explain_lang": self.explain_lang,
@@ -149,7 +150,7 @@ class CoachSession:
         }
         t0 = time.perf_counter()
         timings: dict[str, float] = {}
-        turn, error = None, None
+        turn, error, also = None, None, []
         updates = _graph_for(self.llm).stream(state, config=self._tracing("coach_turn"), stream_mode="updates")
         while True:
             try:
@@ -164,6 +165,7 @@ class CoachSession:
                 timings.update(data.get("timings", {}))
                 if node == "coach" and data.get("reply") is not None:
                     timings["reply_ready"] = time.perf_counter() - t0
+                    also = [g for g in data["reply"].get("also_covered") or [] if g in self.scenario.goals]
                     yield {"type": "reply", "reply": compose_reply(data["reply"], scenario, history, covered)}
                 elif node == "correct":
                     corrections, status = final_corrections(data.get("found", []), scenario, text, data.get("changes_meaning", False))
@@ -181,6 +183,7 @@ class CoachSession:
                 corrections=[c.model_dump() for c in turn.corrections],
                 status=turn.sentence_status,
                 goal_covered=turn.goal_covered,
+                also_covered=also,
                 audio_seconds=audio_seconds,
                 pauses=pauses,
                 timings=timings,

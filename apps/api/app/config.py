@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     guest_ip_daily_cap: int = 30  # guest accounts one network address may create per day (shared mobile IPs are common)
     guest_daily_cap: int = 2000  # guest accounts created per day by everyone (keeps the table from being flooded)
     forwarded_hops: int = 0  # reverse proxies in front of the API (Render, Railway: 1); 0 = use the socket address
+    budget_cache_s: float = 30.0  # how often the global daily spending is re-read from the ledger
     daily_spend_cap: int = 5000  # credits spent by everyone per day: the switch that bounds the bill (credits x cost per credit)
 
 

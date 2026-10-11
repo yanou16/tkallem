@@ -172,6 +172,13 @@ paths:
   /sessions/{id}/turn:
     post:
       summary: Send one student turn (audio file or text)
+      description: |
+        JSON by default. With `Accept: text/event-stream` the answer is streamed as Server-Sent Events, each part as
+        soon as it exists: `transcript` {text}, `reply` {text}, `corrections` {corrections, sentence_status},
+        `audio` {audio_url} (voice sessions and spoken answers only; may come before or after corrections), then
+        `done` {transcript, reply, corrections, sentence_status, finished, credits} once the turn is saved, or
+        `error` {status, detail} (nothing saved, credit given back). Errors found before the stream starts (401, 402,
+        404, 409, 413, 422, 429, 502 from speech recognition) are plain JSON responses as below.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
       requestBody:

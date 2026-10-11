@@ -221,3 +221,60 @@ def test_a_transcript_without_words_is_refused_and_costs_nothing(client, db, mon
     r = send_audio(client, sid)
     assert r.status_code == 422 and "did not hear" in r.json()["detail"]
     assert db.execute("SELECT count(*) AS n FROM turns WHERE session_id = %s", (UUID(sid),)).fetchone()["n"] == before
+
+
+def sse(response) -> list[tuple[str, dict]]:
+    import json as _json
+    events = []
+    for block in response.text.strip().split("\n\n"):
+        lines = dict(line.split(": ", 1) for line in block.splitlines() if ": " in line)
+        events.append((lines["event"], _json.loads(lines["data"])))
+    return events
+
+
+def stream(client, sid, **kw):
+    return client.post(f"/sessions/{sid}/turn", headers={"Accept": "text/event-stream"}, **kw)
+
+
+def test_streamed_spoken_answer_sends_each_part_then_done(client, db):
+    sid = start(client, db, "voice").json()["session_id"]
+    r = stream(client, sid, files={"audio": ("answer.webm", b"RIFF-audio", "audio/webm")})
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/event-stream")
+    events = sse(r)
+    names = [e for e, _ in events]
+    assert names[0] == "transcript" and names[1] == "reply" and names[-1] == "done"
+    assert {"corrections", "audio"} <= set(names)
+    data = dict(events)
+    assert data["transcript"]["text"] == "I go to the US for study."
+    assert data["audio"]["audio_url"].startswith("data:audio/wav;base64,")
+    assert data["corrections"]["corrections"][0]["fixed"] == "to study"
+    assert data["done"]["sentence_status"] == "orange" and data["done"]["credits"]["balance"] >= 0
+    assert db.execute("SELECT count(*) AS n FROM turns WHERE session_id = %s", (UUID(sid),)).fetchone()["n"] == 1
+
+
+def test_streamed_typed_answer_in_a_text_session_has_no_audio_event(client, db):
+    sid = start(client, db, "text").json()["session_id"]
+    names = [e for e, _ in sse(stream(client, sid, data={"text": "I go to the US for study."}))]
+    assert names[0] == "transcript" and names[-1] == "done" and "audio" not in names
+
+
+def test_coach_failure_during_the_stream_gives_an_error_event_and_the_credit_back(client, db):
+    sid = start(client, db, "text").json()["session_id"]
+    user = get_or_create_by_clerk_id(db, CLERK_ID)
+    balance = lambda: db.execute("SELECT balance FROM credit_wallets WHERE user_id = %s", (user["id"],)).fetchone()["balance"]
+    client.get("/me/credits")
+    before = balance()
+    app.dependency_overrides[get_llm] = lambda: FakeChat([NONE, NONE], [RuntimeError("down"), RuntimeError("down")])
+    events = sse(stream(client, sid, data={"text": "I go to the US for study."}))
+    assert events[-1][0] == "error" and events[-1][1]["status"] == 502
+    assert balance() == before  # refunded
+    assert db.execute("SELECT count(*) AS n FROM turns WHERE session_id = %s", (UUID(sid),)).fetchone()["n"] == 0
+
+
+def test_errors_before_the_stream_are_plain_json(client, db, monkeypatch):
+    def boom(*a, **k):
+        raise SttError("down", 500)
+    monkeypatch.setattr(routes, "transcribe", boom)
+    sid = start(client, db, "voice").json()["session_id"]
+    r = stream(client, sid, files={"audio": ("answer.webm", b"RIFF-audio", "audio/webm")})
+    assert r.status_code == 502 and r.headers["content-type"].startswith("application/json")

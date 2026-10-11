@@ -76,6 +76,7 @@ class Reply(BaseModel):
     reaction: str
     goal_covered: str | None  # required (may be null): the model must always decide
     skip_next: bool = False  # the answer shows the next questions cannot apply to this student (code checks they are skippable)
+    also_covered: list[str] = []  # other goal ids the same answer covered ("a conference in Boston for two weeks")
 
 
 class Found(BaseModel):
@@ -202,7 +203,9 @@ def compose_reply(reply: dict, scenario: dict, history: list[BaseMessage], cover
     """Final coach line: the model's reaction, then (guided mode) the question to ask now or the closing.
     `covered`: goal ids answered by the previous turns (the session keeps them)."""
     free = is_free(scenario)
-    done = set(covered) | ({reply["goal_covered"]} if reply.get("goal_covered") in scenario.get("goals", []) else set())
+    goals = scenario.get("goals", [])
+    said = [reply.get("goal_covered"), *(reply.get("also_covered") or [])]
+    done = set(covered) | {g for g in said if g in goals}
     question = next_question(scenario, history, bool(reply.get("skip_next")), done)
     if question is None and not free:
         question = "" if already_closed(history) else CLOSING  # close once, then only react

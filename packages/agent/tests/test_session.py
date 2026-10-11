@@ -287,3 +287,13 @@ def test_an_answer_given_in_advance_is_not_asked_again_after_a_roundtrip():
     assert s.turn("I am a software developer.").reply == f"You are a developer. {qs[1]}"  # length not answered yet
     again = CoachSession.from_state(s.to_state(), llm=llm)
     assert again.turn("Two weeks.").reply.endswith(qs[3])  # occupation (q2) already answered: straight to funding
+
+
+def test_one_answer_can_cover_two_questions_and_both_are_remembered():
+    qs = load_scenario("visa-business").questions
+    two = {"reaction": "A conference, for two weeks.", "goal_covered": "purpose_of_trip", "also_covered": ["length_of_stay", "not_a_goal"]}
+    s = CoachSession("visa-business", "B1", "fr", llm=FakeChat([NONE], [two]))
+    assert s.turn("A conference in Boston, for two weeks.").reply.endswith(qs[2])  # length of stay not asked
+    again = CoachSession.from_state(s.to_state(), llm=FakeChat([NONE], [reply(goal="occupation")]))
+    assert again.turns[0].also_covered == ["length_of_stay"]  # unknown ids dropped, kept across requests
+    assert again.turn("I am a nurse.").reply.endswith(qs[3])

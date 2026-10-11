@@ -19,6 +19,7 @@ DAY = timedelta(days=1)
 @pytest.fixture(autouse=True)
 def secret(monkeypatch):
     monkeypatch.setattr(settings, "guest_secret", "x" * 48)
+    monkeypatch.setattr(settings, "budget_cache_s", 0)  # exact budget in tests
     monkeypatch.setattr(settings, "daily_spend_cap", 100000)
 
 

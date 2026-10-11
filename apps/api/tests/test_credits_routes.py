@@ -26,6 +26,7 @@ SIGNED_IN = "user_credit_route"
 @pytest.fixture(autouse=True)
 def config(monkeypatch):
     monkeypatch.setattr(settings, "guest_secret", "z" * 48)
+    monkeypatch.setattr(settings, "budget_cache_s", 0)  # exact budget in tests
     monkeypatch.setattr(settings, "daily_spend_cap", 10**6)
 
 
