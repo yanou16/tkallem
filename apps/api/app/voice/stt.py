@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 import httpx
 
 from app.config import settings
+from app.voice import failover
 from app.voice.errors import provider_message
 
 # Optional prompt written with disfluencies, meant to make Whisper keep "um", "uh" (off by default: on clean synthetic
@@ -119,24 +120,9 @@ def _deepinfra(client: httpx.Client, audio: bytes, filename: str, content_type: 
 PROVIDERS = {"groq": _groq, "deepinfra": _deepinfra}
 
 
-def transcribe(
-    audio: bytes,
-    filename: str = "answer.webm",
-    content_type: str = "audio/webm",
-    *,
-    provider: str | None = None,
-    language: str = "en",
-    keep_fillers: bool = False,
-    client: httpx.Client | None = None,
-) -> Transcription:
-    """Audio bytes in, text out. Raises SttError on any failure (the route answers 502 and nothing is saved)."""
-    name = provider or settings.stt_provider
+def _transcribe_one(name, audio, filename, content_type, language, keep_fillers, client) -> Transcription:
     if name not in PROVIDERS:
         raise SttError(f"unknown STT provider {name!r}: expected one of {list(PROVIDERS)}")
-    if not audio:
-        raise SttError("empty audio")
-    if len(audio) > settings.max_audio_bytes:
-        raise SttError(f"audio too large ({len(audio)} bytes, max {settings.max_audio_bytes})")
     own = client is None
     http = client or httpx.Client(timeout=settings.voice_timeout)
     t0 = time.perf_counter()
@@ -152,3 +138,38 @@ def transcribe(
         if own:
             http.close()
     return Transcription(text.strip(), name, time.perf_counter() - t0, duration, words, segments)
+
+
+def transcribe(
+    audio: bytes,
+    filename: str = "answer.webm",
+    content_type: str = "audio/webm",
+    *,
+    provider: str | None = None,
+    language: str = "en",
+    keep_fillers: bool = False,
+    client: httpx.Client | None = None,
+) -> Transcription:
+    """Audio bytes in, text out. With `provider`, only that one is tried; otherwise `settings.stt_provider` is a chain
+    ("groq,deepinfra") and the next provider takes over when one fails. Raises SttError when all failed (the route
+    answers 502 and nothing is saved); `bad_audio` only when every provider said the file is unreadable."""
+    if not audio:
+        raise SttError("empty audio")
+    if len(audio) > settings.max_audio_bytes:
+        raise SttError(f"audio too large ({len(audio)} bytes, max {settings.max_audio_bytes})")
+    chain = [provider] if provider else failover.ordered("stt", failover.names(settings.stt_provider))
+    errors: list[SttError] = []
+    for name in chain:
+        try:
+            heard = _transcribe_one(name, audio, filename, content_type, language, keep_fillers, client)
+        except SttError as e:
+            errors.append(e)
+            if "is not set" not in str(e) and not e.bad_audio:
+                failover.mark_down("stt", name, e.status)
+            continue
+        failover.mark_ok("stt", name)
+        return heard
+    if not errors:
+        raise SttError("no STT provider configured")
+    real = [e for e in errors if not e.bad_audio]
+    raise real[-1] if real else errors[0]

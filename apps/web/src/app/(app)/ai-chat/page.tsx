@@ -20,6 +20,17 @@ export default function AiChatPage() {
   return <Suspense fallback={<Skeleton className="mt-6 h-96" />}><Chat /></Suspense>;
 }
 
+/** Last resort when the server could not make the coach's voice (quota, outage): the browser's own English voice. */
+function speakWithBrowser(text: string, setSpeaking: (v: boolean) => void) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "en-US";
+  u.onstart = () => setSpeaking(true);
+  u.onend = u.onerror = () => setSpeaking(false);
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(u);
+}
+
 function Chat() {
   const router = useRouter();
   const params = useSearchParams();
@@ -72,6 +83,7 @@ function Chat() {
       if (blob) voice.mutate(blob, { onSuccess: (r) => {
         if (r.reply_audio_url && avatarOn) setSpeech({ id: Date.now(), url: r.reply_audio_url, text: r.reply });
         else if (r.reply_audio_url) { const a = new Audio(r.reply_audio_url); setSpeaking(true); a.onended = a.onerror = () => setSpeaking(false); a.play().catch(() => setSpeaking(false)); }
+        else speakWithBrowser(r.reply, setSpeaking); // every voice provider failed: a plainer voice beats silence
       } });
     } else rec.start();
   }

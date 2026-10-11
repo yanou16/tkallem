@@ -76,6 +76,8 @@ session = CoachSession("visa-us", "B1", llm=llm)
 |---|---|---|
 | `LLM_PROVIDER` | `openrouter` | `openrouter` or `groq` |
 | `LLM_MODEL` | `qwen/qwen3-235b-a22b-2507` | model id at the provider |
+| `LLM_FALLBACKS` | | backup models tried in order when the main one fails: `provider:model,provider:model`. Measured (correction set): `openrouter:openai/gpt-4.1-mini` 28/29 detected, 9/9 injections; `groq:qwen/qwen3.8-27b` 28/28 but 10-19 s per turn (last resort). `groq:openai/gpt-oss-120b` cannot be used (invalid tool calls). |
+| `LLM_PRIMARY_TIMEOUT` | `12` | seconds before the main model is given up when backups exist (no retry of its own) |
 | `OPENROUTER_API_KEY` / `GROQ_API_KEY` | | server-side only |
 | `OPENROUTER_PROVIDER_SORT` | `latency` | OpenRouter routing (`latency`, `throughput`, `price`, empty = default) |
 | `LLM_TEMPERATURE` | `0` | 0 keeps corrections reproducible |

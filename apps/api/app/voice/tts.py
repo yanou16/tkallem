@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 import httpx
 
 from app.config import settings
+from app.voice import failover
 from app.voice.errors import provider_message
 
 GROQ_MAX_CHARS = 190  # the documented limit is 200
@@ -27,7 +28,11 @@ PRICE_PER_MILLION_CHARS = {"deepinfra": 0.99, "groq": 22.0}  # USD, from the pro
 
 
 class TtsError(RuntimeError):
-    """The speech synthesis failed."""
+    """The speech synthesis failed. `status` is the provider's HTTP status when there was one."""
+
+    def __init__(self, message: str, status: int | None = None):
+        super().__init__(message)
+        self.status = status
 
 
 @dataclass
@@ -170,16 +175,9 @@ def _groq(client: httpx.Client, text: str, voice: str | None):
 PROVIDERS = {"deepinfra": _deepinfra, "groq": _groq}
 
 
-def synthesize(
-    text: str, *, provider: str | None = None, voice: str | None = None, client: httpx.Client | None = None
-) -> Speech:
-    """Coach reply in, audio out. Raises TtsError on any failure: the route can still return the text without audio."""
-    name = provider or settings.tts_provider
+def _synthesize_one(name: str, text: str, voice: str | None, client: httpx.Client | None) -> Speech:
     if name not in PROVIDERS:
         raise TtsError(f"unknown TTS provider {name!r}: expected one of {list(PROVIDERS)}")
-    text = " ".join(text.split())
-    if not text:
-        raise TtsError("empty text")
     own = client is None
     http = client or httpx.Client(timeout=settings.voice_timeout)
     t0 = time.perf_counter()
@@ -188,10 +186,35 @@ def synthesize(
     except TtsError:
         raise
     except httpx.HTTPStatusError as e:
-        raise TtsError(f"{name} answered {e.response.status_code}{provider_message(e.response)}") from e
+        raise TtsError(f"{name} answered {e.response.status_code}{provider_message(e.response)}", e.response.status_code) from e
     except (httpx.HTTPError, ValueError) as e:
         raise TtsError(f"{name} failed: {type(e).__name__}") from e
     finally:
         if own:
             http.close()
     return Speech(parts, mime, name, len(text), time.perf_counter() - t0, min(latencies), latencies)
+
+
+def synthesize(
+    text: str, *, provider: str | None = None, voice: str | None = None, client: httpx.Client | None = None
+) -> Speech:
+    """Coach reply in, audio out. With `provider`, only that one is tried. Otherwise `settings.tts_provider` is a chain
+    ("groq,deepinfra"): the next provider takes over when one fails, and a failing one rests for a few minutes.
+    Raises TtsError when every provider failed: the route still returns the text (the app then speaks it with the
+    browser's own voice)."""
+    text = " ".join(text.split())
+    if not text:
+        raise TtsError("empty text")
+    chain = [provider] if provider else failover.ordered("tts", failover.names(settings.tts_provider))
+    errors: list[str] = []
+    for name in chain:
+        try:
+            speech = _synthesize_one(name, text, voice, client)
+        except TtsError as e:
+            errors.append(str(e))
+            if "is not set" not in str(e):  # a missing key is a configuration choice, not an outage
+                failover.mark_down("tts", name, e.status)
+            continue
+        failover.mark_ok("tts", name)
+        return speech
+    raise TtsError("; ".join(errors) or "no TTS provider configured")

@@ -236,3 +236,30 @@ def test_study_studies_swap_is_not_a_correction():
     from tkallem_agent.schemas import sanitize
     raw = {"corrections": [{"original": "not studies", "fixed": "not study", "type": "grammar", "why": "x"}], "sentence_status": "orange"}
     assert sanitize(raw, None, "it's not studies")["corrections"] == []
+
+
+def test_backup_model_answers_when_the_main_one_fails():
+    from tkallem_agent.llm import FallbackChat
+    broken = FakeChat([RuntimeError("429"), RuntimeError("429")], [RuntimeError("429"), RuntimeError("429")], text=[RuntimeError("429")])
+    backup = FakeChat([NONE, NONE], [reply(), reply()], text=["Backup note."])
+    s = CoachSession("visa-us", "B1", "fr", llm=FallbackChat([broken, backup]))
+    turn = s.turn("I live in Algiers.")
+    assert turn.reply.startswith("Good.") and turn.corrections == []
+    assert broken.calls["Reply"] == 1 and backup.calls["Reply"] == 1
+
+
+def test_when_every_model_fails_the_error_reaches_the_api():
+    from tkallem_agent.llm import FallbackChat
+    down = lambda: FakeChat([RuntimeError("x")] * 2, [RuntimeError("x")] * 2)
+    s = CoachSession("visa-us", "B1", "fr", llm=FallbackChat([down(), down()]))
+    with pytest.raises(AgentError):
+        s.turn("Hello.")
+    assert s.turns == []
+
+
+def test_fallback_list_is_parsed():
+    from tkallem_agent.llm import parse_fallbacks
+    assert parse_fallbacks("groq:openai/gpt-oss-120b, openrouter:a/b") == [("groq", "openai/gpt-oss-120b"), ("openrouter", "a/b")]
+    assert parse_fallbacks("") == []
+    with pytest.raises(ValueError):
+        parse_fallbacks("nonsense")
