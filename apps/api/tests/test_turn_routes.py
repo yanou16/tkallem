@@ -11,7 +11,7 @@ from app.db.users import get_or_create_by_clerk_id, update_profile
 from app.main import app
 from app.routes.sessions import get_llm
 from app.security import ClerkClaims, get_clerk_claims
-from tests.fake_llm import FakeChat
+from tkallem_agent.testing import FakeChat
 
 CLERK_ID = "user_turn_test"
 STUDENT = "I go to the US for study."
