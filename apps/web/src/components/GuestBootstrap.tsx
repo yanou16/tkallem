@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { ApiError, guestFailure, guestStore } from "@/lib/api/client";
 import { claimGuest, createGuest } from "@/features/credits/api/credits";
+import { useGuestToken } from "@/features/credits/hooks/useCredits";
 
 /** Routes a visitor may use without an account (must match the public routes of src/proxy.ts). */
 const GUEST_ROUTES = ["/practice", "/ai-chat"];
@@ -19,6 +20,7 @@ export default function GuestBootstrap() {
   const pathname = usePathname() ?? "";
   const qc = useQueryClient();
   const busy = useRef(false);
+  const token = useGuestToken(); // re-run when the token is cleared (API reset): a new guest is asked for at once
 
   useEffect(() => {
     if (!isLoaded || busy.current) return;
@@ -40,7 +42,7 @@ export default function GuestBootstrap() {
         .catch(() => guestFailure.set(true)) // 429 (too many visitors) or 503 (guest mode off): the page asks to sign in
         .finally(() => { busy.current = false; });
     }
-  }, [isLoaded, isSignedIn, pathname, qc]);
+  }, [isLoaded, isSignedIn, pathname, qc, token]);
 
   return null;
 }

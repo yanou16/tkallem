@@ -48,9 +48,12 @@ class Transcription:
     def unclear(self) -> bool:
         """Whisper heard noise or speech it could not follow and wrote something anyway (it then often invents text in
         another language). Better to ask the student to repeat than to send that text to the coach."""
-        letters = [c for c in self.text if c.isalpha()]
-        if letters and sum(not (c.isascii()) for c in letters) / len(letters) > 0.08:
-            return True  # accented/foreign letters in an English answer: a hallucination, not an Algerian learner's English
+        words = [w for w in self.text.split() if any(c.isalpha() for c in w)]
+        foreign = [w for w in words if any(c.isalpha() and not c.isascii() for c in w)]
+        if len(foreign) >= 2 and len(foreign) / len(words) >= 0.4:
+            # Most words written in another alphabet or with foreign letters: Whisper invented text. One or two accented
+            # names ("I live in Béjaïa", "Sétif and Médéa") stay accepted.
+            return True
         segs = [s for s in self.segments if "avg_logprob" in s]
         if not segs:
             return False

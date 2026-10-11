@@ -9,8 +9,7 @@ from app import credits
 from app.config import settings
 from app.db.connection import ConnFactory, get_conn, get_conn_factory
 from app.db.sessions import create_session, end_session, get_session_for_user, save_turn
-from app.db.users import get_or_create_by_clerk_id
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, user_for_claims
 from app.schemas.sessions import SessionCreate, SessionReport, SessionStarted, TurnResult
 from app.security import ClerkClaims, get_clerk_claims
 from app.voice import SttError, TtsError, run_turn, synthesize, transcribe
@@ -143,7 +142,7 @@ def send_turn(
     if (text is None) == (audio is None):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Send exactly one of `text` or `audio`")
     with connect() as conn:
-        user = get_or_create_by_clerk_id(conn, claims.user_id)
+        user = user_for_claims(conn, claims)
         session = get_session_for_user(conn, session_id, user["id"])
     if session is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
@@ -183,7 +182,7 @@ def end_practice_session(
     llm=Depends(get_llm),
 ) -> dict:
     with connect() as conn:
-        user = get_or_create_by_clerk_id(conn, claims.user_id)
+        user = user_for_claims(conn, claims)
         session = get_session_for_user(conn, session_id, user["id"])
     if session is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")

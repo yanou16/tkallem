@@ -196,3 +196,13 @@ def test_a_valid_token_without_a_guest_row_is_refused_not_recreated(client, db):
     r = client.get("/me", headers={"Authorization": f"Guest {token}"})
     assert r.status_code == 401
     assert db.execute("SELECT count(*) AS n FROM users").fetchone()["n"] == before
+
+
+def test_turn_and_end_with_a_stale_guest_token_create_nothing(client, db):
+    before = db.execute("SELECT count(*) AS n FROM users").fetchone()["n"]
+    token = guests.issue(guests.new_guest_id())
+    headers = {"Authorization": f"Guest {token}"}
+    sid = "00000000-0000-0000-0000-000000000001"
+    assert client.post(f"/sessions/{sid}/turn", data={"text": "Hello."}, headers=headers).status_code == 401
+    assert client.post(f"/sessions/{sid}/end", headers=headers).status_code == 401
+    assert db.execute("SELECT count(*) AS n FROM users").fetchone()["n"] == before

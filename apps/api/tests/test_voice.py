@@ -178,3 +178,10 @@ def test_garbled_or_foreign_transcription_is_unclear():
     assert Transcription("Thank you.", "groq", 0.4, segments=silent).unclear
     good = [{"avg_logprob": -0.2, "no_speech_prob": 0.01}]
     assert not Transcription("I live in Algiers.", "groq", 0.4, segments=good).unclear
+
+
+def test_accented_algerian_place_names_are_not_mistaken_for_noise():
+    from app.voice.stt import Transcription
+    assert not Transcription("I live in Béjaïa.", "groq", 0.4).unclear
+    assert not Transcription("I am from Sétif and I studied in Médéa.", "groq", 0.4).unclear
+    assert not Transcription("I drink a café crème every morning.", "groq", 0.4).unclear
