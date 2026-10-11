@@ -90,7 +90,7 @@ export default function ProfilePage() {
           name: langObj ? langObj.name : langCode,
           level: value2 || "B1",
         };
-        const existing = (user.learningLanguages ?? []).filter((l) => l.code !== langCode);
+        const existing = (user?.learningLanguages ?? []).filter((l) => l.code !== langCode);
         addLang.mutate({ code: langCode, level: value2 || "B1" });
         return patch({ learningLanguages: [...existing, newLang] });
       }
