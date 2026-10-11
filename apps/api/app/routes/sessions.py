@@ -7,15 +7,24 @@ from tkallem_agent import AgentError, CoachSession, ScenarioNotFound
 
 from app.config import settings
 from app.db.connection import ConnFactory, get_conn, get_conn_factory
-from app.db.sessions import create_session, end_session, get_session_for_user, save_turn
+from app.db.sessions import (
+    create_session,
+    end_session,
+    get_session_detail,
+    get_session_for_user,
+    list_turns,
+    save_turn,
+)
 from app.db.users import get_or_create_by_clerk_id
 from app.dependencies import get_current_user
-from app.schemas.sessions import SessionCreate, SessionReport, SessionStarted, TurnResult
+from app.schemas.sessions import SessionCreate, SessionDetail, SessionReport, SessionStarted, TurnResult
 from app.security import ClerkClaims, get_clerk_claims
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
+
+METRIC_KEYS = ("mistakes_per_100", "words_per_answer", "hesitations_per_min", "speaking_seconds")
 
 
 def get_llm():
@@ -54,6 +63,50 @@ def start_session(
     return {
         "session_id": coach.session_id,
         "first_question": {"text": coach.opening, "audio_url": None},
+    }
+
+
+def _scenario_view(session: dict) -> dict:
+    """Title, first question and progress, from the agent. A scenario removed since then still shows the session
+    (as _summary() in routes/me.py): only POST /turn refuses to go on."""
+    try:
+        coach = CoachSession.from_state(session["state"])
+    except ScenarioNotFound:
+        return {
+            "title": session["scenario_id"],
+            "total_questions": None,
+            "first_question": None,
+            "finished": session["ended_at"] is not None,
+        }
+    guided = coach.scenario.mode == "guided"
+    return {
+        "title": coach.scenario.title,
+        "total_questions": len(coach.scenario.questions) if guided else None,
+        "first_question": coach.opening,
+        "finished": coach.finished,
+    }
+
+
+@router.get("/{session_id}", response_model=SessionDetail)
+def read_session(
+    session_id: UUID,
+    user: dict = Depends(get_current_user),
+    conn: Connection = Depends(get_conn),
+) -> dict:
+    session = get_session_detail(conn, session_id, user["id"])
+    if session is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+
+    return {
+        "session_id": session["id"].hex,
+        "scenario_id": session["scenario_id"],
+        "mode": session["mode"],
+        "started_at": session["started_at"],
+        "ended_at": session["ended_at"],
+        **_scenario_view(session),
+        "turns": list_turns(conn, session_id, user["id"]),
+        "note": session["note"],
+        "metrics": {key: session[key] for key in METRIC_KEYS} if session["ended_at"] else None,
     }
 
 
