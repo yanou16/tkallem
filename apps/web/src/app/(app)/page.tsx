@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowRight, ChartNoAxesColumn, Flame } from "lucide-react";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useProgress } from "@/features/progress/hooks/useProgress";
-import { MISTAKE_LABELS, type Progress } from "@/features/progress/types/progress";
+import { mistakeLabel, type Progress } from "@/features/progress/types/progress";
 import { useMySessions, useScenarios } from "@/features/practice/hooks/usePractice";
 import { Async, Card, EmptyState, GoalHint, PageHeader, ProgressRing, SectionTitle, Skeleton, toneAt } from "@/components/ui";
 import { CardsSkeleton, ScenarioCard, SessionList } from "@/components/cards";
@@ -140,7 +140,7 @@ function TopMistakesCard() {
             <ul className="divide-y divide-line">
               {p.topMistakes.map((m) => (
                 <li key={m.id} className="flex items-center justify-between py-3">
-                  <div><p className="font-medium">{MISTAKE_LABELS[m.category] ?? m.category}</p><p className="text-sm text-muted">{m.original} → {m.correction}</p></div>
+                  <div><p className="font-medium">{mistakeLabel(m.category)}</p><p className="text-sm text-muted">{m.original} → {m.correction}</p></div>
                   <span className="rounded-full bg-black/5 px-2.5 py-1 text-xs font-medium">{m.count}×</span>
                 </li>
               ))}

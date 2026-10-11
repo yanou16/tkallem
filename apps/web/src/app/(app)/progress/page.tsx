@@ -1,7 +1,7 @@
 "use client";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useProgress } from "@/features/progress/hooks/useProgress";
-import { MISTAKE_LABELS, type ProgressMetrics } from "@/features/progress/types/progress";
+import { mistakeLabel, type ProgressMetrics } from "@/features/progress/types/progress";
 import { Card, EmptyState, ErrorState, PageHeader, Skeleton } from "@/components/ui";
 import { formatMinutes, formatNumber } from "@/lib/utils";
 
@@ -71,7 +71,7 @@ export default function ProgressPage() {
                 {p.topMistakes.map((m) => (
                   <li key={m.id} className="flex items-center justify-between gap-4 py-3">
                     <div>
-                      <p className="font-medium">{MISTAKE_LABELS[m.category] ?? m.category}</p>
+                      <p className="font-medium">{mistakeLabel(m.category)}</p>
                       <p className="text-sm text-muted">{m.original} → {m.correction}</p>
                     </div>
                     <span className="rounded-full bg-black/5 px-2.5 py-1 text-xs font-medium">{m.count}×</span>
