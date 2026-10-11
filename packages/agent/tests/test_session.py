@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from fakes import FakeChat
+from tkallem_agent.testing import FakeChat
 from tkallem_agent import AgentError, CoachSession, ScenarioNotFound
 from tkallem_agent.scenarios import load_scenario
 
@@ -11,13 +11,17 @@ FOUND = {"corrections": [{"original": "for study", "fixed": "to study", "type": 
 NONE = {"corrections": []}
 
 
-def reply(text="Good."):
-    return {"reaction": text, "goal_covered": None}
+GOALS = load_scenario("visa-us").goals
+
+
+def reply(text="Good.", goal=None):
+    """Fake coach output. `goal`: the goal the answer covered (None = the student did not answer the question)."""
+    return {"reaction": text, "goal_covered": goal}
 
 
 def test_full_guided_session_and_report():
     qs = load_scenario("visa-us").questions
-    llm = FakeChat([FOUND] + [NONE] * 5, [reply()] * 6, text=["Honest note."])
+    llm = FakeChat([FOUND] + [NONE] * 5, [reply(goal=g) for g in GOALS], text=["Honest note."])
     s = CoachSession("visa-us", "B1", "fr", llm=llm)
     assert s.opening == qs[0]
     first = s.turn("I go to the US for study.", audio_seconds=3)
@@ -40,7 +44,7 @@ def test_coach_sees_the_opening_question_in_its_history():
 
 
 def test_state_roundtrip_continues_the_same_conversation():
-    llm = FakeChat([NONE, NONE], [reply(), reply()])
+    llm = FakeChat([NONE, NONE], [reply(goal=GOALS[0]), reply(goal=GOALS[1])])
     s = CoachSession("visa-us", "B2", "en", llm=llm, session_id="abc")
     s.turn("To study computer science.")
     saved = json.loads(json.dumps(s.to_state()))  # must survive JSON storage
@@ -184,3 +188,112 @@ def test_missing_llm_key_is_an_agent_error_not_a_crash(monkeypatch):
     s.turns.append(TurnLog("I go to the US to study.", "Good.", [], "green"))
     with pytest.raises(AgentError, match="not configured"):
         s.end()
+
+
+def test_pauses_are_stored_validated_and_survive_the_state_roundtrip():
+    s = CoachSession("visa-us", "B1", llm=FakeChat([NONE, NONE], [reply(), reply()], text=["ok"]))
+    s.turn("I go to the US.", audio_seconds=30, pauses=3)
+    s.turn("To study.", audio_seconds=30)  # default: no pause information
+    again = CoachSession.from_state(json.loads(json.dumps(s.to_state())), llm=s.llm)
+    assert [t.pauses for t in again.turns] == [3, 0]
+    assert again.end().metrics["hesitations_per_min"] == 3.0  # 3 pauses / 1 minute of speech
+    with pytest.raises(ValueError):
+        s.turn("Hello again.", pauses=-1)
+
+
+def test_coach_skips_study_questions_when_the_student_does_not_study():
+    qs = load_scenario("visa-us").questions
+    skip = {"reaction": "I see, you will work.", "goal_covered": "purpose_of_trip", "skip_next": True}
+    llm = FakeChat([NONE] * 3, [skip, reply(goal="ties_to_algeria"), reply(goal="plans_after")])
+    s = CoachSession("visa-us", "B1", "fr", llm=llm)
+    first = s.turn("I go to work, not to study.")
+    assert first.reply.endswith(qs[4])  # university, funding and why-abroad are skipped: ties to Algeria
+    second = s.turn("My family lives in Oran.")
+    assert second.reply.endswith(qs[5])
+    s.turn("I will keep my job.")
+    assert s.finished
+
+
+def test_a_question_not_marked_skippable_is_never_skipped():
+    qs = load_scenario("visa-us").questions
+    skip = {"reaction": "Fine.", "goal_covered": None, "skip_next": True}
+    llm = FakeChat([NONE] * 3, [skip, skip, skip])
+    s = CoachSession("visa-us", "B1", "fr", llm=llm)
+    s.turn("a")
+    assert s.turns[-1].reply.endswith(qs[4])
+    s.turn("b")
+    assert s.turns[-1].reply.endswith(qs[5])  # ties_to_algeria is not skippable, so the plans question follows it
+    s.turn("c")
+    assert s.finished
+
+
+def test_skipping_survives_the_state_roundtrip():
+    qs = load_scenario("visa-us").questions
+    skip = {"reaction": "OK.", "goal_covered": None, "skip_next": True}
+    s = CoachSession("visa-us", "B1", "fr", llm=FakeChat([NONE] * 2, [skip, reply()]))
+    s.turn("I work.")
+    again = CoachSession.from_state(s.to_state(), llm=FakeChat([NONE], [reply(goal="ties_to_algeria")]))
+    assert again.turn("My family is here.").reply.endswith(qs[5])
+
+
+def test_study_studies_swap_is_not_a_correction():
+    from tkallem_agent.schemas import sanitize
+    raw = {"corrections": [{"original": "not studies", "fixed": "not study", "type": "grammar", "why": "x"}], "sentence_status": "orange"}
+    assert sanitize(raw, None, "it's not studies")["corrections"] == []
+
+
+def test_backup_model_answers_when_the_main_one_fails():
+    from tkallem_agent.llm import FallbackChat
+    broken = FakeChat([RuntimeError("429"), RuntimeError("429")], [RuntimeError("429"), RuntimeError("429")], text=[RuntimeError("429")])
+    backup = FakeChat([NONE, NONE], [reply(), reply()], text=["Backup note."])
+    s = CoachSession("visa-us", "B1", "fr", llm=FallbackChat([broken, backup]))
+    turn = s.turn("I live in Algiers.")
+    assert turn.reply.startswith("Good.") and turn.corrections == []
+    assert broken.calls["Reply"] == 1 and backup.calls["Reply"] == 1
+
+
+def test_when_every_model_fails_the_error_reaches_the_api():
+    from tkallem_agent.llm import FallbackChat
+    down = lambda: FakeChat([RuntimeError("x")] * 2, [RuntimeError("x")] * 2)
+    s = CoachSession("visa-us", "B1", "fr", llm=FallbackChat([down(), down()]))
+    with pytest.raises(AgentError):
+        s.turn("Hello.")
+    assert s.turns == []
+
+
+def test_fallback_list_is_parsed():
+    from tkallem_agent.llm import parse_fallbacks
+    assert parse_fallbacks("groq:openai/gpt-oss-120b, openrouter:a/b") == [("groq", "openai/gpt-oss-120b"), ("openrouter", "a/b")]
+    assert parse_fallbacks("") == []
+    with pytest.raises(ValueError):
+        parse_fallbacks("nonsense")
+
+
+def test_clarification_question_gets_the_question_again_then_the_interview_goes_on():
+    qs = load_scenario("visa-us").questions
+    llm = FakeChat([NONE] * 3, [reply("I mean the reason of your trip."), reply("I see.", goal=None), reply(goal=GOALS[1])])
+    s = CoachSession("visa-us", "B1", "fr", llm=llm)
+    assert s.turn("What do you mean?").reply == f"I mean the reason of your trip. {qs[0]}"
+    assert s.turn("Hmm.").reply.endswith(qs[1])  # asked twice already: the interview moves on
+    assert not s.finished
+
+
+def test_an_answer_given_in_advance_is_not_asked_again_after_a_roundtrip():
+    qs = load_scenario("visa-business").questions
+    goals = load_scenario("visa-business").goals
+    llm = FakeChat([NONE] * 3, [reply(goal=goals[0]), reply("You are a developer.", goal="occupation"), reply(goal="length_of_stay")])
+    s = CoachSession("visa-business", "B1", "fr", llm=llm)
+    s.turn("A conference in Boston.")
+    assert s.turn("I am a software developer.").reply == f"You are a developer. {qs[1]}"  # length not answered yet
+    again = CoachSession.from_state(s.to_state(), llm=llm)
+    assert again.turn("Two weeks.").reply.endswith(qs[3])  # occupation (q2) already answered: straight to funding
+
+
+def test_one_answer_can_cover_two_questions_and_both_are_remembered():
+    qs = load_scenario("visa-business").questions
+    two = {"reaction": "A conference, for two weeks.", "goal_covered": "purpose_of_trip", "also_covered": ["length_of_stay", "not_a_goal"]}
+    s = CoachSession("visa-business", "B1", "fr", llm=FakeChat([NONE], [two]))
+    assert s.turn("A conference in Boston, for two weeks.").reply.endswith(qs[2])  # length of stay not asked
+    again = CoachSession.from_state(s.to_state(), llm=FakeChat([NONE], [reply(goal="occupation")]))
+    assert again.turns[0].also_covered == ["length_of_stay"]  # unknown ids dropped, kept across requests
+    assert again.turn("I am a nurse.").reply.endswith(qs[3])

@@ -1,6 +1,10 @@
 {
   "id": "visa-us",
   "title": "Visa interview",
+  "description": "Answer a consular officer's questions for a US student visa (you play a student).",
+  "category": "travel",
+  "level": "B1",
+  "icon": "plane",
   "mode": "guided",
   "minutes": 8,
   "coach_role": "A US consular officer: polite, direct, short questions.",
@@ -12,6 +16,28 @@
     "What ties do you have to Algeria?",
     "What are your plans after you finish your studies?"
   ],
-  "goals": ["purpose_of_trip", "chosen_program", "funding", "why_abroad", "ties_to_algeria", "plans_after"],
-  "useful_words": ["scholarship", "master's degree", "tuition", "savings", "sponsor", "graduate", "return", "family", "job offer"]
+  "goals": [
+    "purpose_of_trip",
+    "chosen_program",
+    "funding",
+    "why_abroad",
+    "ties_to_algeria",
+    "plans_after"
+  ],
+  "useful_words": [
+    "scholarship",
+    "master's degree",
+    "tuition",
+    "savings",
+    "sponsor",
+    "graduate",
+    "return",
+    "family",
+    "job offer"
+  ],
+  "skippable": [
+    "chosen_program",
+    "funding",
+    "why_abroad"
+  ]
 }

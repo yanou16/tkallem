@@ -4,6 +4,8 @@ import { useState, useEffect, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth, useSignUp } from "@clerk/nextjs";
+import TryWithoutAccount from "@/components/auth/TryWithoutAccount";
+import { completeUsername } from "@/features/auth/lib/username";
 import { AuthShell, AuthCard, AuthField, PrimaryButton, FormError, GoogleButton, OrDivider, clerkMessage } from "@/components/auth/AuthShell";
 
 export default function SignUpPage() {
@@ -76,11 +78,13 @@ export default function SignUpPage() {
     setLoading(true);
     try {
       const res = await signUp.attemptEmailAddressVerification({ code });
-      if (res.status === "complete") {
-        await setActive({ session: res.createdSessionId });
+      // The Clerk instance may require a username, which this form does not ask for: it is made from the e-mail.
+      const sessionId = res.status === "complete" ? res.createdSessionId : await completeUsername(res as never);
+      if (sessionId) {
+        await setActive({ session: sessionId });
         router.push("/");
       } else {
-        setError("Verification incomplete. Please try again.");
+        setError(`Your account needs more information (${res.missingFields.join(", ")}).`);
       }
     } catch (err) {
       setError(clerkMessage(err));
@@ -110,7 +114,8 @@ export default function SignUpPage() {
           </form>
         </AuthCard>
       ) : (
-        <AuthCard title="Create your account" subtitle="Start practicing a language with AI and real learners.">
+        <AuthCard title="Create your account" subtitle="Practise real interviews with your AI coach.">
+          <TryWithoutAccount />
           <form onSubmit={onSubmit} className="space-y-4">
             <GoogleButton onClick={onGoogle} loading={!isLoaded} label="Sign up with Google" />
             <OrDivider />

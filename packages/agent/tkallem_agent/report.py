@@ -29,6 +29,7 @@ class TurnRecord:
     student_text: str
     corrections: list[Correction] = field(default_factory=list)
     status: Status = "green"
+    pauses: int = 0  # long silences between words measured on the audio (Whisper erases most "um"/"uh")
 
 
 class Report(BaseModel):
@@ -55,7 +56,8 @@ def level_of(name: str, value: float | None) -> Status | None:
 def compute_metrics(turns: list[TurnRecord], speaking_seconds: float | None = None) -> dict[str, float | None]:
     total_words = sum(words(t.student_text) for t in turns)
     n_mistakes = sum(len(t.corrections) for t in turns)
-    fillers = sum(len(FILLERS.findall(t.student_text)) for t in turns)
+    # hesitations = spoken fillers still present in the text + long silences measured on the audio
+    fillers = sum(len(FILLERS.findall(t.student_text)) + t.pauses for t in turns)
     minutes = speaking_seconds / 60 if speaking_seconds else None
     return {
         "words": total_words,

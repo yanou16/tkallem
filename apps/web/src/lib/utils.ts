@@ -11,6 +11,12 @@ export function initials(first?: string, last?: string, fallback?: string) {
   return (words[0]?.slice(0, 2) ?? "?").toUpperCase();
 }
 
+/** A metric with at most one decimal (averages from the API can have many). Null means "not available". */
+export function formatNumber(value: number | null | undefined) {
+  if (value === null || value === undefined) return "—";
+  return String(Math.round(value * 10) / 10);
+}
+
 export function formatMinutes(total: number) {
   const h = Math.floor(total / 60);
   const m = Math.round(total % 60);

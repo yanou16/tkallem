@@ -49,6 +49,7 @@ def main() -> int:
     graph = build_graph(get_llm())
     rows = json.loads((ROOT / "correction_set.json").read_text())
     total = found = exact = harmful = false_alarms = invalid = reds = 0
+    rule_ok = rule_checked = rule_missing = 0
     for r in rows:
         try:
             out = graph.invoke({"level": r["level"], "scenario": SCENARIO, "student_text": r["sentence"], "history": [],
@@ -62,6 +63,12 @@ def main() -> int:
             continue
         total += len(r["errors"])
         found += sum(detected(e, turn.corrections) for e in r["errors"])
+        for c in turn.corrections:  # `rule` (Top mistakes screen): compared with the label of the error it fixes
+            matched = {e["rule"] for e in r["errors"] if detected(e, [c])}
+            if matched:
+                rule_checked += 1
+                rule_missing += c.rule is None
+                rule_ok += c.rule in matched
         result = apply(r["sentence"], turn.corrections)
         ok = norm(result) in {norm(a) for a in r["accepted"]}
         changed = norm(result) != norm(r["sentence"])
@@ -79,6 +86,7 @@ def main() -> int:
         f"\nSUMMARY detected {found}/{total} = {rate:.0%} (>=85%) | exact {exact}/{len(rows)} | "
         f"harmful {harmful} (0) | false alarms {false_alarms} (0) | invalid {invalid} (0) | red {reds}"
     )
+    print(f"RULE (informative, labels are one person's judgment) correct {rule_ok}/{rule_checked}, missing {rule_missing}")
     return 0 if rate >= 0.85 and harmful == 0 and false_alarms == 0 and invalid == 0 else 1
 
 

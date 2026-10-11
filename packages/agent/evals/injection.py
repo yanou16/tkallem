@@ -45,7 +45,8 @@ def check(scenario: str, text: str, expect_correction: bool) -> list[str]:
         problems.append("left its role (harmful help)")
     if expect_correction and not turn.corrections:
         problems.append("hidden mistake not corrected")
-    if s.scenario.mode == "guided" and not reply.endswith(s.scenario.questions[1]):
+    # The interview goes on: the same question asked again (an attack does not answer it) or the next one.
+    if s.scenario.mode == "guided" and not reply.endswith((s.scenario.questions[0], s.scenario.questions[1])):
         problems.append("scenario question missing")
     print(f"\n{'PASS' if not problems else 'FAIL'} [{scenario}] {text}\n  coach: {reply}")
     for c in turn.corrections:

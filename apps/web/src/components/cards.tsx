@@ -3,8 +3,8 @@ import Link from "next/link";
 import { ArrowRight, Clock } from "lucide-react";
 import { Icon } from "@/lib/icons";
 import { AvatarStack, Pill, Skeleton, toneBg, toneDeep, type Tone } from "@/components/ui";
-import { cn } from "@/lib/utils";
-import type { Scenario } from "@/features/practice/types/practice";
+import { cn, plural, timeAgo } from "@/lib/utils";
+import type { Scenario, SessionSummary } from "@/features/practice/types/practice";
 import type { GroupSummary } from "@/features/groups/types/groups";
 import { useToggleMembership } from "@/features/groups/hooks/useGroups";
 
@@ -26,24 +26,57 @@ export function StartButton({ href, label = "Start" }: { href: string; label?: s
   );
 }
 
-export function ScenarioCard({ s, tone, compact }: { s: Scenario; tone: Tone; compact?: boolean }) {
+export function ScenarioCard({ s, tone }: { s: Scenario; tone: Tone }) {
   return (
     <article className={cn("flex flex-col justify-between gap-4 rounded-card p-5", toneBg[tone])}>
       <div className="flex gap-4">
-        <IconBadge name={s.icon} tone={tone} />
+        {/* The API sends no icon yet: lib/icons.tsx maps the scenario id instead. */}
+        <IconBadge name={s.icon ?? s.id} tone={tone} />
         <div className="min-w-0">
           <h3 className="font-semibold leading-tight">{s.title}</h3>
-          {s.subtitle && <p className="text-sm text-muted">{s.subtitle} • {s.duration} min</p>}
+          <p className="text-sm text-muted">
+            {s.mode === "free" ? "Free conversation" : s.totalQuestions ? plural(s.totalQuestions, "question") : "Guided questions"}
+          </p>
         </div>
       </div>
-      <p className="text-sm text-muted">{s.description}</p>
+      {s.description && <p className="text-sm text-muted">{s.description}</p>}
       <div className="flex items-center justify-between">
-        {!compact ? (
-          <span className="flex items-center gap-2 text-sm text-muted"><Clock size={14} /> {s.duration} min <Pill>{s.level}</Pill></span>
-        ) : <span />}
+        <span className="flex items-center gap-2 text-sm text-muted">
+          {s.minutes !== null && <><Clock size={14} /> {s.minutes} min</>}
+          {s.level && <Pill>{s.level}</Pill>}
+        </span>
         <StartButton href={startHref(s.id)} />
       </div>
     </article>
+  );
+}
+
+/** Opens a session: the conversation, or its report once it is finished. */
+export const sessionHref = (s: SessionSummary) =>
+  `/ai-chat?sessionId=${encodeURIComponent(s.id)}&scenarioId=${encodeURIComponent(s.scenarioId)}`;
+
+function answered(s: SessionSummary) {
+  return s.totalQuestions === null ? plural(s.answered, "answer") : `${s.answered}/${s.totalQuestions} answers`;
+}
+
+/** The student's sessions from GET /me/sessions. `actions` adds "Continue" (unfinished) or "Practice again" (finished). */
+export function SessionList({ sessions, actions }: { sessions: SessionSummary[]; actions?: boolean }) {
+  return (
+    <ul className="divide-y divide-line">
+      {sessions.map((s) => (
+        <li key={s.id} className="flex items-center gap-3 py-3">
+          <div className="min-w-0 flex-1">
+            <Link href={sessionHref(s)} className="block truncate font-medium hover:underline">{s.title}</Link>
+            <p className="text-sm text-muted">
+              {answered(s)} · {s.endedAt ? "Finished" : "Not finished"} · {timeAgo(s.startedAt)}
+            </p>
+          </div>
+          {actions && (s.endedAt
+            ? <StartButton href={startHref(s.scenarioId)} label="Practice again" />
+            : <StartButton href={sessionHref(s)} label="Continue" />)}
+        </li>
+      ))}
+    </ul>
   );
 }
 

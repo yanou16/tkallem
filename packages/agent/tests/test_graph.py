@@ -2,7 +2,7 @@ import time
 
 from langchain_core.messages import AIMessage, HumanMessage
 
-from fakes import FakeChat
+from tkallem_agent.testing import FakeChat
 from tkallem_agent.graph import build_graph, clean_reaction, next_question, reaction_problem
 from tkallem_agent.scenarios import load_scenario
 
@@ -61,25 +61,60 @@ def test_reply_ends_with_next_scenario_question_verbatim():
 
 
 def test_model_questions_are_dropped_in_guided_mode():
-    out = run(FakeChat([NONE], [{"reaction": "Good. Why the US?", "goal_covered": None}]))
+    out = run(FakeChat([NONE], [{"reaction": "Good. Why the US?", "goal_covered": "purpose_of_trip"}]))
     assert out["turn"].reply == "Good. " + SCENARIO["questions"][1]
 
 
+def conversation(qs, upto):
+    """History where the coach asked questions 0..upto-1 and each was answered (as the real coach writes it)."""
+    history = [AIMessage(qs[0])]
+    for i in range(1, upto):
+        history += [HumanMessage("answer"), AIMessage(f"Thanks. {qs[i]}")]
+    return history
+
+
 def test_closing_once_then_only_reactions():
-    qs = SCENARIO["questions"]
-    turn = [HumanMessage("a"), AIMessage("b")]
-    last = run(FakeChat([NONE], [GOOD]), history=[AIMessage(qs[0])] + turn * (len(qs) - 1))
+    qs, goals = SCENARIO["questions"], SCENARIO["goals"]
+    plans = {"reaction": "Good.", "goal_covered": goals[-1]}
+    last = run(FakeChat([NONE], [plans]), history=conversation(qs, len(qs)))
     assert last["turn"].reply.endswith("end of the interview.")
-    after = run(FakeChat([NONE], [GOOD]), history=[AIMessage(qs[0])] + turn * len(qs))
+    closed = conversation(qs, len(qs)) + [HumanMessage("answer"), AIMessage("Good. Thank you, that is the end of the interview.")]
+    after = run(FakeChat([NONE], [GOOD]), history=closed)
     assert after["turn"].reply == "Good, you want to study."
 
 
 def test_question_order():
-    sc = {"questions": ["q0", "q1", "q2", "q3"]}
-    turn = [HumanMessage("a"), AIMessage("b")]
-    assert next_question(sc, []) == "q1"
-    assert next_question(sc, [AIMessage("q0")] + turn) == "q2"
-    assert next_question(sc, turn * 3) is None
+    sc = {"questions": ["q0", "q1", "q2", "q3"], "goals": ["g0", "g1", "g2", "g3"]}
+    asked_q0 = [AIMessage("q0")]
+    assert next_question(sc, asked_q0, covered={"g0"}) == "q1"
+    asked_q1 = asked_q0 + [HumanMessage("a"), AIMessage("ok. q1")]
+    assert next_question(sc, asked_q1, covered={"g0", "g1"}) == "q2"
+    last = asked_q1 + [HumanMessage("a"), AIMessage("q2"), HumanMessage("a"), AIMessage("q3")]
+    assert next_question(sc, last, covered={"g0", "g1", "g2", "g3"}) is None
+
+
+def test_an_unanswered_question_is_asked_again_once():
+    sc = {"questions": ["q0", "q1", "q2"], "goals": ["g0", "g1", "g2"]}
+    asked = [AIMessage("q0")]
+    assert next_question(sc, asked, covered=set()) == "q0"  # "What do you mean?": the coach explains and asks again
+    asked_twice = asked + [HumanMessage("what?"), AIMessage("I mean your reason. q0")]
+    assert next_question(sc, asked_twice, covered=set()) == "q1"  # never a third time: the student is not stuck
+
+
+def test_a_question_answered_earlier_is_not_asked():
+    sc = {"questions": ["q0", "q1", "q2", "q3"], "goals": ["g0", "g1", "g2", "g3"]}
+    asked_q1 = [AIMessage("q0"), HumanMessage("a"), AIMessage("q1")]
+    # the student answered q2 instead of q1: q1 is asked again, then q2 is passed over
+    assert next_question(sc, asked_q1, covered={"g0", "g2"}) == "q1"
+    asked_q1_again = asked_q1 + [HumanMessage("I am a nurse"), AIMessage("A nurse. q1")]
+    assert next_question(sc, asked_q1_again, covered={"g0", "g2", "g1"}) == "q3"
+
+
+def test_coach_reaction_then_repeated_question_when_the_student_asks_back():
+    qs = SCENARIO["questions"]
+    help_ = {"reaction": "I mean the reason for your trip.", "goal_covered": None}
+    out = run(FakeChat([NONE], [help_]), text="What do you mean?")
+    assert out["turn"].reply == f"I mean the reason for your trip. {qs[0]}"
 
 
 def test_free_talk_keeps_the_model_follow_up_question():

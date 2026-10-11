@@ -7,9 +7,11 @@ import type { GroupFilters } from "@/features/groups/types/groups";
 import { Async, Card, EmptyState, PageHeader, SectionTitle, Skeleton, toneAt, toneBg, toneDeep } from "@/components/ui";
 import { CardsSkeleton, GroupCard } from "@/components/cards";
 import { Icon } from "@/lib/icons";
+import ComingSoon from "@/components/ComingSoon";
+import { FEATURES } from "@/lib/features";
 import { cn } from "@/lib/utils";
 
-export default function GroupsPage() {
+function GroupsPageContent() {
   const [filters, setFilters] = useState<GroupFilters>({});
   const [search, setSearch] = useState("");
   const set = (p: Partial<GroupFilters>) => setFilters((f) => ({ ...f, ...p }));
@@ -116,4 +118,9 @@ function Select({ icon, label, value, options, onChange }: { icon: React.ReactNo
       </select>
     </label>
   );
+}
+
+export default function GroupsPage() {
+  if (!FEATURES.groups) return <ComingSoon title="Study groups are coming soon" text="Practise with the AI coach in the meantime: groups of learners will open after the first release." />;
+  return <GroupsPageContent />;
 }

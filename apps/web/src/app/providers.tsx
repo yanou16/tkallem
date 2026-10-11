@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { ApiError, setAuthTokenProvider } from "@/lib/api/client";
+import GuestBootstrap from "@/components/GuestBootstrap";
 
 function AuthTokenBridge() {
   const { getToken } = useAuth();
@@ -53,9 +54,10 @@ export default function Providers({ children }: { children: ReactNode }) {
           <AuthTokenBridge />
         )}
         <QueryClientProvider client={client}>
+          <GuestBootstrap />
           {children}
         </QueryClientProvider>
       </HydrationGate>
     </ClerkProvider>
   );
-}
+}

@@ -10,6 +10,11 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Clerk session token
+    guestAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: 'Visitor without account: `Authorization: Guest <token>`, the token comes from POST /guests. Accepted wherever bearerAuth is.'
   schemas:
     Correction:
       type: object
@@ -19,6 +24,10 @@ components:
         fixed: { type: string }
         type: { type: string, enum: [grammar, vocabulary, word_choice, other] }
         why: { type: string, description: Explanation in the session explain_lang }
+        rule:
+          type: [string, "null"]
+          enum: [verb_tense, subject_verb_agreement, verb_pattern, preposition, article, plural_uncountable, word_order, word_form, other, null]
+          description: Optional fine-grained category of the mistake (Top mistakes screen). Absent or null when unknown.
     SentenceStatus: { type: string, enum: [green, orange, red] }
     Me:
       type: object
@@ -30,6 +39,7 @@ components:
           enum: [A2, B1, B2, C1, null]
           description: null until the student picks a level
         explain_lang: { type: string, enum: [en, fr] }
+        is_guest: { type: boolean, description: "True for a visitor without account (Authorization: Guest ...)." }
     MeUpdate:
       type: object
       minProperties: 1
@@ -52,6 +62,22 @@ components:
         finished:
           type: boolean
           description: True once every question of a guided scenario is answered (show the report button). Always false in free talk.
+        credits: { $ref: "#/components/schemas/Credits" }
+    Credits:
+      type: object
+      required: [balance]
+      properties:
+        balance: { type: integer, minimum: 0, description: "Credits left. 1 credit = 1 answer from the student." }
+        next_refill_at:
+          type: [string, "null"]
+          format: date-time
+          description: Next daily refill (midnight UTC). Null for guests, who must sign in to get daily credits.
+    NoCredits:
+      type: object
+      properties:
+        code: { type: string, enum: [no_credits] }
+        balance: { type: integer, enum: [0] }
+        next_refill_at: { type: [string, "null"], format: date-time }
 paths:
   /sessions:
     post:
@@ -89,9 +115,70 @@ paths:
         "404": { description: Unknown scenario }
         "409": { description: The student has not chosen a level yet (PATCH /me first) }
         "422": { description: Invalid body }
+  /sessions/{id}:
+    get:
+      summary: The conversation so far (reload the chat screen, or continue a session later)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Session with its lines (text only, never audio)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session_id, scenario_id, title, mode, lines, finished, ended]
+                properties:
+                  session_id: { type: string }
+                  scenario_id: { type: string }
+                  title: { type: string }
+                  mode: { type: string, enum: [text, voice] }
+                  lines:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        role: { type: string, enum: [coach, student] }
+                        text: { type: string }
+                        status: { $ref: "#/components/schemas/SentenceStatus" }
+                        corrections:
+                          type: array
+                          items: { $ref: "#/components/schemas/Correction" }
+                  finished: { type: boolean, description: Every guided question answered (offer the report) }
+                  ended: { type: boolean, description: The report was made, no more answers }
+        "401": { description: Missing or invalid token }
+        "404": { description: Session not found (or not this student's) }
+  /sessions/{id}/speak:
+    post:
+      summary: Switch an ongoing session to voice; the coach says its last line again
+      description: The session becomes a voice session (next replies come with audio). Limited to a few calls per session, each one is a paid voice request.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The coach's last line, with its audio (null if every voice provider failed)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [text]
+                properties:
+                  text: { type: string }
+                  audio_url: { type: [string, "null"] }
+        "401": { description: Missing or invalid token }
+        "404": { description: Session not found (or not this student's) }
+        "409": { description: Session already ended }
+        "429": { description: The coach already repeated this many times in this session }
   /sessions/{id}/turn:
     post:
       summary: Send one student turn (audio file or text)
+      description: |
+        JSON by default. With `Accept: text/event-stream` the answer is streamed as Server-Sent Events, each part as
+        soon as it exists: `transcript` {text}, `reply` {text}, `corrections` {corrections, sentence_status},
+        `audio` {audio_url} (voice sessions and spoken answers only; may come before or after corrections), then
+        `done` {transcript, reply, corrections, sentence_status, finished, credits} once the turn is saved, or
+        `error` {status, detail} (nothing saved, credit given back). Errors found before the stream starts (401, 402,
+        404, 409, 413, 422, 429, 502 from speech recognition) are plain JSON responses as below.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
       requestBody:
@@ -113,6 +200,15 @@ paths:
         "404": { description: Session not found }
         "409": { description: Session already ended, or another answer was saved meanwhile (reload the session) }
         "422": { description: Empty or too long answer, or invalid session id }
+        "402":
+          description: No credits left (code no_credits). For a signed-in student, next_refill_at says when to come back; for a guest, ask to sign in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail: { $ref: "#/components/schemas/NoCredits" }
+        "429": { description: 'Everybody together used today''s free practice budget (code daily_budget_reached): come back tomorrow' }
         "502": { description: The coach failed. Nothing was saved, the student can send the same answer again }
   /sessions/{id}/end:
     post:
@@ -177,6 +273,85 @@ paths:
                   top_mistakes:
                     type: array
                     items: { type: object }
+  /scenarios:
+    get:
+      summary: Scenario cards (public, so the welcome page can list them before any account or guest exists)
+      security: []
+      responses:
+        "200":
+          description: Scenarios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, title, mode]
+                  properties:
+                    id: { type: string }
+                    title: { type: string }
+                    description: { type: [string, "null"] }
+                    category: { type: [string, "null"], enum: [travel, study, work, exams, speaking, null] }
+                    level: { type: [string, "null"], enum: [A2, B1, B2, C1, null] }
+                    icon: { type: [string, "null"] }
+                    mode: { type: string, enum: [guided, free] }
+                    minutes: { type: [integer, "null"] }
+                    total_questions: { type: [integer, "null"], description: Null for free talk }
+  /guests:
+    post:
+      summary: Start as a visitor without account
+      description: "Returns a signed token to send as `Authorization: Guest <token>` and the guest credits (40). Rate limited per network address and per day."
+      security: []
+      responses:
+        "201":
+          description: Guest created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [guest_token, credits]
+                properties:
+                  guest_token: { type: string }
+                  credits: { $ref: "#/components/schemas/Credits" }
+        "429": { description: 'Too many visitors from this network today (code: guest_limit): ask the student to sign in' }
+        "503": { description: Guest mode is not enabled on this server }
+  /me/credits:
+    get:
+      summary: Credit balance and next refill (works for guests and signed-in students)
+      responses:
+        "200":
+          description: Credits
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Credits" }
+        "401": { description: Missing or invalid token }
+  /me/claim-guest:
+    post:
+      summary: After sign-in, bring the guest's sessions and remaining credits to the account
+      description: Credits are transferred once per account; replaying the token transfers nothing. Not available to guests.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [guest_token]
+              properties:
+                guest_token: { type: string }
+      responses:
+        "200":
+          description: Transfer done (possibly 0 credits)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [transferred, credits]
+                properties:
+                  transferred: { type: integer, minimum: 0 }
+                  credits: { $ref: "#/components/schemas/Credits" }
+        "403": { description: A guest cannot claim; sign in first }
+        "422": { description: Invalid guest token }
   /me:
     get:
       summary: Current student's profile (created on first call)

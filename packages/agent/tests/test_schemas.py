@@ -38,8 +38,8 @@ def test_three_corrections_is_red():
 
 def test_eval_set_integrity():
     rows = json.loads((Path(__file__).parents[1] / "evals/correction_set.json").read_text())
-    assert len(rows) == 30
-    assert len({r["id"] for r in rows}) == 30
+    assert len(rows) == 33
+    assert len({r["id"] for r in rows}) == 33
     assert all(r["level"] in {"A2", "B1", "B2", "C1"} for r in rows)
     assert all(e["wrong"] != e["fixed"] for r in rows for e in r["errors"])
 
@@ -87,3 +87,19 @@ def test_sanitize_blocks_meaning_changes_and_rewrites():
         assert sanitize({**base, "corrections": [c]}, None, text)["corrections"] == []
     ok = {**C, "original": "pay my studies", "fixed": "pay for my studies"}
     assert len(sanitize({**base, "corrections": [ok]}, None, text)["corrections"]) == 1
+
+
+def test_rule_is_optional_and_kept_when_valid():
+    from tkallem_agent.schemas import Correction, sanitize
+
+    assert Correction(original="a", fixed="b", type="grammar", why="x").rule is None
+    raw = {"reply": "ok", "corrections": [{**C, "rule": "verb_pattern"}], "sentence_status": "orange", "goal_covered": None}
+    assert AgentTurn.model_validate(sanitize(raw)).corrections[0].rule == "verb_pattern"
+
+
+def test_unknown_rule_becomes_none_without_losing_the_correction():
+    from tkallem_agent.schemas import sanitize
+
+    raw = {"reply": "ok", "corrections": [{**C, "rule": "tenses!!"}], "sentence_status": "orange", "goal_covered": None}
+    turn = AgentTurn.model_validate(sanitize(raw))
+    assert len(turn.corrections) == 1 and turn.corrections[0].rule is None

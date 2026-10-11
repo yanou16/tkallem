@@ -6,11 +6,13 @@ import { useState } from "react";
 import { ArrowLeft, ArrowRight, Calendar, Check, Crown, Heart, Lightbulb, MessageCircle, Mic, Plus, Share2, MoreHorizontal, Users, Globe, Tag, Signal } from "lucide-react";
 import { useCreatePost, useGroup, useGroupPosts, useLikePost, useSetReminder, useToggleMembership } from "@/features/groups/hooks/useGroups";
 import { Async, Avatar, AvatarStack, Button, Card, Dialog, EmptyState, ErrorState, Pill, Skeleton } from "@/components/ui";
+import ComingSoon from "@/components/ComingSoon";
+import { FEATURES } from "@/lib/features";
 import { cn, timeAgo } from "@/lib/utils";
 
 type Tab = "discussion" | "voice" | "members";
 
-export default function GroupPage() {
+function GroupPageContent() {
   const { id } = useParams<{ id: string }>();
   const group = useGroup(id);
   const posts = useGroupPosts(id);
@@ -150,4 +152,9 @@ export default function GroupPage() {
       </Dialog>
     </div>
   );
+}
+
+export default function GroupPage() {
+  if (!FEATURES.groups) return <ComingSoon title="Study groups are coming soon" text="Practise with the AI coach in the meantime: groups of learners will open after the first release." />;
+  return <GroupPageContent />;
 }

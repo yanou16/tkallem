@@ -1,28 +1,53 @@
+/** GET /scenarios item, as sent by the API. */
+export type ScenarioDto = {
+  id: string;
+  title: string;
+  mode: "guided" | "free";
+  minutes: number | null;
+  total_questions: number | null;
+  description: string | null;
+  category: string | null;
+  level: string | null;
+  icon: string | null;
+};
+
+/** A practice scenario. description, category, level and icon stay null until the agent's scenarios have them. */
 export type Scenario = {
   id: string;
   title: string;
-  subtitle?: string;
-  description: string;
-  duration: number; // minutes
-  level: string;
-  category: string; // speaking | vocabulary | grammar | exams | work | travel ...
-  icon: string; // identifier mapped to a Lucide icon in lib/icons.tsx
+  /** guided: fixed questions, then a report. free: open conversation, ended by the student. */
+  mode: "guided" | "free";
+  /** Shown on the card. Null for free talk. */
+  minutes: number | null;
+  /** Null for free talk. */
+  totalQuestions: number | null;
+  description: string | null;
+  category: string | null;
+  level: string | null;
+  /** An icon name from lib/icons.tsx. */
+  icon: string | null;
 };
 
-export type RecentSession = {
+/** GET /me/sessions item, as sent by the API. */
+export type SessionSummaryDto = {
+  session_id: string;
+  scenario_id: string;
+  title: string;
+  started_at: string;
+  ended_at: string | null;
+  answered: number;
+  total_questions: number | null;
+};
+
+/** One of the student's sessions, newest first. */
+export type SessionSummary = {
   id: string;
   scenarioId: string;
   title: string;
-  subtitle: string; // e.g. "You were practicing introductions."
-  duration: number;
-  level: string;
-  icon: string;
-};
-
-export type PracticeFocus = {
-  scenarioId?: string;
-  title: string;
-  description: string;
-  reason: string;
-  icon: string;
+  startedAt: string;
+  /** Null while the session is not finished. */
+  endedAt: string | null;
+  answered: number;
+  /** Null in free talk (no fixed questions). */
+  totalQuestions: number | null;
 };

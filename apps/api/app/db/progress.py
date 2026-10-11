@@ -7,6 +7,8 @@ TIMEZONE = "Africa/Algiers"
 CURRENT_SIZE = 5
 BASELINE_SIZE = 3
 TOP_MISTAKES_SIZE = 3
+# A text session counts its length, but 30 minutes at most (a tab left open is not practice).
+MAX_TEXT_SESSION_SECONDS = 1800
 
 
 def count_streak(days: list[date], today: date) -> int:
@@ -19,27 +21,20 @@ def count_streak(days: list[date], today: date) -> int:
     return streak
 
 
-def get_activity(conn: Connection, user_id: int) -> dict:
-    params = {"user_id": user_id, "tz": TIMEZONE}
+def best_streak(days: list[date]) -> int:
+    """Longest run of consecutive practice days ever, even if it is over (for badges)."""
+    best = run = 0
+    previous = None
+    for day in sorted(set(days)):
+        run = run + 1 if previous is not None and day - previous == timedelta(days=1) else 1
+        best = max(best, run)
+        previous = day
+    return best
 
-    totals = conn.execute(
-        """
-        SELECT
-            (now() AT TIME ZONE %(tz)s)::date AS today,
-            COALESCE(SUM(m.speaking_seconds) FILTER (
-                WHERE s.started_at >= now() - interval '7 days'
-            ), 0) AS week_seconds,
-            COALESCE(SUM(m.speaking_seconds) FILTER (
-                WHERE (s.started_at AT TIME ZONE %(tz)s)::date = (now() AT TIME ZONE %(tz)s)::date
-            ), 0) AS today_seconds
-        FROM practice_sessions s
-        JOIN session_metrics m ON m.session_id = s.id
-        WHERE s.user_id = %(user_id)s
-        """,
-        params,
-    ).fetchone()
 
-    days = conn.execute(
+def get_practice_days(conn: Connection, user_id: int) -> list[date]:
+    """Days with at least one session (finished or not), in Algiers time, newest first."""
+    rows = conn.execute(
         """
         SELECT DISTINCT (started_at AT TIME ZONE %(tz)s)::date AS day
         FROM practice_sessions
@@ -47,13 +42,49 @@ def get_activity(conn: Connection, user_id: int) -> dict:
         ORDER BY day DESC
         LIMIT 400
         """,
-        params,
+        {"user_id": user_id, "tz": TIMEZONE},
     ).fetchall()
+    return [row["day"] for row in rows]
+
+
+def get_activity(conn: Connection, user_id: int) -> dict:
+    """Practice time today and over the last 7 days, and the current streak.
+    Practice time of a finished session: the spoken time when every answer was spoken, else its length."""
+    params = {"user_id": user_id, "tz": TIMEZONE, "max_text_seconds": MAX_TEXT_SESSION_SECONDS}
+
+    totals = conn.execute(
+        """
+        WITH practice AS (
+            SELECT
+                s.started_at,
+                COALESCE(
+                    m.speaking_seconds,
+                    -- LEAST ignores NULL: without this CASE, a session with no ended_at would count 30 minutes.
+                    CASE WHEN s.ended_at IS NOT NULL
+                         THEN LEAST(EXTRACT(EPOCH FROM s.ended_at - s.started_at), %(max_text_seconds)s)
+                    END
+                ) AS seconds
+            FROM practice_sessions s
+            JOIN session_metrics m ON m.session_id = s.id
+            WHERE s.user_id = %(user_id)s
+        )
+        SELECT
+            (now() AT TIME ZONE %(tz)s)::date AS today,
+            COALESCE(SUM(seconds) FILTER (
+                WHERE started_at >= now() - interval '7 days'
+            ), 0) AS week_seconds,
+            COALESCE(SUM(seconds) FILTER (
+                WHERE (started_at AT TIME ZONE %(tz)s)::date = (now() AT TIME ZONE %(tz)s)::date
+            ), 0) AS today_seconds
+        FROM practice
+        """,
+        params,
+    ).fetchone()
 
     return {
         "week_seconds": float(totals["week_seconds"]),
         "today_seconds": float(totals["today_seconds"]),
-        "streak_days": count_streak([row["day"] for row in days], totals["today"]),
+        "streak_days": count_streak(get_practice_days(conn, user_id), totals["today"]),
     }
 
 def combine_metrics(rows: list[dict]) -> dict:
@@ -110,6 +141,8 @@ def get_metrics(conn: Connection, user_id: int) -> dict:
     return {"current": combine_metrics(recent), "baseline": combine_metrics(first)}
 
 def get_top_mistakes(conn: Connection, user_id: int) -> list[dict]:
+    """The most frequent mistake categories of the last sessions, each with its latest example.
+    The category is the fine-grained rule (verb_tense, preposition...), else the broad type (grammar...)."""
     return conn.execute(
         """
         WITH recent AS (
@@ -119,15 +152,22 @@ def get_top_mistakes(conn: Connection, user_id: int) -> list[dict]:
             ORDER BY started_at DESC, id DESC
             LIMIT %(sessions)s
         ),
-        ranked AS (
-            SELECT c.type, c.original, c.fixed,
-                   COUNT(*) OVER (PARTITION BY c.type) AS count,
-                   ROW_NUMBER() OVER (PARTITION BY c.type ORDER BY t.created_at DESC, c.id DESC) AS rank
+        mistakes AS (
+            SELECT
+                -- No rule (older corrections, or the model left it out) or 'other': the type says more.
+                CASE WHEN c.rule IS NULL OR c.rule = 'other' THEN c.type ELSE c.rule END AS category,
+                c.original, c.fixed, c.id, t.created_at
             FROM corrections c
             JOIN turns t ON t.id = c.turn_id
             JOIN recent r ON r.id = t.session_id
+        ),
+        ranked AS (
+            SELECT category, original, fixed,
+                   COUNT(*) OVER (PARTITION BY category) AS count,
+                   ROW_NUMBER() OVER (PARTITION BY category ORDER BY created_at DESC, id DESC) AS rank
+            FROM mistakes
         )
-        SELECT type AS category, original, fixed AS correction, count
+        SELECT category, original, fixed AS correction, count
         FROM ranked
         WHERE rank = 1
         ORDER BY count DESC, category

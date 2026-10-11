@@ -8,6 +8,15 @@ Level = Literal["A2", "B1", "B2", "C1"]
 ExplainLang = Literal["en", "fr"]
 Status = Literal["green", "orange", "red"]
 ErrorType = Literal["grammar", "vocabulary", "word_choice", "other"]
+# Fine-grained category for the "Top mistakes" screen. Same list as packages/contracts (Correction.rule).
+RULES = (
+    "verb_tense", "subject_verb_agreement", "verb_pattern", "preposition", "article",
+    "plural_uncountable", "word_order", "word_form", "other",
+)
+RuleType = Literal[
+    "verb_tense", "subject_verb_agreement", "verb_pattern", "preposition", "article",
+    "plural_uncountable", "word_order", "word_form", "other",
+]
 
 
 class Correction(BaseModel):
@@ -17,6 +26,7 @@ class Correction(BaseModel):
     fixed: str = Field(min_length=1)
     type: ErrorType
     why: str = Field(min_length=1)  # in the session's explain_lang
+    rule: RuleType | None = None  # optional: the model may leave it out, and an unknown value becomes None
 
     @model_validator(mode="after")
     def must_change_something(self):
@@ -57,6 +67,14 @@ def _norm(text: str) -> str:
     return " ".join(re.sub(r"[.,!?;:]", " ", text.lower()).split())
 
 
+def _only_study_number(original: str, fixed: str) -> bool:
+    """"studies" is a correct noun ("it's not studies", "my studies"): turning it into "study" is noise. The other way
+    ("my study" -> "my studies") stays allowed, it is often a real mistake."""
+    a, b = _norm(original).split(), _norm(fixed).split()
+    swap = {"studies": "study"}
+    return len(a) == len(b) and a != b and all(x == y or swap.get(x) == y for x, y in zip(a, b))
+
+
 def sanitize(raw: dict, goals: list[str] | None = None, student_text: str | None = None) -> dict:
     """Guardrails applied to raw model output before validation.
 
@@ -70,6 +88,8 @@ def sanitize(raw: dict, goals: list[str] | None = None, student_text: str | None
     for c in out.get("corrections") or []:
         if not isinstance(c, dict):
             c = c.model_dump() if isinstance(c, BaseModel) else {}
+        if c.get("rule") not in RULES:
+            c = {**c, "rule": None}  # an unknown rule must not cost the correction itself
         try:
             Correction.model_validate(c)  # malformed item (missing type, bad type...): dropped, the turn goes on
         except ValueError:
@@ -82,6 +102,8 @@ def sanitize(raw: dict, goals: list[str] | None = None, student_text: str | None
         if _protected(original) - _protected(fixed):
             continue
         if len(fixed.split()) > len(original.split()) + 3:
+            continue
+        if _only_study_number(original, fixed):
             continue
         kept.append(c)
     kept = kept[:3]
