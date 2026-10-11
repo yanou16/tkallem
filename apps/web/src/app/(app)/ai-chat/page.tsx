@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowDown, ChevronDown, ChevronRight, CircleAlert, Lightbulb, Mic, MessageCircle, Send, Square, ChartNoAxesColumn } from "lucide-react";
 import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOfCredits";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
+import { CoachAvatar, type AvatarSpeech } from "@/components/CoachAvatar";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
 import { useAiSession, useCreateSession, useSendMessage, useSendVoice } from "@/features/ai-chat/hooks/useAiChat";
 import { useVoiceRecorder } from "@/features/ai-chat/hooks/useVoiceRecorder";
@@ -35,6 +36,8 @@ function Chat() {
   const [mode, setMode] = useState<"text" | "voice">("text");
   const [text, setText] = useState("");
   const [speaking, setSpeaking] = useState(false);
+  const [avatarOn, setAvatarOn] = useState(true);
+  const [speech, setSpeech] = useState<AvatarSpeech | null>(null);
   const [menu, setMenu] = useState(false);
   const started = useRef<string | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
@@ -67,7 +70,8 @@ function Chat() {
     if (rec.isRecording) {
       const blob = await rec.stop();
       if (blob) voice.mutate(blob, { onSuccess: (r) => {
-        if (r.reply_audio_url) { const a = new Audio(r.reply_audio_url); setSpeaking(true); a.onended = a.onerror = () => setSpeaking(false); a.play().catch(() => setSpeaking(false)); }
+        if (r.reply_audio_url && avatarOn) setSpeech({ id: Date.now(), url: r.reply_audio_url, text: r.reply });
+        else if (r.reply_audio_url) { const a = new Audio(r.reply_audio_url); setSpeaking(true); a.onended = a.onerror = () => setSpeaking(false); a.play().catch(() => setSpeaking(false)); }
       } });
     } else rec.start();
   }
@@ -113,6 +117,15 @@ function Chat() {
             ))}
           </div>
         </div>
+
+        {mode === "voice" && (
+          <div className="mb-4">
+            <div className="mb-2 flex justify-end">
+              <button onClick={() => setAvatarOn((v) => !v)} className="rounded-full border border-line px-3 py-1 text-xs font-semibold">{avatarOn ? "Hide 3D coach" : "Show 3D coach"}</button>
+            </div>
+            {avatarOn && <CoachAvatar speech={speech} onStart={() => setSpeaking(true)} onEnd={() => setSpeaking(false)} />}
+          </div>
+        )}
 
         <div className="flex flex-1 flex-col overflow-hidden rounded-card border border-line bg-white">
           <div className="flex-1 space-y-5 overflow-y-auto p-6" aria-live="polite">

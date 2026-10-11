@@ -10,11 +10,13 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.39.7",
+    "@met4citizen/talkinghead": "^1.7.0",
     "@tanstack/react-query": "^5.104.1",
     "lucide-react": "^1.55.0",
     "next": "^16.4.0",
     "react": "^19.3.0",
-    "react-dom": "^19.3.0"
+    "react-dom": "^19.3.0",
+    "three": "^0.170.0"
   },
   "devDependencies": {
     "@types/node": "^20.19.43",
