@@ -10,7 +10,7 @@ from app.config import settings
 from app.db.connection import ConnFactory, get_conn, get_conn_factory
 from app.db.sessions import create_session, end_session, get_session_for_user, save_turn
 from app.dependencies import get_current_user, user_for_claims
-from app.schemas.sessions import SessionCreate, SessionReport, SessionStarted, TurnResult
+from app.schemas.sessions import SessionCreate, SessionDetail, SessionReport, SessionStarted, TurnResult
 from app.security import ClerkClaims, get_clerk_claims
 from app.voice import SttError, TtsError, run_turn, synthesize, transcribe
 
@@ -126,6 +126,32 @@ def _answer(session_id: UUID, session: dict, text: str | None, audio: UploadFile
         "corrections": corrections,
         "sentence_status": turn.sentence_status,
         "finished": coach.finished,
+    }
+
+
+@router.get("/{session_id}", response_model=SessionDetail)
+def read_session(
+    session_id: UUID,
+    user: dict = Depends(get_current_user),
+    conn: Connection = Depends(get_conn),
+) -> dict:
+    """The conversation so far (text only, never audio), rebuilt from the stored state: no LLM call."""
+    session = get_session_for_user(conn, session_id, user["id"])
+    if session is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    coach = CoachSession.from_state(session["state"], max_text_chars=settings.max_text_chars)
+    lines = [{"role": "coach", "text": coach.opening}]
+    for t in coach.turns:
+        lines.append({"role": "student", "text": t.student_text, "status": t.status, "corrections": t.corrections})
+        lines.append({"role": "coach", "text": t.reply})
+    return {
+        "session_id": session_id.hex,
+        "scenario_id": coach.scenario.id,
+        "title": coach.scenario.title,
+        "mode": session["mode"],
+        "lines": lines,
+        "finished": coach.finished,
+        "ended": session["ended_at"] is not None,
     }
 
 

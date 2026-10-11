@@ -171,3 +171,24 @@ def test_turn_is_finished_after_the_last_question(client, session_id):
     responses = [send(client, session_id, text="My answer is fine.") for _ in range(questions)]
 
     assert [r.json()["finished"] for r in responses] == [False] * (questions - 1) + [True]
+
+def test_reloading_a_session_returns_the_conversation_so_far(client, db, session_id):
+    qs = load_scenario("visa-us").questions
+    use_llm(FakeChat([FOUND], [reply()]))
+    assert send(client, session_id).status_code == 200
+
+    body = client.get(f"/sessions/{session_id}").json()
+
+    assert body["scenario_id"] == "visa-us" and body["title"] == "Visa interview"
+    assert [line["role"] for line in body["lines"]] == ["coach", "student", "coach"]
+    assert body["lines"][0]["text"] == qs[0]
+    assert body["lines"][1]["text"] == STUDENT and body["lines"][1]["status"] == "orange"
+    assert body["lines"][1]["corrections"][0]["fixed"] == "to study"
+    assert body["lines"][2]["text"].endswith(qs[1])
+    assert body["finished"] is False and body["ended"] is False
+
+
+def test_another_students_session_cannot_be_read(client, db, session_id):
+    app.dependency_overrides[get_clerk_claims] = lambda: ClerkClaims(user_id="user_someone_else", session_id=None)
+    assert client.get(f"/sessions/{session_id}").status_code == 404
+    assert client.get(f"/sessions/{uuid4()}").status_code == 404

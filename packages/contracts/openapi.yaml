@@ -115,6 +115,39 @@ paths:
         "404": { description: Unknown scenario }
         "409": { description: The student has not chosen a level yet (PATCH /me first) }
         "422": { description: Invalid body }
+  /sessions/{id}:
+    get:
+      summary: The conversation so far (reload the chat screen, or continue a session later)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Session with its lines (text only, never audio)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session_id, scenario_id, title, mode, lines, finished, ended]
+                properties:
+                  session_id: { type: string }
+                  scenario_id: { type: string }
+                  title: { type: string }
+                  mode: { type: string, enum: [text, voice] }
+                  lines:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        role: { type: string, enum: [coach, student] }
+                        text: { type: string }
+                        status: { $ref: "#/components/schemas/SentenceStatus" }
+                        corrections:
+                          type: array
+                          items: { $ref: "#/components/schemas/Correction" }
+                  finished: { type: boolean, description: Every guided question answered (offer the report) }
+                  ended: { type: boolean, description: The report was made, no more answers }
+        "401": { description: Missing or invalid token }
+        "404": { description: Session not found (or not this student's) }
   /sessions/{id}/turn:
     post:
       summary: Send one student turn (audio file or text)

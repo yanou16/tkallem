@@ -60,6 +60,18 @@ class SessionReport(BaseModel):
     redo_index: int | None
 
 
+class SessionDetail(BaseModel):
+    """A session as the chat screen shows it: the conversation so far, to reload the page or continue later."""
+
+    session_id: str
+    scenario_id: str
+    title: str
+    mode: Literal["text", "voice"]
+    lines: list[ReportLine]
+    finished: bool  # every guided question answered: show the report button
+    ended: bool  # the report was already made, no more answers
+
+
 class SessionSummary(BaseModel):
     session_id: str
     scenario_id: str

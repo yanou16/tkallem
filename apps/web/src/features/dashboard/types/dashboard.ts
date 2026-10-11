@@ -1,8 +1,8 @@
 export type DashboardData = {
   speakingMinutesThisWeek: number;
   streakDays: number;
-  mistakesPer100Words: number;
-  mistakesChange: number; // negative = fewer mistakes
+  mistakesPer100Words: number | null; // null before the first answered session
+  mistakesChange: number | null; // negative = fewer mistakes, null without a baseline yet
   mistakesChangeLabel?: string; // e.g. "in 2 weeks"
   dailyGoalMinutes: number;
   dailyCompletedMinutes: number;

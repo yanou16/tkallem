@@ -9,6 +9,7 @@ import { Async, Button, Card, EmptyState, GoalHint, PageHeader, ProgressRing, Se
 import { CardsSkeleton, GroupCard, ScenarioCard } from "@/components/cards";
 import { Icon } from "@/lib/icons";
 import { cn, plural } from "@/lib/utils";
+import { FEATURES } from "@/lib/features";
 
 export default function HomePage() {
   const { user, activeLanguage } = useCurrentUser();
@@ -34,10 +35,12 @@ export default function HomePage() {
               <div className="rounded-card bg-ink p-5 text-white">
                 <p className="text-sm text-white/70">Mistakes per 100 words</p>
                 <div className="mt-2 flex items-center gap-3">
-                  <span className="text-5xl font-extrabold">{d.mistakesPer100Words}</span>
-                  <span className={cn("rounded-full px-3 py-1 text-sm font-semibold", d.mistakesChange <= 0 ? "bg-success" : "bg-red-500")}>
-                    {d.mistakesChange > 0 ? "+" : ""}{d.mistakesChange}{d.mistakesChangeLabel ? ` ${d.mistakesChangeLabel}` : ""}
-                  </span>
+                  <span className="text-5xl font-extrabold">{d.mistakesPer100Words ?? "—"}</span>
+                  {d.mistakesChange !== null && (
+                    <span className={cn("rounded-full px-3 py-1 text-sm font-semibold", d.mistakesChange <= 0 ? "bg-success" : "bg-red-500")}>
+                      {d.mistakesChange > 0 ? "+" : ""}{d.mistakesChange}{d.mistakesChangeLabel ? ` ${d.mistakesChangeLabel}` : ""}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="rounded-card bg-mint p-5">
@@ -74,17 +77,7 @@ export default function HomePage() {
           </Async>
         </div>
 
-        <div className="mt-8">
-          <SectionTitle title="Recommended groups" action={<Link href="/groups" className="inline-flex items-center gap-1">Explore all groups <ArrowRight size={14} /></Link>} />
-          <Async
-            query={useSuggestedGroups()}
-            skeleton={<CardsSkeleton n={3} h="h-32" cols="md:grid-cols-3" />}
-            isEmpty={(d) => d.length === 0}
-            empty={<EmptyState title="No groups to suggest yet" text="Join a community to start practicing with other learners." action={<Link href="/groups"><Button>Browse groups</Button></Link>} />}
-          >
-            {(list) => <div className="grid gap-4 md:grid-cols-3">{list.slice(0, 3).map((g, i) => <GroupCard key={g.id} g={g} tone={toneAt(i)} small />)}</div>}
-          </Async>
-        </div>
+        {FEATURES.groups && <SuggestedGroups />}
       </div>
 
       <aside className="space-y-5">
@@ -138,5 +131,22 @@ function TopMistakesCard() {
         )}
       </Async>
     </Card>
+  );
+}
+
+/** Hidden while FEATURES.groups is off (no groups API yet). */
+function SuggestedGroups() {
+  return (
+    <div className="mt-8">
+      <SectionTitle title="Recommended groups" action={<Link href="/groups" className="inline-flex items-center gap-1">Explore all groups <ArrowRight size={14} /></Link>} />
+      <Async
+        query={useSuggestedGroups()}
+        skeleton={<CardsSkeleton n={3} h="h-32" cols="md:grid-cols-3" />}
+        isEmpty={(d) => d.length === 0}
+        empty={<EmptyState title="No groups to suggest yet" text="Join a community to start practicing with other learners." action={<Link href="/groups"><Button>Browse groups</Button></Link>} />}
+      >
+        {(list) => <div className="grid gap-4 md:grid-cols-3">{list.slice(0, 3).map((g, i) => <GroupCard key={g.id} g={g} tone={toneAt(i)} small />)}</div>}
+      </Async>
+    </div>
   );
 }

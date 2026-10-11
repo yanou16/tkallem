@@ -10,13 +10,15 @@ import { ROUTES } from "@/lib/config";
 import { ApiError, setUnauthorizedHandler } from "@/lib/api/client";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import CreditsPill from "@/components/CreditsPill";
+import ChooseLevel from "@/components/ChooseLevel";
 import { useIdentity } from "@/features/credits/hooks/useCredits";
+import { FEATURES } from "@/lib/features";
 
 const NAV = [
   { href: "/", label: "Home", icon: House },
   { href: "/practice", label: "Practice", icon: MessageCircle },
   { href: "/ai-chat", label: "AI Chat", icon: Sparkles },
-  { href: "/groups", label: "Groups", icon: Users },
+  ...(FEATURES.groups ? [{ href: "/groups", label: "Groups", icon: Users }] : []),
   { href: "/progress", label: "Progress", icon: ChartNoAxesColumn },
   { href: "/profile", label: "Profile", icon: UserRound },
 ];
@@ -90,9 +92,11 @@ function HeaderBar() {
       <div className="md:hidden"><Logo /></div>
       <div className="flex items-center gap-5">
         <CreditsPill />
-        <button aria-label="Notifications" className="relative rounded-full p-2 hover:bg-black/5">
-          <Bell size={22} strokeWidth={1.7} />
-        </button>
+        {FEATURES.notifications && (
+          <button aria-label="Notifications" className="relative rounded-full p-2 hover:bg-black/5">
+            <Bell size={22} strokeWidth={1.7} />
+          </button>
+        )}
         {isGuest ? (
           <Link href={ROUTES.signIn} className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white">Sign in</Link>
         ) : !isLoaded || !user ? (
@@ -120,8 +124,9 @@ function HeaderBar() {
 /** Auth guard + chrome. No user data is rendered until the backend answers. */
 export default function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const { user, error, refetch } = useCurrentUser();
+  const { user, error, refetch, hasProfile, isGuest } = useCurrentUser();
   const { guestFailed } = useIdentity();
+  const needsLevel = hasProfile && !isGuest && !user?.level; // new account: no session can start without a level
 
   useEffect(() => {
     setUnauthorizedHandler(() => router.replace(ROUTES.signIn));
@@ -142,7 +147,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <main className="px-6 pb-10 pt-2 md:px-10">
           {fatal ? <ErrorState error={error} onRetry={() => refetch()} className="mt-8" />
             : !user && !error && guestFailed ? <GuestUnavailable />
-            : !user && !error ? <PageSkeleton /> : children}
+            : !user && !error ? <PageSkeleton />
+            : needsLevel ? <ChooseLevel /> : children}
         </main>
       </div>
       <MobileNav />

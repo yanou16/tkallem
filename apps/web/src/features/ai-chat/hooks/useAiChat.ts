@@ -1,13 +1,31 @@
 "use client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createSession, sendText, sendVoice } from "../api/ai";
-import type { AiSession, StartSessionResponse, TurnResponse } from "../types/ai";
+import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createSession, endSession, getSession, sendText, sendVoice } from "../api/ai";
+import type { AiSession, SessionReport, StartSessionResponse, TurnResponse } from "../types/ai";
 import { CREDITS_KEY } from "@/features/credits/hooks/useCredits";
 
 const key = (id?: string) => ["ai-session", id] as const;
 
+// The cache is filled by the start and turn mutations; the server is read only when the page opens on an existing
+// session (refresh, "Continue"). staleTime Infinity: never refetch over answers merged locally.
 export const useAiSession = (id?: string) =>
-  useQuery<AiSession>({ queryKey: key(id), enabled: false });
+  useQuery<AiSession>({ queryKey: key(id), queryFn: () => getSession(id!), enabled: !!id, staleTime: Infinity, retry: false });
+
+const reportKey = (id?: string) => ["ai-report", id] as const;
+export const useSessionReport = (id?: string) =>
+  useQuery<SessionReport>({ queryKey: reportKey(id), queryFn: skipToken }); // filled by useEndSession only, never fetched
+
+export const useEndSession = (sessionId?: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => endSession(sessionId!),
+    onSuccess: (report) => {
+      qc.setQueryData(reportKey(sessionId), report);
+      qc.setQueryData<AiSession>(key(sessionId), (prev) => (prev ? { ...prev, ended: true } : prev));
+      qc.invalidateQueries({ queryKey: ["progress"] }); // the report adds this session to the progress numbers
+    },
+  });
+};
 
 export const useCreateSession = () => {
   const qc = useQueryClient();
@@ -36,10 +54,11 @@ function merge(qc: ReturnType<typeof useQueryClient>, sessionId: string, transcr
           ...prev,
           messages: [
             ...prev.messages,
-            { id: `${sessionId}-${prev.messages.length}`, role: "user", content: transcript, createdAt: new Date().toISOString() },
+            { id: `${sessionId}-${prev.messages.length}`, role: "user", content: transcript, createdAt: new Date().toISOString(), status: r.sentence_status },
             { id: `${sessionId}-${prev.messages.length + 1}`, role: "assistant", content: r.reply, createdAt: new Date().toISOString() },
           ],
           corrections: [...prev.corrections, ...r.corrections],
+          finished: r.finished ?? prev.finished,
         }
       : prev,
   );

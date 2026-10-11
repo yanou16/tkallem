@@ -46,6 +46,7 @@ export function useCurrentUser() {
     user: combinedUser,
     activeLanguage: getActiveLanguage(combinedUser),
     isGuest,
+    hasProfile: q.data !== undefined, // the API answered (the Clerk fallback above has no level)
     isLoading: q.isLoading || (!isUserLoaded && isSignedIn === true),
     error: q.error as ApiError | null,
     refetch: q.refetch,

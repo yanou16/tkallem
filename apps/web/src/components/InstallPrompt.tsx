@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
 
 const DISMISSED_KEY = "tkallem-install-dismissed";
+// Never over the chat input or the sign-in forms, and not in the first seconds of a visit.
+const QUIET_PATHS = ["/ai-chat", "/sign-in", "/sign-up", "/sso-callback", "/forgot-password"];
+const DELAY_MS = 20_000;
 
 function readDismissed(): boolean {
   try {
@@ -17,11 +21,19 @@ function readDismissed(): boolean {
 /**
  * "Add to home screen" banner on phones. Chrome and Edge give us an install event; Safari on iPhone has none, so we
  * explain the Share menu. Nothing is shown once the app is installed, or after the student closed it once.
+ * Shown after 20 s, and never on the chat or sign-in screens, where it would cover the input.
  */
 export default function InstallPrompt() {
   const [event, setEvent] = useState<InstallEvent | null>(null);
   const [ios, setIos] = useState(false);
   const [hidden, setHidden] = useState(true);
+  const [waited, setWaited] = useState(false);
+  const pathname = usePathname() ?? "";
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setWaited(true), DELAY_MS);
+    return () => window.clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     const standalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true;
@@ -43,7 +55,7 @@ export default function InstallPrompt() {
     };
   }, []);
 
-  if (hidden) return null;
+  if (hidden || !waited || QUIET_PATHS.some((p) => pathname.startsWith(p))) return null;
 
   const close = () => {
     try {

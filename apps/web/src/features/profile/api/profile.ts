@@ -1,6 +1,7 @@
 import { api } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
 import type { MeResponse, User } from "@/features/auth/types/user";
+import type { SessionSummary } from "@/features/progress/types/progress";
 import type { Achievement, ActivityItem, Preferences, UpdateProfileInput } from "../types/profile";
 
 export const updateProfile = (input: UpdateProfileInput) => {
@@ -20,7 +21,17 @@ export const updateProfile = (input: UpdateProfileInput) => {
 };
 export const addLanguage = (input: { code: string; level: string }) => api.post(endpoints.user.languages, input);
 export const getAchievements = () => api.get<Achievement[]>(endpoints.user.achievements);
-export const getActivity = () => api.get<ActivityItem[]>(endpoints.user.activity);
+/** Recent activity = the latest practice sessions (GET /me/sessions). */
+export const getActivity = async (): Promise<ActivityItem[]> => {
+  const sessions = await api.get<SessionSummary[]>(endpoints.practice.recent, { query: { limit: 5 } });
+  return sessions.map((s) => ({
+    id: s.session_id,
+    title: s.title,
+    detail: s.ended_at ? `Finished · ${s.answered} answers` : `${s.answered} answer${s.answered === 1 ? "" : "s"}, not finished`,
+    createdAt: s.started_at,
+    icon: s.ended_at ? "trophy" : "chat",
+  }));
+};
 export const getPreferences = () => api.get<Preferences>(endpoints.user.preferences);
 export const updatePreferences = (input: Partial<Preferences["notifications"]>) =>
   api.patch<Preferences>(endpoints.user.preferences, { notifications: input });

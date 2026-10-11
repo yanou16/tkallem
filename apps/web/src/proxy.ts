@@ -7,6 +7,7 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/sso-callback(.*)",
+  "/forgot-password(.*)",
   // visitors without account (guest mode, docs/CREDITS.md): the API itself enforces who may do what
   "/practice(.*)",
   "/ai-chat(.*)",

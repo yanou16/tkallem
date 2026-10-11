@@ -21,12 +21,11 @@ export const endpoints = {
   mistakes: { top: "/api/mistakes/top" },
   practice: {
     scenarios: "/scenarios",
-    recent: "/api/practice/sessions/recent",
-    recommended: "/api/practice/recommended",
-    focus: "/api/practice/focus",
+    recent: "/me/sessions", // recommended and focus are computed in features/practice/api from /me/sessions and /me/progress
   },
   ai: {
     sessions: "/sessions",
+    session: (id: string) => `/sessions/${id}`,
     turn: (id: string) => `/sessions/${id}/turn`,
     end: (id: string) => `/sessions/${id}/end`,
   },

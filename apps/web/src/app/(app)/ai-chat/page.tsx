@@ -6,7 +6,8 @@ import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOf
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { CoachAvatar, type AvatarSpeech } from "@/components/CoachAvatar";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
-import { useAiSession, useCreateSession, useSendMessage, useSendVoice } from "@/features/ai-chat/hooks/useAiChat";
+import { useAiSession, useCreateSession, useEndSession, useSendMessage, useSendVoice, useSessionReport } from "@/features/ai-chat/hooks/useAiChat";
+import SessionReportView from "@/features/ai-chat/components/SessionReportView";
 import { useVoiceRecorder } from "@/features/ai-chat/hooks/useVoiceRecorder";
 import type { ChatMessage, Correction, VoiceState } from "@/features/ai-chat/types/ai";
 import { Avatar, Card, EmptyState, ErrorState, PageHeader, Skeleton } from "@/components/ui";
@@ -43,6 +44,8 @@ function Chat() {
   const send = useSendMessage(sessionId);
   const voice = useSendVoice(sessionId);
   const rec = useVoiceRecorder();
+  const end = useEndSession(sessionId);
+  const report = useSessionReport(sessionId).data;
 
   const [mode, setMode] = useState<"text" | "voice">("text");
   const [text, setText] = useState("");
@@ -53,22 +56,25 @@ function Chat() {
   const started = useRef<string | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
 
-  // Start a backend session when arriving with ?scenarioId=…
+  // Start a backend session when arriving with ?scenarioId=… (&again=… from the report starts a new one)
+  const startKey = `${scenarioId}:${params.get("again") ?? ""}`;
   useEffect(() => {
-    if (sessionId || !scenarioId || started.current === scenarioId) return;
-    started.current = scenarioId;
+    if (sessionId || !scenarioId || started.current === startKey) return;
+    started.current = startKey;
     create.mutate(
       { scenario_id: scenarioId, mode, explain_lang: user?.explainLang ?? "fr" },
       { onSuccess: (s) => router.replace(`/ai-chat?sessionId=${s.session_id}&scenarioId=${scenarioId}`) },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scenarioId, sessionId]);
+  }, [startKey, sessionId]);
 
   const s = session.data;
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [s?.messages.length]);
 
   const voiceState: VoiceState = rec.error ? "error" : rec.isRecording ? "recording" : voice.isPending ? "uploading" : speaking ? "speaking" : voice.isError ? "error" : "idle";
-  const busy = send.isPending || voice.isPending;
+  const busy = send.isPending || voice.isPending || end.isPending;
+  const answered = s?.messages.filter((m) => m.role === "user").length ?? 0;
+  const closed = !!report || !!s?.ended; // no more answers once the report is made
 
   function submit() {
     const msg = text.trim();
@@ -146,8 +152,22 @@ function Chat() {
               : (create.isPending || session.isLoading) ? <div className="space-y-4"><Skeleton className="h-20 w-2/3" /><Skeleton className="ml-auto h-20 w-2/3" /></div>
               : session.error ? <ErrorState error={session.error} onRetry={() => session.refetch()} />
               : s && s.messages.length === 0 ? <EmptyState title="Say hello to begin" text="Type or record your first message." />
+              : report ? <SessionReportView report={report} scenarioId={s?.scenarioId ?? scenarioId} />
               : s?.messages.map((m) => <Bubble key={m.id} m={m} icon={icon} user={user} />)}
             {(send.isPending || voice.isPending) && <p className="text-sm text-muted">Your tutor is replying…</p>}
+            {s && !report && answered > 0 && !s.ended && (
+              <div className={cn("flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4", s.finished ? "bg-mint" : "bg-black/[0.03]")}>
+                <p className="text-sm">{s.finished ? "Interview complete. Well done!" : "You can stop here and get your report."}</p>
+                <button onClick={() => end.mutate()} disabled={end.isPending || busy}
+                  className={cn("rounded-full px-5 py-2.5 text-sm font-semibold disabled:opacity-50", s.finished ? "bg-ink text-white" : "border border-line bg-white")}>
+                  {end.isPending ? "Writing your report…" : s.finished ? "See my report" : "End and see my report"}
+                </button>
+              </div>
+            )}
+            {end.error && <ErrorState error={end.error} onRetry={() => end.mutate()} />}
+            {s?.ended && !report && (
+              <EmptyState title="This session is finished" text="Start the scenario again to practise more." action={<a href={`/ai-chat?scenarioId=${s.scenarioId ?? scenarioId}`} className="inline-block rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white">Practise again</a>} />
+            )}
             <div ref={bottom} />
           </div>
 
@@ -161,7 +181,7 @@ function Chat() {
 
           <div className="flex items-center gap-4 border-t border-line p-4">
             <div className="flex flex-col items-center">
-              <button onClick={toggleMic} disabled={!sessionId || voiceState === "uploading"} aria-label={rec.isRecording ? "Stop recording" : "Start recording"}
+              <button onClick={toggleMic} disabled={!sessionId || closed || voiceState === "uploading"} aria-label={rec.isRecording ? "Stop recording" : "Start recording"}
                 className={cn("flex h-14 w-14 items-center justify-center rounded-full text-white disabled:opacity-50", rec.isRecording ? "bg-red-500" : "bg-ink")}>
                 {rec.isRecording ? <Square size={18} /> : <Mic size={22} />}
               </button>
@@ -170,10 +190,10 @@ function Chat() {
             <Waveform active={voiceState === "recording" || voiceState === "speaking"} />
             <div className="flex-1">
               <input value={text} maxLength={MAX} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()}
-                disabled={!sessionId} placeholder="Type your response here…" className="w-full rounded-full border border-line px-5 py-3.5 outline-none focus:border-ink disabled:bg-black/[0.03]" />
+                disabled={!sessionId || closed} placeholder={closed ? "Session finished" : "Type your response here…"} className="w-full rounded-full border border-line px-5 py-3.5 outline-none focus:border-ink disabled:bg-black/[0.03]" />
               <p className="mt-1 text-right text-xs text-muted">{text.length} / {MAX}</p>
             </div>
-            <button onClick={submit} disabled={!text.trim() || busy || !sessionId} aria-label="Send" className="flex h-14 w-14 items-center justify-center rounded-full bg-ink text-white disabled:opacity-40"><Send size={20} /></button>
+            <button onClick={submit} disabled={!text.trim() || busy || !sessionId || closed} aria-label="Send" className="flex h-14 w-14 items-center justify-center rounded-full bg-ink text-white disabled:opacity-40"><Send size={20} /></button>
           </div>
         </div>
       </div>
@@ -185,7 +205,7 @@ function Chat() {
           {!grammar && !phrasing && <EmptyState title="No corrections yet" text="Send a message and your tutor will suggest improvements here." />}
           {grammar && <CorrectionCard c={grammar} tone="rose" title="Grammar correction" icon={<CircleAlert size={18} />} better="Better version" />}
           {phrasing && <CorrectionCard c={phrasing} tone="butter" title="Better phrasing" icon={<Lightbulb size={18} />} better="More natural" />}
-          <SummaryRow icon={<CircleAlert size={18} />} tone="bg-rose" title="Corrections this turn" sub={`${s?.corrections.length ?? 0} suggestions`} />
+          <SummaryRow icon={<CircleAlert size={18} />} tone="bg-rose" title="Corrections in this session" sub={`${s?.corrections.length ?? 0} suggestion${(s?.corrections.length ?? 0) === 1 ? "" : "s"}`} />
         </Card>
       </aside>
     </div>
@@ -198,13 +218,13 @@ const VOICE_LABEL: Record<VoiceState, string> = {
 
 function Bubble({ m, icon, user }: { m: ChatMessage; icon?: string; user?: ReturnType<typeof useCurrentUser>["user"] }) {
   const mine = m.role === "user";
-  const time = new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const time = m.createdAt ? new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
   return (
     <div className={cn("flex items-start gap-3", mine && "justify-end")}>
       {!mine && <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-mint"><Icon name={icon ?? "briefcase"} /></span>}
       <div className={cn("max-w-[75%]", mine && "text-right")}>
         <p className={cn("whitespace-pre-wrap rounded-3xl px-5 py-4 text-left", mine ? "bg-mint" : "bg-black/[0.05]")}>{m.content}</p>
-        <span className="text-xs text-muted">{time}</span>
+        {time && <span className="text-xs text-muted">{time}</span>}
       </div>
       {mine && <Avatar src={user?.avatarUrl} first={user?.firstName} last={user?.lastName} size={44} />}
     </div>

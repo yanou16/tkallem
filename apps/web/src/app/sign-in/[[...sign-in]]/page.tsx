@@ -21,7 +21,6 @@ export default function SignInPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -99,16 +98,7 @@ export default function SignInPage() {
             required
           />
 
-          <div className="flex items-center justify-between pt-1">
-            <label className="flex cursor-pointer items-center gap-2 text-[13px] text-[#3f3f46]">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-                className="h-4 w-4 rounded border-[#d4d4d8] accent-[#16161a]"
-              />
-              Remember me
-            </label>
+          <div className="flex justify-end pt-1">
             <Link href="/forgot-password" className="text-[13px] font-medium text-[#5b3fd6] hover:underline">
               Forgot password?
             </Link>

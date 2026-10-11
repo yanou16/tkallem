@@ -8,6 +8,7 @@ import type { UpdateProfileInput } from "@/features/profile/types/profile";
 import { Async, Avatar, Button, Card, Dialog, EmptyState, Pill, SectionTitle, Skeleton, Toggle, toneAt, toneBg, toneDeep } from "@/components/ui";
 import { Icon } from "@/lib/icons";
 import { cn, timeAgo } from "@/lib/utils";
+import { FEATURES } from "@/lib/features";
 
 const LANGUAGES = [
   { code: "en", name: "English" },
@@ -153,15 +154,17 @@ export default function ProfilePage() {
         <div className="flex flex-wrap items-center gap-6">
           <div className="relative">
             <Avatar src={user.avatarUrl} first={user.firstName} last={user.lastName} size={132} />
+            {FEATURES.profileExtras && (
             <button onClick={() => open({ kind: "avatar" }, user.avatarUrl ?? "")} aria-label="Change photo" className="absolute bottom-0 right-0 flex h-11 w-11 items-center justify-center rounded-full bg-ink text-white hover:opacity-90">
               <Camera size={18} />
             </button>
+            )}
             <input ref={file} type="file" accept="image/*" hidden onChange={onFileChange} />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-3xl font-bold">{fullName}</h2>
-              <Pen label="name" onClick={() => open({ kind: "name" }, user.firstName, user.lastName ?? "")} />
+              {FEATURES.profileExtras && <Pen label="name" onClick={() => open({ kind: "name" }, user.firstName, user.lastName ?? "")} />}
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {user.learningLanguages.length > 0 && (
@@ -175,10 +178,12 @@ export default function ProfilePage() {
               )}
               {activeLanguage?.level && <Pill className="bg-black/[0.05] px-4 py-2 text-sm">{activeLanguage.level}</Pill>}
             </div>
+            {FEATURES.profileExtras && (
             <p className="mt-3 flex items-center gap-2 text-muted">
               {user.bio || <span className="italic">Add a short bio</span>}
               <Pen label="bio" onClick={() => open({ kind: "bio" }, user.bio ?? "")} />
             </p>
+            )}
           </div>
         </div>
 
@@ -186,10 +191,12 @@ export default function ProfilePage() {
         <div className="grid gap-4 md:grid-cols-3">
           <SetupCard tone={3} icon="chart" title="English level" onEdit={() => open({ kind: "level" }, user.level ?? "B1")} text={user.level} empty="Choose your level" />
           <SetupCard tone={4} icon="book" title="Explanation language" onEdit={() => open({ kind: "explainLang" }, user.explainLang ?? "fr")} text={user.explainLang === "en" ? "English" : user.explainLang === "fr" ? "French" : undefined} empty="Choose a language" />
-          <SetupCard tone={0} icon="target" title="Learning goals" onEdit={() => open({ kind: "goal" }, user.learningGoal ?? "")} text={user.learningGoal} empty="Set a learning goal" />
-          <SetupCard tone={1} icon="laptop" title="Preferred practice mode" onEdit={() => open({ kind: "mode" }, user.preferredPracticeMode ?? "text")} text={user.preferredPracticeMode === "voice" ? "Voice & Audio" : user.preferredPracticeMode === "both" ? "Both (Text & Voice)" : "Text only"} empty="Choose how you like to practice" />
-          <SetupCard tone={2} icon="chart" title="Daily goal" onEdit={() => open({ kind: "daily" }, String(user.dailyGoalMinutes ?? 15))} text={user.dailyGoalMinutes ? `${user.dailyGoalMinutes} minutes of speaking practice` : undefined} empty="Set a daily goal" />
+          {FEATURES.profileExtras && <SetupCard tone={0} icon="target" title="Learning goals" onEdit={() => open({ kind: "goal" }, user.learningGoal ?? "")} text={user.learningGoal} empty="Set a learning goal" />}
+          {FEATURES.profileExtras && <SetupCard tone={1} icon="laptop" title="Preferred practice mode" onEdit={() => open({ kind: "mode" }, user.preferredPracticeMode ?? "text")} text={user.preferredPracticeMode === "voice" ? "Voice & Audio" : user.preferredPracticeMode === "both" ? "Both (Text & Voice)" : "Text only"} empty="Choose how you like to practice" />}
+          {FEATURES.profileExtras && <SetupCard tone={2} icon="chart" title="Daily goal" onEdit={() => open({ kind: "daily" }, String(user.dailyGoalMinutes ?? 15))} text={user.dailyGoalMinutes ? `${user.dailyGoalMinutes} minutes of speaking practice` : undefined} empty="Set a daily goal" />}
         </div>
+        {FEATURES.profileExtras && (
+          <>
         <div className="mt-4 grid gap-4 md:grid-cols-[1fr_1fr]">
           <div className={cn("rounded-card p-5", toneBg.rose)}>
             <div className="flex gap-4">
@@ -245,9 +252,11 @@ export default function ProfilePage() {
           </Async>
         </div>
 
+          </>
+        )}
         <div className="mt-8">
           <SectionTitle title="Recent activity" action={<Link href="/progress" className="inline-flex items-center gap-1">View all activity <ArrowRight size={14} /></Link>} />
-          <Async query={activity} skeleton={<Skeleton className="h-32" />} isEmpty={(d) => d.length === 0} empty={<EmptyState title="No activity yet" text="Your recent sessions and groups will show up here." />}>
+          <Async query={activity} skeleton={<Skeleton className="h-32" />} isEmpty={(d) => d.length === 0} empty={<EmptyState title="No activity yet" text="Your practice sessions will show up here." />}>
             {(list) => (
               <ul className="space-y-2">
                 {list.slice(0, 5).map((a, i) => (
@@ -263,6 +272,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {FEATURES.profileExtras && (
       <aside className="space-y-5">
         <Card>
           <h2 className="mb-2 text-lg font-bold">Account settings</h2>
@@ -309,6 +319,7 @@ export default function ProfilePage() {
           </Async>
         </Card>
       </aside>
+      )}
 
       <Dialog open={!!edit} title={dialogTitle} onClose={close}>
         <div className="space-y-4">
