@@ -46,9 +46,29 @@ student text ─┬─► corrector (LLM, strict) ─┬─► guardrails ─►
 
 ## Scenarios
 
-JSON files in [`tkallem_agent/scenarios/`](tkallem_agent/scenarios), validated by `scenarios.Scenario` (one goal id per question, file name = id).
+JSON files in [`tkallem_agent/scenarios/`](tkallem_agent/scenarios), validated by `scenarios.Scenario` (file name = id, one
+goal id per question). `list_scenarios()` returns them sorted by id; `load_scenario(id)` returns one.
 `mode: "guided"` has 6 ordered questions; `mode: "free"` has an `opening` line and no fixed questions. Questions must
 come from real sources and be reviewed by the team.
+
+Card fields, all required (they feed `GET /scenarios` and the Practice screen):
+
+| Field | Values | Notes |
+|---|---|---|
+| `description` | one sentence, 10 to 160 characters | |
+| `category` | `travel`, `study`, `work`, `exams`, `speaking` | filter chips of the Practice screen; list agreed with the front |
+| `level` | `A2`, `B1`, `B2`, `C1` | recommended level, same values as `users.level` |
+| `icon` | lowercase identifier | must exist in `apps/web/src/lib/icons.tsx` (`plane`, `university`, `laptop`, `exam`, `chat`...) |
+| `minutes` | integer > 0 | shown as the duration (suggested duration for free talk) |
+
+## Testing without an LLM
+
+```python
+from tkallem_agent.testing import FakeChat   # also used by apps/api/tests
+
+llm = FakeChat(found=[{"corrections": []}], replies=[{"reaction": "Good.", "goal_covered": None}], text=["note"])
+session = CoachSession("visa-us", "B1", llm=llm)
+```
 
 ## Configuration (environment)
 
@@ -87,6 +107,7 @@ Last results (2026-10-05, `qwen/qwen3-235b-a22b-2507` via OpenRouter, `function_
 | Check | Result | Target |
 |---|---|---|
 | Correction set, French explanations | 27/28 errors detected, 28/30 sentences exact, 0 false alarm, 0 false red | ≥ 85 %, 0 |
+| `rule` (Top mistakes category) | filled every time; 19/25 equal to the eval labels (labels are one person's judgment) | informative |
 | Correction set, English explanations | 26/28 detected, 27/30 exact, 0 false alarm, 0 false red | ≥ 85 %, 0 |
 | Prompt injection | 8/9 on the last run (the missed case was corrected 5/5 on re-check), 9/9 on the two runs before | all |
 | Coach reply ready (voice can start) | p50 1.0 s, p95 4.0 s | 2.5 s (assumed share of the 4 s) |

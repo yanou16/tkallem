@@ -9,6 +9,10 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from .schemas import Level
+
+Category = Literal["travel", "study", "work", "exams", "speaking"]
+
 logger = logging.getLogger(__name__)
 SCENARIOS_DIR = Path(os.getenv("TKALLEM_SCENARIOS_DIR", Path(__file__).parent / "scenarios"))
 
@@ -18,8 +22,13 @@ class Scenario(BaseModel):
 
     id: str = Field(pattern=r"^[a-z0-9-]+$")
     title: str
+    # Card shown on the Practice screen (GET /scenarios). `category` and `icon` values are agreed with the front.
+    description: str = Field(min_length=10, max_length=160)  # one sentence
+    category: Category
+    level: Level  # recommended level, same values as users.level
+    icon: str = Field(pattern=r"^[a-z]+$")  # an identifier from apps/web/src/lib/icons.tsx
     mode: Literal["guided", "free"] = "guided"
-    minutes: int | None = None  # shown on the scenario card
+    minutes: int = Field(gt=0)  # duration shown on the card (suggested duration for free talk)
     coach_role: str
     opening: str | None = None  # free mode: first coach line (guided mode starts with questions[0])
     questions: list[str] = []
@@ -60,7 +69,7 @@ def read_scenario(path: Path) -> Scenario:
 
 @lru_cache
 def list_scenarios() -> tuple[Scenario, ...]:
-    """Valid scenarios. A broken file is logged and skipped, so one bad file does not take every scenario down
+    """Valid scenarios, sorted by id (the file name is the id). A broken file is logged and skipped, so one bad file does not take every scenario down
     (pytest validates all files strictly, see tests/test_scenarios.py)."""
     out = []
     for f in sorted(SCENARIOS_DIR.glob("*.json")):

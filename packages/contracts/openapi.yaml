@@ -24,6 +24,10 @@ components:
         fixed: { type: string }
         type: { type: string, enum: [grammar, vocabulary, word_choice, other] }
         why: { type: string, description: Explanation in the session explain_lang }
+        rule:
+          type: [string, "null"]
+          enum: [verb_tense, subject_verb_agreement, verb_pattern, preposition, article, plural_uncountable, word_order, word_form, other, null]
+          description: Optional fine-grained category of the mistake (Top mistakes screen). Absent or null when unknown.
     SentenceStatus: { type: string, enum: [green, orange, red] }
     Me:
       type: object

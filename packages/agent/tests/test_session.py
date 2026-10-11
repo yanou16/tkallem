@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from fakes import FakeChat
+from tkallem_agent.testing import FakeChat
 from tkallem_agent import AgentError, CoachSession, ScenarioNotFound
 from tkallem_agent.scenarios import load_scenario
 

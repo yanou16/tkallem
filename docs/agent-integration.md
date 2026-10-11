@@ -48,10 +48,26 @@ return report.model_dump()            # lines, note, metrics (+ levels, redo_ind
 
 `GET /me/progress` is computed from the stored `session_metrics`, no LLM involved.
 
-### Listing scenarios (not in the contract yet)
+### Listing scenarios: `GET /scenarios`
 
-The front needs the cards (title, duration): `list_scenarios()` returns `id, title, mode, minutes`. A
-`GET /scenarios` endpoint would need a contract change.
+`list_scenarios()` returns every valid scenario sorted by id. Map each one to the card the front expects:
+
+```python
+[{"id": s.id, "title": s.title, "description": s.description, "duration": s.minutes,
+  "level": s.level, "category": s.category, "icon": s.icon} for s in list_scenarios()]
+```
+`category` is one of `travel`, `study`, `work`, `exams`, `speaking`; `icon` is an identifier of `apps/web/src/lib/icons.tsx`.
+The route needs a contract entry first.
+
+### Top mistakes: `Correction.rule`
+
+Each correction also carries an optional `rule` (`verb_tense`, `subject_verb_agreement`, `verb_pattern`, `preposition`,
+`article`, `plural_uncountable`, `word_order`, `word_form`, `other`, or null). Store it in a nullable column of
+`corrections` and group by it for the Top mistakes screen. Needs contract PR "Correction.rule".
+
+### Tests
+
+`from tkallem_agent.testing import FakeChat` gives a fake LLM (no network): `FakeChat(found=[...], replies=[...], text=[...])`.
 
 ## Errors
 
