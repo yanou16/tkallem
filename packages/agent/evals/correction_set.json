@@ -7,7 +7,8 @@
       {
         "wrong": "for study",
         "fixed": "to study",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "verb_pattern"
       }
     ],
     "accepted": [
@@ -22,7 +23,8 @@
       {
         "wrong": "support",
         "fixed": "supports",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "subject_verb_agreement"
       }
     ],
     "accepted": [
@@ -37,7 +39,8 @@
       {
         "wrong": "I have scholarship of DAAD",
         "fixed": "I have a DAAD scholarship",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "article"
       }
     ],
     "accepted": [
@@ -53,7 +56,8 @@
       {
         "wrong": "my study",
         "fixed": "my studies",
-        "type": "word_choice"
+        "type": "word_choice",
+        "rule": "plural_uncountable"
       }
     ],
     "accepted": [
@@ -68,7 +72,8 @@
       {
         "wrong": "am agree",
         "fixed": "agree",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "other"
       }
     ],
     "accepted": [
@@ -83,7 +88,8 @@
       {
         "wrong": "have 22 years old",
         "fixed": "am 22 years old",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "other"
       }
     ],
     "accepted": [
@@ -98,12 +104,14 @@
       {
         "wrong": "live",
         "fixed": "have lived",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "verb_tense"
       },
       {
         "wrong": "since five years",
         "fixed": "for five years",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "preposition"
       }
     ],
     "accepted": [
@@ -118,7 +126,8 @@
       {
         "wrong": "don't",
         "fixed": "doesn't",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "subject_verb_agreement"
       }
     ],
     "accepted": [
@@ -133,7 +142,8 @@
       {
         "wrong": "after I will finish",
         "fixed": "after I finish",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "verb_tense"
       }
     ],
     "accepted": [
@@ -159,7 +169,8 @@
       {
         "wrong": "go",
         "fixed": "went",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "verb_tense"
       }
     ],
     "accepted": [
@@ -174,7 +185,8 @@
       {
         "wrong": "interesting",
         "fixed": "interested",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "word_form"
       }
     ],
     "accepted": [
@@ -198,7 +210,8 @@
       {
         "wrong": "pay my studies",
         "fixed": "pay for my studies",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "preposition"
       }
     ],
     "accepted": [
@@ -213,7 +226,8 @@
       {
         "wrong": "who build",
         "fixed": "that builds",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "other"
       }
     ],
     "accepted": [
@@ -229,7 +243,8 @@
       {
         "wrong": "saw",
         "fixed": "see",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "verb_tense"
       }
     ],
     "accepted": [
@@ -244,7 +259,8 @@
       {
         "wrong": "informations are",
         "fixed": "information is",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "plural_uncountable"
       }
     ],
     "accepted": [
@@ -259,7 +275,8 @@
       {
         "wrong": "am agree",
         "fixed": "agree",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "other"
       }
     ],
     "accepted": [
@@ -274,7 +291,8 @@
       {
         "wrong": "master degree",
         "fixed": "master's degree",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "other"
       }
     ],
     "accepted": [
@@ -289,12 +307,14 @@
       {
         "wrong": "I'm working",
         "fixed": "I have been working",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "verb_tense"
       },
       {
         "wrong": "since two years",
         "fixed": "for two years",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "preposition"
       }
     ],
     "accepted": [
@@ -310,7 +330,8 @@
       {
         "wrong": "He have",
         "fixed": "He has",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "subject_verb_agreement"
       }
     ],
     "accepted": [
@@ -334,7 +355,8 @@
       {
         "wrong": "go",
         "fixed": "goes",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "subject_verb_agreement"
       }
     ],
     "accepted": [
@@ -349,7 +371,8 @@
       {
         "wrong": "I am student",
         "fixed": "I am a student",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "article"
       }
     ],
     "accepted": [
@@ -364,7 +387,8 @@
       {
         "wrong": "exciting",
         "fixed": "excited",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "word_form"
       }
     ],
     "accepted": [
@@ -379,7 +403,8 @@
       {
         "wrong": "is many",
         "fixed": "are many",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "subject_verb_agreement"
       }
     ],
     "accepted": [
@@ -394,7 +419,8 @@
       {
         "wrong": "need practice",
         "fixed": "need to practice",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "verb_pattern"
       }
     ],
     "accepted": [
@@ -418,7 +444,8 @@
       {
         "wrong": "to hear",
         "fixed": "to hearing",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "verb_pattern"
       }
     ],
     "accepted": [
@@ -433,7 +460,8 @@
       {
         "wrong": "Do you can",
         "fixed": "Can you",
-        "type": "grammar"
+        "type": "grammar",
+        "rule": "other"
       }
     ],
     "accepted": [

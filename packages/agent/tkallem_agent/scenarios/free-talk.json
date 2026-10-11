@@ -1,8 +1,12 @@
 {
   "id": "free-talk",
   "title": "Free talk",
+  "description": "Chat about your day, your work or your plans, with no fixed questions.",
+  "category": "speaking",
+  "level": "A2",
+  "icon": "chat",
   "mode": "free",
-  "minutes": null,
+  "minutes": 10,
   "coach_role": "A friendly, curious English conversation partner. You chat about the student's day, work, studies and life.",
   "opening": "Hi! How was your day?",
   "questions": [],

@@ -1,5 +1,13 @@
-"""Test double for the chat model. Structured calls are answered from one queue per schema (Found for the
-corrector, Reply for the coach), so the parallel corrector and coach calls get the right answer in any order."""
+"""Test double for the chat model, shared by the agent tests and the API tests (no LLM call, no network).
+
+    from tkallem_agent.testing import FakeChat
+    llm = FakeChat(found=[{"corrections": []}], replies=[{"reaction": "Good.", "goal_covered": None}], text=["note"])
+    session = CoachSession("visa-us", "B1", llm=llm)
+
+Structured calls are answered from one queue per schema (`found` for the corrector, `replies` for the coach), so the
+parallel corrector and coach calls get the right answer in any order. An `Exception` in a queue is raised instead of
+returned. `text` answers plain calls (the report note), `delay` slows every structured call, `calls` and `seen` record
+what the agent did."""
 import threading
 import time
 from collections import Counter, defaultdict

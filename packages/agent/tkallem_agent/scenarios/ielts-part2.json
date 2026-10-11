@@ -1,6 +1,10 @@
 {
   "id": "ielts-part2",
   "title": "IELTS Speaking, part 2",
+  "description": "Practise the IELTS Speaking long turn and the follow-up questions.",
+  "category": "exams",
+  "level": "B2",
+  "icon": "exam",
   "mode": "guided",
   "minutes": 6,
   "coach_role": "An IELTS speaking examiner: neutral, polite, clear. You do not comment on the quality of answers.",
@@ -12,6 +16,21 @@
     "How has tourism changed in your city in recent years?",
     "Do you think tourism is always good for a place?"
   ],
-  "goals": ["long_turn", "rounding_off", "travel_habits", "travel_alone", "tourism_change", "tourism_impact"],
-  "useful_words": ["breathtaking", "crowded", "memorable", "on the one hand", "it depends", "local culture", "nowadays"]
+  "goals": [
+    "long_turn",
+    "rounding_off",
+    "travel_habits",
+    "travel_alone",
+    "tourism_change",
+    "tourism_impact"
+  ],
+  "useful_words": [
+    "breathtaking",
+    "crowded",
+    "memorable",
+    "on the one hand",
+    "it depends",
+    "local culture",
+    "nowadays"
+  ]
 }

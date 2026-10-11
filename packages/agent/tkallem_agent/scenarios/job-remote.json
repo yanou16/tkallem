@@ -1,6 +1,10 @@
 {
   "id": "job-remote",
   "title": "Remote job interview",
+  "description": "Handle a video interview for a remote job with an international team.",
+  "category": "work",
+  "level": "B2",
+  "icon": "laptop",
   "mode": "guided",
   "minutes": 10,
   "coach_role": "A recruiter from an international company interviewing a candidate for a remote junior position on a video call: friendly, professional, short questions.",
@@ -12,6 +16,22 @@
     "Tell me about a problem you had in a team and how you solved it.",
     "Do you have any questions for us?"
   ],
-  "goals": ["self_introduction", "motivation", "achievement", "remote_work", "teamwork", "candidate_questions"],
-  "useful_words": ["experience", "deadline", "time zone", "communication", "responsible for", "team", "feedback", "skills"]
+  "goals": [
+    "self_introduction",
+    "motivation",
+    "achievement",
+    "remote_work",
+    "teamwork",
+    "candidate_questions"
+  ],
+  "useful_words": [
+    "experience",
+    "deadline",
+    "time zone",
+    "communication",
+    "responsible for",
+    "team",
+    "feedback",
+    "skills"
+  ]
 }

@@ -18,7 +18,12 @@
           "original": { "type": "string" },
           "fixed": { "type": "string" },
           "type": { "type": "string", "enum": ["grammar", "vocabulary", "word_choice", "other"] },
-          "why": { "type": "string", "description": "One-sentence explanation, written in the session explain_lang (en or fr)." }
+          "why": { "type": "string", "description": "One-sentence explanation, written in the session explain_lang (en or fr)." },
+          "rule": {
+            "type": ["string", "null"],
+            "enum": ["verb_tense", "subject_verb_agreement", "verb_pattern", "preposition", "article", "plural_uncountable", "word_order", "word_form", "other", null],
+            "description": "Optional fine-grained category of the mistake, for the Top mistakes screen. null or absent when unknown."
+          }
         }
       }
     },
