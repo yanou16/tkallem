@@ -273,6 +273,30 @@ paths:
                   top_mistakes:
                     type: array
                     items: { type: object }
+  /scenarios:
+    get:
+      summary: Scenario cards (public, so the welcome page can list them before any account or guest exists)
+      security: []
+      responses:
+        "200":
+          description: Scenarios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, title, mode]
+                  properties:
+                    id: { type: string }
+                    title: { type: string }
+                    description: { type: [string, "null"] }
+                    category: { type: [string, "null"], enum: [travel, study, work, exams, speaking, null] }
+                    level: { type: [string, "null"], enum: [A2, B1, B2, C1, null] }
+                    icon: { type: [string, "null"] }
+                    mode: { type: string, enum: [guided, free] }
+                    minutes: { type: [integer, "null"] }
+                    total_questions: { type: [integer, "null"], description: Null for free talk }
   /guests:
     post:
       summary: Start as a visitor without account

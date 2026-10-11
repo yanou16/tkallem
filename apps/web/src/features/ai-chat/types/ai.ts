@@ -1,4 +1,6 @@
+import type { ProgressMetrics, ProgressMetricsDto } from "@/features/progress/types/progress";
 import type { Credits } from "@/features/credits/types/credits";
+
 export type Correction = {
   original: string;
   fixed: string;
@@ -6,70 +8,139 @@ export type Correction = {
   why: string;
 };
 
-export type ChatMessage = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  createdAt?: string; // absent for messages reloaded from the server (no time is stored per line)
-  status?: SentenceStatus;
-  audioUrl?: string | null; // coach lines spoken by the server (data: URL), for the replay button
-  pending?: boolean; // shown at once while the answer is processed, replaced by the real lines
-};
-
+/** Traffic light of one answer: green clean, orange small fixes, red redo it. */
 export type SentenceStatus = "green" | "orange" | "red";
 
-export type AiSession = {
-  id: string;
-  scenarioId?: string;
-  scenarioTitle?: string;
-  messages: ChatMessage[];
+/* ---------- GET /sessions/{id}, POST /sessions, /sessions/{id}/turn and /sessions/{id}/end as sent by the API ---------- */
+export type TurnDetailDto = {
+  position: number;
+  transcript: string;
+  reply: string;
+  sentence_status: SentenceStatus;
   corrections: Correction[];
-  finished?: boolean; // every question answered: offer the report
-  ended?: boolean; // the report was made: no more answers
 };
 
-/** GET /sessions/{id} */
-export type SessionDetail = {
+export type SessionDetailDto = {
   session_id: string;
   scenario_id: string;
   title: string;
   mode: "text" | "voice";
-  lines: { role: "coach" | "student"; text: string; status?: SentenceStatus | null; corrections: Correction[] }[];
+  started_at: string;
+  ended_at: string | null;
   finished: boolean;
-  ended: boolean;
+  total_questions: number | null;
+  /** Null when the scenario no longer exists. */
+  first_question: string | null;
+  turns: TurnDetailDto[];
+  /** What /end stored, null before. levels and redo_index are not stored. */
+  note: string | null;
+  metrics: ProgressMetricsDto | null;
 };
 
-/** POST /sessions/{id}/end */
-export type SessionReport = {
-  lines: { role: "coach" | "student"; text: string; status?: SentenceStatus | null; corrections: Correction[] }[];
-  note: string;
-  metrics: { mistakes_per_100: number | null; words_per_answer: number | null; hesitations_per_min: number | null; speaking_seconds: number | null };
-  levels: { mistakes_per_100: SentenceStatus | null; words_per_answer: SentenceStatus | null; hesitations_per_min: SentenceStatus | null };
-  redo_index: number | null;
-};
-
-export type StartSessionInput = {
+export type StartSessionDto = {
   scenario_id: string;
-  mode?: "text" | "voice";
+  mode: "text" | "voice";
+  /** Omitted: the API uses the student's profile preference. */
   explain_lang?: "en" | "fr";
 };
 
-export type StartSessionResponse = {
+export type SessionStartedDto = {
   session_id: string;
-  first_question: {
-    text: string;
-    audio_url: string | null;
-  };
+  first_question: { text: string; audio_url: string | null };
 };
 
-export type TurnResponse = {
+export type TurnDto = {
   transcript: string;
   reply: string;
   reply_audio_url: string | null;
   corrections: Correction[];
   sentence_status: SentenceStatus;
-  finished?: boolean;
-  credits?: Credits; // balance after this answer
+  finished: boolean;
+  /** Balance after this answer (docs/CREDITS.md). */
+  credits?: Credits;
 };
 
-export type Spoken = { text: string; audio_url: string | null };
+/** POST /sessions/{id}/speak: the coach's last line again, spoken (switch to voice in the middle of a session). */
+export type SpokenDto = { text: string; audio_url: string | null };
+
+export type ReportLineDto = {
+  role: "coach" | "student";
+  text: string;
+  status: SentenceStatus | null;
+  corrections: Correction[];
+};
+
+export type SessionReportDto = {
+  lines: ReportLineDto[];
+  note: string;
+  metrics: ProgressMetricsDto;
+  levels: {
+    mistakes_per_100: SentenceStatus | null;
+    words_per_answer: SentenceStatus | null;
+    hesitations_per_min: SentenceStatus | null;
+  };
+  redo_index: number | null;
+};
+
+/* ---------- what the chat uses ---------- */
+export type SessionStarted = { sessionId: string; firstQuestion: string; firstQuestionAudio: string | null };
+
+export type Turn = {
+  /** The student's answer as the API kept it. */
+  transcript: string;
+  reply: string;
+  corrections: Correction[];
+  sentenceStatus: SentenceStatus;
+  /** Guided scenario: every question is answered, time for the report. Always false in free talk. */
+  finished: boolean;
+  /** The coach's reply spoken (data: URL), voice sessions and spoken answers only. */
+  audioUrl?: string | null;
+  credits?: Credits;
+};
+
+export type ReportLine = {
+  role: "coach" | "student";
+  text: string;
+  status: SentenceStatus | null;
+  corrections: Correction[];
+};
+
+export type SessionReport = {
+  lines: ReportLine[];
+  note: string;
+  metrics: ProgressMetrics;
+  /** Traffic light per metric, null when the metric is not available (hesitations in text mode). */
+  levels: {
+    mistakesPer100: SentenceStatus | null;
+    wordsPerAnswer: SentenceStatus | null;
+    hesitationsPerMin: SentenceStatus | null;
+  };
+  /** Index in `lines` of the answer to redo first. */
+  redoIndex: number | null;
+};
+
+export type ChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  /** Unknown for a reloaded session: the API does not send the time of each turn. */
+  createdAt?: string;
+  /** Student answers only. */
+  status?: SentenceStatus;
+  corrections?: Correction[];
+  /** Coach lines spoken by the server (data: URL), for the Listen button. */
+  audioUrl?: string | null;
+  /** Shown at once while the answer is processed (a recording not transcribed yet). */
+  pending?: boolean;
+};
+
+export type AiSession = {
+  id: string;
+  scenarioId: string;
+  /** From GET /sessions/{id}; a new session takes its title from the scenario list. */
+  title?: string;
+  messages: ChatMessage[];
+  finished: boolean;
+  /** Set once the session is ended. For a reloaded session, only what the API stored (no levels, no redo). */
+  report?: SessionReport;
+};

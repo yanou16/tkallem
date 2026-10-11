@@ -1,23 +1,26 @@
-"""Scenario cards for the Practice and AI Chat screens (public: no account needed to see what exists)."""
 from fastapi import APIRouter
-from tkallem_agent import list_scenarios
+from tkallem_agent import Scenario, list_scenarios
 
-router = APIRouter(tags=["scenarios"])
+from app.schemas.scenarios import ScenarioSummary
+
+router = APIRouter(prefix="/scenarios", tags=["scenarios"])
 
 
-@router.get("/scenarios")
-def scenarios(category: str | None = None) -> list[dict]:
-    return [
-        {
-            "id": s.id,
-            "title": s.title,
-            "description": s.description,
-            "duration": s.minutes,
-            "level": s.level,
-            "category": s.category,
-            "icon": s.icon,
-            "mode": s.mode,
-        }
-        for s in list_scenarios()
-        if category in (None, s.category)
-    ]
+def _summary(scenario: Scenario) -> dict:
+    return {
+        "id": scenario.id,
+        "title": scenario.title,
+        "description": scenario.description,
+        "category": scenario.category,
+        "level": scenario.level,
+        "icon": scenario.icon,
+        "mode": scenario.mode,
+        "minutes": scenario.minutes,
+        "total_questions": len(scenario.questions) if scenario.mode == "guided" else None,
+    }
+
+
+# Public: the welcome page lists them before any account or guest exists. No database: they are the same for everyone.
+@router.get("", response_model=list[ScenarioSummary])
+def read_scenarios() -> list[dict]:
+    return [_summary(scenario) for scenario in list_scenarios()]

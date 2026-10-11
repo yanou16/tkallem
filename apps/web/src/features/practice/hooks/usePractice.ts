@@ -1,9 +1,9 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import { getFocus, getRecentSessions, getRecommended, getScenarios } from "../api/practice";
+import { getMySessions, getScenarios } from "../api/practice";
 
-export const useScenarios = (category?: string) =>
-  useQuery({ queryKey: ["practice-scenarios", category ?? "all"], queryFn: () => getScenarios(category) });
-export const useRecentSessions = () => useQuery({ queryKey: ["practice-recent"], queryFn: getRecentSessions });
-export const useRecommended = () => useQuery({ queryKey: ["practice-recommended"], queryFn: getRecommended });
-export const usePracticeFocus = () => useQuery({ queryKey: ["practice-focus"], queryFn: getFocus });
+export const MY_SESSIONS_KEY = ["my-sessions"] as const;
+
+export const useScenarios = () => useQuery({ queryKey: ["scenarios"], queryFn: getScenarios, staleTime: Infinity });
+export const useMySessions = (limit = 5) =>
+  useQuery({ queryKey: [...MY_SESSIONS_KEY, limit], queryFn: () => getMySessions(limit) });

@@ -1,4 +1,4 @@
-import { API_URL, AUTH_MODE } from "@/lib/config";
+import { API_URL } from "@/lib/config";
 
 export class ApiError extends Error {
   status: number;
@@ -11,28 +11,12 @@ export class ApiError extends Error {
   }
 }
 
-/* ---------- token storage (only used when AUTH_MODE === "bearer") ---------- */
-const TOKEN_KEY = "tkallem.token";
+/* ---------- auth: the Clerk session token, sent as a Bearer token ---------- */
 let authTokenProvider: (() => Promise<string | null>) | null = null;
 
 export function setAuthTokenProvider(provider: (() => Promise<string | null>) | null) {
   authTokenProvider = provider;
 }
-
-export const tokenStore = {
-  get(): string | null {
-    if (AUTH_MODE !== "bearer" || typeof window === "undefined") return null;
-    try { return window.localStorage.getItem(TOKEN_KEY); } catch { return null; }
-  },
-  set(token: string) {
-    if (AUTH_MODE !== "bearer" || typeof window === "undefined") return;
-    try { window.localStorage.setItem(TOKEN_KEY, token); } catch {}
-  },
-  clear() {
-    if (typeof window === "undefined") return;
-    try { window.localStorage.removeItem(TOKEN_KEY); } catch {}
-  },
-};
 
 /* ---------- guest token (visitor without account, see docs/CREDITS.md) ---------- */
 const GUEST_KEY = "tkallem.guest";
@@ -68,7 +52,7 @@ type Options = Omit<RequestInit, "body"> & {
   body?: unknown;
   query?: Record<string, string | number | boolean | undefined | null>;
   token?: string | null;
-  /** Skip the global 401 redirect (used by login forms). */
+  /** Skip the global 401 redirect. */
   skipAuthRedirect?: boolean;
 };
 
@@ -83,30 +67,45 @@ function buildUrl(endpoint: string, query?: Options["query"]) {
   return qs ? `${url}?${qs}` : url;
 }
 
+/** FastAPI puts the reason in `detail`: a string, or a list of issues for a validation error (422). */
+export function errorMessage(data: unknown, status: number): string {
+  const detail = data && typeof data === "object" ? (data as { detail?: unknown }).detail : undefined;
+  if (typeof detail === "string" && detail) return detail;
+  if (detail && typeof detail === "object" && !Array.isArray(detail)) {
+    const d = detail as { message?: unknown; code?: unknown }; // 402 no_credits, 429 daily_budget_reached
+    if (typeof d.message === "string") return d.message;
+    if (typeof d.code === "string") return d.code;
+  }
+  if (Array.isArray(detail)) {
+    const first: unknown = detail[0];
+    if (first && typeof first === "object" && typeof (first as { msg?: unknown }).msg === "string") {
+      return (first as { msg: string }).msg;
+    }
+  }
+  return `Request failed (${status})`;
+}
+
+/** Signed in: the Clerk session token. Signed out: the guest token, if this visitor has one. */
 async function authorize(headers: Headers, requestToken?: string | null) {
-  const token = requestToken ?? (await authTokenProvider?.()) ?? tokenStore.get();
+  const token = requestToken ?? (await authTokenProvider?.()) ?? null;
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
-  } else {
-    const guest = guestStore.get(); // signed out: a visitor identifies itself with its guest token
-    if (guest) headers.set("Authorization", `Guest ${guest}`);
+    return;
   }
+  const guest = guestStore.get();
+  if (guest) headers.set("Authorization", `Guest ${guest}`);
 }
 
-function toApiError(res: Response, data: unknown, headers: Headers, skipAuthRedirect?: boolean): ApiError {
+function failure(res: Response, data: unknown, headers: Headers, skipAuthRedirect?: boolean): ApiError {
   if (res.status === 401 && headers.get("Authorization")?.startsWith("Guest ")) {
     guestStore.clear(); // the API does not know this visitor (database reset): GuestBootstrap asks for a new one
-  } else if (res.status === 401 && !skipAuthRedirect) { tokenStore.clear(); onUnauthorized?.(); }
-  const detail = data && typeof data === "object" ? (data as any).detail : undefined;
-  const detailText = detail && typeof detail === "object" ? (detail.message ?? detail.code) : detail; // 402/429 send an object
-  const msg =
-    (data && typeof data === "object" && ("message" in data || "detail" in data)
-      ? String((data as any).message ?? detailText)
-      : null) ?? `Request failed (${res.status})`;
-  return new ApiError(msg, res.status, data);
+  } else if (res.status === 401 && !skipAuthRedirect) {
+    onUnauthorized?.();
+  }
+  return new ApiError(errorMessage(data, res.status), res.status, data);
 }
 
-async function readJson(res: Response): Promise<unknown> {
+async function readBody(res: Response): Promise<unknown> {
   const text = await res.text();
   if (!text) return undefined;
   try { return JSON.parse(text); } catch { return text; }
@@ -126,15 +125,15 @@ export async function apiFetch<T>(endpoint: string, options: Options = {}): Prom
     res = await fetch(buildUrl(endpoint, query), {
       ...rest,
       headers: finalHeaders,
-      credentials: AUTH_MODE === "cookie" ? "include" : "omit",
+      credentials: "omit",
       body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
     });
   } catch {
     throw new ApiError("Can't reach the server. Check your connection and try again.", 0);
   }
 
-  const data = await readJson(res);
-  if (!res.ok) throw toApiError(res, data, finalHeaders, skipAuthRedirect);
+  const data = await readBody(res);
+  if (!res.ok) throw failure(res, data, finalHeaders, skipAuthRedirect);
   return data as T;
 }
 
@@ -147,13 +146,13 @@ export async function apiStream(endpoint: string, form: FormData, onEvent: (name
   await authorize(headers);
   let res: Response;
   try {
-    res = await fetch(buildUrl(endpoint), { method: "POST", headers, body: form, credentials: AUTH_MODE === "cookie" ? "include" : "omit" });
+    res = await fetch(buildUrl(endpoint), { method: "POST", headers, body: form, credentials: "omit" });
   } catch {
     throw new ApiError("Can't reach the server. Check your connection and try again.", 0);
   }
   if (!res.ok || !res.body || !(res.headers.get("content-type") ?? "").includes("text/event-stream")) {
-    const data = await readJson(res);
-    if (!res.ok) throw toApiError(res, data, headers);
+    const data = await readBody(res);
+    if (!res.ok) throw failure(res, data, headers);
     onEvent("done", data); // a server without streaming answered with plain JSON
     return;
   }

@@ -1,7 +1,7 @@
 """credits and guest mode
 
 Revision ID: a1c3d5e7f901
-Revises: 7acb5ee6e478
+Revises: 2412bc4bc6cb
 Create Date: 2026-10-11
 
 A guest is a row of `users` whose clerk_user_id is 'guest:<uuid>': every table that points at users (practice
@@ -13,7 +13,7 @@ from typing import Sequence, Union
 from alembic import op
 
 revision: str = "a1c3d5e7f901"
-down_revision: Union[str, Sequence[str], None] = "7acb5ee6e478"
+down_revision: Union[str, Sequence[str], None] = "2412bc4bc6cb"  # after the learning setup and correction rule migrations
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

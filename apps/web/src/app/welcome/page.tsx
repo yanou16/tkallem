@@ -73,16 +73,16 @@ export default function WelcomePage() {
             {scenarios.isLoading && [0, 1, 2].map((i) => <li key={i} className="h-36 animate-pulse rounded-[28px] bg-black/[0.04]" />)}
             {list.map((s) => (
               <li key={s.id}>
-                <Link href={startHref(s.id)} className={cn("flex h-full flex-col justify-between gap-4 rounded-[28px] p-5 hover:opacity-90", TINT[s.category] ?? "bg-black/[0.03]")}>
+                <Link href={startHref(s.id)} className={cn("flex h-full flex-col justify-between gap-4 rounded-[28px] p-5 hover:opacity-90", (s.category && TINT[s.category]) || "bg-black/[0.03]")}>
                   <span className="flex items-start gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/70"><Icon name={s.icon} /></span>
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/70"><Icon name={s.icon ?? undefined} /></span>
                     <span>
                       <span className="block font-semibold">{s.title}</span>
                       <span className="block text-sm text-muted">{s.description}</span>
                     </span>
                   </span>
                   <span className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1.5 text-muted"><Clock size={14} /> {s.duration} min · {s.level}</span>
+                    <span className="flex items-center gap-1.5 text-muted"><Clock size={14} /> {s.minutes ?? 10} min{s.level ? ` · ${s.level}` : ""}</span>
                     <span className="inline-flex items-center gap-1 font-semibold">Start <ArrowRight size={14} /></span>
                   </span>
                 </Link>

@@ -2,27 +2,10 @@
  * Every backend path in the app. If the backend differs, change it HERE only.
  */
 export const endpoints = {
-  auth: {
-    login: "/api/auth/login",
-    register: "/api/auth/register",
-    logout: "/api/auth/logout",
-    me: "/me",
-  },
-  user: {
-    me: "/me",
-    languages: "/api/users/me/languages",
-    avatar: "/api/users/me/avatar",
-    achievements: "/api/users/me/achievements",
-    activity: "/api/users/me/activity",
-    preferences: "/api/users/me/preferences",
-    notificationsUnread: "/api/notifications/unread-count",
-  },
-  dashboard: "/api/dashboard",
-  mistakes: { top: "/api/mistakes/top" },
-  practice: {
-    scenarios: "/scenarios",
-    recent: "/me/sessions", // recommended and focus are computed in features/practice/api from /me/sessions and /me/progress
-  },
+  me: "/me",
+  mySessions: "/me/sessions",
+  myAchievements: "/me/achievements",
+  scenarios: "/scenarios",
   ai: {
     sessions: "/sessions",
     session: (id: string) => `/sessions/${id}`,

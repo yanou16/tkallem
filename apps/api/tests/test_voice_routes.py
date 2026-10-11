@@ -20,7 +20,7 @@ from app.security import ClerkClaims, get_clerk_claims
 from app.voice import SttError, TtsError
 from app.voice.stt import Transcription
 from app.voice.tts import Speech, merge_wav
-from tests.fake_llm import FakeChat
+from tkallem_agent.testing import FakeChat
 from tkallem_agent.scenarios import load_scenario
 
 CLERK_ID = "user_voice_test"

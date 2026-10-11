@@ -6,12 +6,12 @@ from fastapi.testclient import TestClient
 from tkallem_agent.scenarios import load_scenario
 
 from app.db.connection import get_conn, get_conn_factory
-from app.db.sessions import create_session
+from app.db.sessions import create_session, end_session, save_turn
 from app.db.users import get_or_create_by_clerk_id, update_profile
 from app.main import app
 from app.routes.sessions import get_llm
 from app.security import ClerkClaims, get_clerk_claims
-from tests.fake_llm import FakeChat
+from tkallem_agent.testing import FakeChat
 
 CLERK_ID = "user_turn_test"
 STUDENT = "I go to the US for study."
@@ -176,20 +176,118 @@ def test_turn_is_finished_after_the_last_question(client, session_id):
 
     assert [r.json()["finished"] for r in responses] == [False] * (questions - 1) + [True]
 
-def test_reloading_a_session_returns_the_conversation_so_far(client, db, session_id):
-    qs = load_scenario("visa-us").questions
-    use_llm(FakeChat([FOUND], [reply(goal=GOALS[0])]))
-    assert send(client, session_id).status_code == 200
 
-    body = client.get(f"/sessions/{session_id}").json()
+def read(client, session_id):
+    return client.get(f"/sessions/{session_id}")
 
-    assert body["scenario_id"] == "visa-us" and body["title"] == "Visa interview"
-    assert [line["role"] for line in body["lines"]] == ["coach", "student", "coach"]
-    assert body["lines"][0]["text"] == qs[0]
-    assert body["lines"][1]["text"] == STUDENT and body["lines"][1]["status"] == "orange"
-    assert body["lines"][1]["corrections"][0]["fixed"] == "to study"
-    assert body["lines"][2]["text"].endswith(qs[1])
-    assert body["finished"] is False and body["ended"] is False
+
+def test_get_session_returns_the_history(client, session_id):
+    use_llm(FakeChat([FOUND], [reply()]))
+    turn = send(client, session_id).json()
+
+    response = read(client, session_id)
+
+    assert response.status_code == 200
+    body = response.json()
+    visa = load_scenario("visa-us")
+    assert body["session_id"] == session_id
+    assert (body["scenario_id"], body["title"], body["mode"]) == ("visa-us", visa.title, "text")
+    assert body["first_question"] == visa.questions[0]
+    assert body["total_questions"] == len(visa.questions)
+    assert body["finished"] is False
+    assert body["ended_at"] is None
+    assert body["note"] is None
+    assert body["metrics"] is None
+    assert body["turns"] == [{
+        "position": 1,
+        "transcript": turn["transcript"],
+        "reply": turn["reply"],
+        "sentence_status": "orange",
+        "corrections": turn["corrections"],
+    }]
+
+
+def test_get_session_is_finished_after_the_last_question(client, session_id):
+    questions = len(load_scenario("visa-us").questions)
+    use_llm(FakeChat([NONE] * questions, [reply(goal=g) for g in GOALS]))
+    for _ in range(questions):
+        send(client, session_id, text="My answer is fine.")
+
+    body = read(client, session_id).json()
+
+    assert body["finished"] is True
+    assert [t["position"] for t in body["turns"]] == list(range(1, questions + 1))
+
+
+def test_get_ended_session_returns_what_end_stored(client, session_id):
+    use_llm(FakeChat([FOUND], [reply()], text=["Honest note."]))
+    send(client, session_id)
+    report = end(client, session_id).json()
+
+    body = read(client, session_id).json()
+
+    assert body["ended_at"] is not None
+    assert body["note"] == report["note"]
+    assert body["metrics"]["mistakes_per_100"] == pytest.approx(14.3)
+    assert body["metrics"]["hesitations_per_min"] is None
+    assert "levels" not in body and "redo_index" not in body
+
+
+@pytest.mark.parametrize("ended", [False, True], ids=["open", "ended"])
+def test_get_session_of_a_removed_scenario(client, db, ended):
+    user = get_or_create_by_clerk_id(db, CLERK_ID)
+    sid = uuid4()
+    state = {"version": 1, "session_id": sid.hex, "scenario_id": "old-scenario", "level": "B1", "explain_lang": "fr", "turns": []}
+    create_session(db, sid, user["id"], "old-scenario", "text", "fr", state)
+    save_turn(db, sid, {**state, "turns": [{}]}, "My answer.", "Thanks.", "green", None, [], expected_turns=0)
+    if ended:
+        end_session(db, sid, "Old note.", {
+            "words": 2, "mistakes_per_100": 0.0, "words_per_answer": 2.0, "hesitations_per_min": None, "speaking_seconds": None,
+        })
+
+    response = read(client, sid.hex)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["title"] == "old-scenario"
+    assert body["first_question"] is None
+    assert body["total_questions"] is None
+    assert body["finished"] is ended
+    assert [t["transcript"] for t in body["turns"]] == ["My answer."]
+
+
+def test_get_someone_elses_session_returns_404(client, db):
+    other = get_or_create_by_clerk_id(db, "user_other_student")
+    sid = uuid4()
+    create_session(db, sid, other["id"], "visa-us", "text", "fr", {"turns": []})
+
+    assert read(client, sid.hex).status_code == 404
+
+
+def test_get_unknown_session_returns_404(client):
+    assert read(client, uuid4().hex).status_code == 404
+
+
+def test_get_session_with_invalid_id_returns_422(client):
+    assert read(client, "not-a-uuid").status_code == 422
+
+
+def test_get_session_requires_a_token():
+    assert read(TestClient(app), uuid4().hex).status_code == 401
+
+def test_the_rule_of_a_correction_is_returned_saved_and_reloaded(client, db, session_id):
+    with_rule = {"corrections": [{**FOUND["corrections"][0], "rule": "preposition"}]}
+    use_llm(FakeChat([with_rule], [reply()]))
+
+    turn = send(client, session_id).json()
+
+    assert turn["corrections"][0]["rule"] == "preposition"
+    stored = db.execute(
+        "SELECT c.rule FROM corrections c JOIN turns t ON t.id = c.turn_id WHERE t.session_id = %s",
+        (UUID(session_id),),
+    ).fetchall()
+    assert stored == [{"rule": "preposition"}]
+    assert read(client, session_id).json()["turns"][0]["corrections"][0]["rule"] == "preposition"
 
 
 def test_another_students_session_cannot_be_read(client, db, session_id):

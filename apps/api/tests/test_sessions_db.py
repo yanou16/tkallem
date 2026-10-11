@@ -1,8 +1,17 @@
 from uuid import uuid4
 
+import psycopg
 import pytest
 
-from app.db.sessions import create_session, end_session, get_session_for_user, list_sessions_for_user, save_turn
+from app.db.sessions import (
+    create_session,
+    end_session,
+    get_session_detail,
+    get_session_for_user,
+    list_sessions_for_user,
+    list_turns,
+    save_turn,
+)
 from app.db.users import get_or_create_by_clerk_id
 
 STATE = {"turns": [], "level": "B1"}
@@ -103,3 +112,74 @@ def test_list_sessions_respects_limit(db, user):
         create_session(db, uuid4(), user["id"], "visa-us", "text", "fr", {"turns": []})
 
     assert len(list_sessions_for_user(db, user["id"], limit=2)) == 2
+
+
+def test_session_detail_has_no_report_before_the_end(db, user, session_id):
+    detail = get_session_detail(db, session_id, user["id"])
+
+    assert detail["scenario_id"] == "visa-us"
+    assert detail["ended_at"] is None
+    assert detail["note"] is None
+    assert detail["mistakes_per_100"] is None
+
+
+def test_session_detail_has_the_note_and_metrics_after_the_end(db, user, session_id):
+    end_session(db, session_id, "Bon travail.", METRICS)
+
+    detail = get_session_detail(db, session_id, user["id"])
+
+    assert detail["ended_at"] is not None
+    assert detail["note"] == "Bon travail."
+    assert detail["mistakes_per_100"] == pytest.approx(7.1)
+    assert detail["hesitations_per_min"] is None
+
+
+def test_other_user_cannot_read_the_session_detail(db, session_id):
+    other = get_or_create_by_clerk_id(db, "user_someone_else")
+
+    assert get_session_detail(db, session_id, other["id"]) is None
+
+
+def test_list_turns_in_order_with_their_corrections(db, user, session_id):
+    first = {"original": "I go", "fixed": "I'm going", "type": "grammar", "why": "Projet futur.", "rule": "verb_tense"}
+    second = {"original": "for study", "fixed": "to study", "type": "grammar", "why": "Le but : to + verbe."}
+    save_turn(db, session_id, {"turns": [1]}, "I go to the US for study.", "Why?", "orange", None, [first, second], expected_turns=0)
+    save_turn(db, session_id, {"turns": [1, 2]}, "To study.", "Good.", "green", "purpose", [], expected_turns=1)
+
+    assert list_turns(db, session_id, user["id"]) == [
+        {"position": 1, "transcript": "I go to the US for study.", "reply": "Why?", "sentence_status": "orange",
+         "corrections": [first, {**second, "rule": None}]},
+        {"position": 2, "transcript": "To study.", "reply": "Good.", "sentence_status": "green", "corrections": []},
+    ]
+
+
+def test_save_turn_stores_the_rule_or_null(db, session_id):
+    base = {"fixed": "x", "type": "grammar", "why": "w"}
+    corrections = [
+        {**base, "original": "with rule", "rule": "verb_pattern"},
+        {**base, "original": "rule is None", "rule": None},
+        {**base, "original": "no rule key"},
+    ]
+
+    save_turn(db, session_id, {"turns": [1]}, "Hello", "Hi", "red", None, corrections, expected_turns=0)
+
+    stored = db.execute("SELECT original, rule FROM corrections ORDER BY id").fetchall()
+    assert stored == [
+        {"original": "with rule", "rule": "verb_pattern"},
+        {"original": "rule is None", "rule": None},
+        {"original": "no rule key", "rule": None},
+    ]
+
+
+def test_the_database_refuses_an_unknown_rule(db, session_id):
+    correction = {"original": "I go", "fixed": "I went", "type": "grammar", "why": "w", "rule": "spelling"}
+
+    with pytest.raises(psycopg.errors.CheckViolation):
+        save_turn(db, session_id, {"turns": [1]}, "I go", "Hi", "orange", None, [correction], expected_turns=0)
+
+
+def test_other_user_cannot_list_the_turns(db, session_id):
+    save_turn(db, session_id, {"turns": [1]}, "Hello", "Hi", "green", None, [], expected_turns=0)
+    other = get_or_create_by_clerk_id(db, "user_someone_else")
+
+    assert list_turns(db, session_id, other["id"]) == []

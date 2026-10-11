@@ -15,7 +15,7 @@ from app.routes import sessions as routes
 from app.routes.credits import client_ip
 from app.routes.sessions import get_llm
 from app.security import ClerkClaims, get_clerk_claims
-from tests.fake_llm import FakeChat
+from tkallem_agent.testing import FakeChat
 
 FOUND = {"corrections": [{"original": "for study", "fixed": "to study", "type": "grammar", "why": "Le but : to + verbe."}]}
 NONE = {"corrections": []}

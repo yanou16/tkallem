@@ -11,7 +11,15 @@ from tkallem_agent import AgentError, CoachSession, ScenarioNotFound
 from app import credits
 from app.config import settings
 from app.db.connection import ConnFactory, get_conn, get_conn_factory
-from app.db.sessions import create_session, end_session, get_session_for_user, save_turn, set_session_mode
+from app.db.sessions import (
+    create_session,
+    end_session,
+    get_session_detail,
+    get_session_for_user,
+    list_turns,
+    save_turn,
+    set_session_mode,
+)
 from app.dependencies import get_current_user, user_for_claims
 from app.schemas.sessions import SessionCreate, SessionDetail, SessionReport, SessionStarted, Spoken, TurnResult
 from app.security import ClerkClaims, get_clerk_claims
@@ -23,6 +31,8 @@ SPEAK_LIMIT = 6  # voice replays per session and per process: each one is a paid
 _speak_calls: dict[UUID, int] = {}
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
+
+METRIC_KEYS = ("mistakes_per_100", "words_per_answer", "hesitations_per_min", "speaking_seconds")
 
 
 def get_llm():
@@ -85,6 +95,50 @@ def _hear(session_id: UUID, data: bytes, filename: str, content_type: str) -> tu
         logger.info("Unclear transcription on session %s: %r", session_id, heard.text[:80])
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "We could not understand this recording, speak a little closer and try again")
     return heard.text, heard.duration_s, heard.long_pauses(), heard.latency_s
+
+
+def _scenario_view(session: dict) -> dict:
+    """Title, first question and progress, from the agent. A scenario removed since then still shows the session
+    (as _summary() in routes/me.py): only POST /turn refuses to go on."""
+    try:
+        coach = CoachSession.from_state(session["state"])
+    except ScenarioNotFound:
+        return {
+            "title": session["scenario_id"],
+            "total_questions": None,
+            "first_question": None,
+            "finished": session["ended_at"] is not None,
+        }
+    guided = coach.scenario.mode == "guided"
+    return {
+        "title": coach.scenario.title,
+        "total_questions": len(coach.scenario.questions) if guided else None,
+        "first_question": coach.opening,
+        "finished": coach.finished,
+    }
+
+
+@router.get("/{session_id}", response_model=SessionDetail)
+def read_session(
+    session_id: UUID,
+    user: dict = Depends(get_current_user),
+    conn: Connection = Depends(get_conn),
+) -> dict:
+    session = get_session_detail(conn, session_id, user["id"])
+    if session is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+
+    return {
+        "session_id": session["id"].hex,
+        "scenario_id": session["scenario_id"],
+        "mode": session["mode"],
+        "started_at": session["started_at"],
+        "ended_at": session["ended_at"],
+        **_scenario_view(session),
+        "turns": list_turns(conn, session_id, user["id"]),
+        "note": session["note"],
+        "metrics": {key: session[key] for key in METRIC_KEYS} if session["ended_at"] else None,
+    }
 
 
 def _spend(connect: ConnFactory, user: dict, session_id: UUID) -> credits.CreditStatus:
@@ -184,32 +238,6 @@ def _stream_answer(session_id: UUID, session: dict, user: dict, wallet, text: st
     finally:
         if not saved:
             _refund(connect, user, session_id)
-
-
-@router.get("/{session_id}", response_model=SessionDetail)
-def read_session(
-    session_id: UUID,
-    user: dict = Depends(get_current_user),
-    conn: Connection = Depends(get_conn),
-) -> dict:
-    """The conversation so far (text only, never audio), rebuilt from the stored state: no LLM call."""
-    session = get_session_for_user(conn, session_id, user["id"])
-    if session is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
-    coach = CoachSession.from_state(session["state"], max_text_chars=settings.max_text_chars)
-    lines = [{"role": "coach", "text": coach.opening}]
-    for t in coach.turns:
-        lines.append({"role": "student", "text": t.student_text, "status": t.status, "corrections": t.corrections})
-        lines.append({"role": "coach", "text": t.reply})
-    return {
-        "session_id": session_id.hex,
-        "scenario_id": coach.scenario.id,
-        "title": coach.scenario.title,
-        "mode": session["mode"],
-        "lines": lines,
-        "finished": coach.finished,
-        "ended": session["ended_at"] is not None,
-    }
 
 
 @router.post("/{session_id}/speak", response_model=Spoken)
