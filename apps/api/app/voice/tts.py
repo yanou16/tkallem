@@ -33,6 +33,7 @@ class TtsError(RuntimeError):
     def __init__(self, message: str, status: int | None = None):
         super().__init__(message)
         self.status = status
+        self.transient = False  # the connection itself failed: one immediate retry is worth it
 
 
 @dataclass
@@ -179,7 +180,7 @@ def _synthesize_one(name: str, text: str, voice: str | None, client: httpx.Clien
     if name not in PROVIDERS:
         raise TtsError(f"unknown TTS provider {name!r}: expected one of {list(PROVIDERS)}")
     own = client is None
-    http = client or httpx.Client(timeout=settings.voice_timeout)
+    http = client or httpx.Client(timeout=httpx.Timeout(settings.voice_timeout, connect=settings.voice_connect_timeout))
     t0 = time.perf_counter()
     try:
         parts, mime, latencies = PROVIDERS[name](http, text, voice)
@@ -188,7 +189,9 @@ def _synthesize_one(name: str, text: str, voice: str | None, client: httpx.Clien
     except httpx.HTTPStatusError as e:
         raise TtsError(f"{name} answered {e.response.status_code}{provider_message(e.response)}", e.response.status_code) from e
     except (httpx.HTTPError, ValueError) as e:
-        raise TtsError(f"{name} failed: {type(e).__name__}") from e
+        error = TtsError(f"{name} failed: {type(e).__name__}")
+        error.transient = isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout))  # never reached the provider: safe to retry
+        raise error from e
     finally:
         if own:
             http.close()
@@ -209,7 +212,12 @@ def synthesize(
     errors: list[str] = []
     for name in chain:
         try:
-            speech = _synthesize_one(name, text, voice, client)
+            try:
+                speech = _synthesize_one(name, text, voice, client)
+            except TtsError as first:
+                if not first.transient:
+                    raise
+                speech = _synthesize_one(name, text, voice, client)
         except TtsError as e:
             errors.append(str(e))
             if "is not set" not in str(e):  # a missing key is a configuration choice, not an outage

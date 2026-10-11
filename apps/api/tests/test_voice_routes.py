@@ -21,6 +21,7 @@ from app.voice import SttError, TtsError
 from app.voice.stt import Transcription
 from app.voice.tts import Speech, merge_wav
 from tests.fake_llm import FakeChat
+from tkallem_agent.scenarios import load_scenario
 
 CLERK_ID = "user_voice_test"
 FOUND = {"corrections": [{"original": "for study", "fixed": "to study", "type": "grammar", "why": "Le but : to + verbe."}]}
@@ -177,3 +178,46 @@ def test_merge_wav_joins_parts_and_rejects_mixed_formats():
         merge_wav([wav_bytes(100, 24000), wav_bytes(100, 16000)])
     with pytest.raises(TtsError, match="unreadable"):
         merge_wav([b"not a wav", b"neither"])
+
+
+def test_switching_to_voice_speaks_the_last_coach_line_and_makes_replies_spoken(client, db, monkeypatch):
+    spoken = []
+    monkeypatch.setattr(routes, "synthesize", lambda text, **k: spoken.append(text) or speech(text))
+    sid = start(client, db, "text").json()["session_id"]
+
+    body = client.post(f"/sessions/{sid}/speak").json()
+
+    first = load_scenario("visa-us").questions[0]
+    assert body["text"] == first and spoken == [first]
+    assert body["audio_url"].startswith("data:audio/wav;base64,")
+    assert db.execute("SELECT mode FROM practice_sessions WHERE id = %s", (UUID(sid),)).fetchone()["mode"] == "voice"
+    typed = client.post(f"/sessions/{sid}/turn", data={"text": "I go to the US for study."}).json()
+    assert typed["reply_audio_url"].startswith("data:audio/wav")  # a typed answer in a voice session is answered aloud
+
+
+def test_speak_degrades_to_text_and_is_limited_per_session(client, db, monkeypatch):
+    def broken(text, **k):
+        raise TtsError("groq answered 429")
+    monkeypatch.setattr(routes, "synthesize", broken)
+    monkeypatch.setattr(routes, "SPEAK_LIMIT", 2)
+    sid = start(client, db, "text").json()["session_id"]
+    first = client.post(f"/sessions/{sid}/speak")
+    assert first.status_code == 200 and first.json()["audio_url"] is None
+    assert client.post(f"/sessions/{sid}/speak").status_code == 200
+    assert client.post(f"/sessions/{sid}/speak").status_code == 429
+
+
+def test_speak_only_for_the_owner(client, db):
+    sid = start(client, db, "text").json()["session_id"]
+    app.dependency_overrides[get_clerk_claims] = lambda: ClerkClaims(user_id="user_other_voice", session_id=None)
+    assert client.post(f"/sessions/{sid}/speak").status_code == 404
+
+
+@pytest.mark.parametrize("noise", ["", " . ", "...", "♪"])
+def test_a_transcript_without_words_is_refused_and_costs_nothing(client, db, monkeypatch, noise):
+    monkeypatch.setattr(routes, "transcribe", lambda *a, **k: heard(text=noise))
+    sid = start(client, db, "voice").json()["session_id"]
+    before = db.execute("SELECT count(*) AS n FROM turns WHERE session_id = %s", (UUID(sid),)).fetchone()["n"]
+    r = send_audio(client, sid)
+    assert r.status_code == 422 and "did not hear" in r.json()["detail"]
+    assert db.execute("SELECT count(*) AS n FROM turns WHERE session_id = %s", (UUID(sid),)).fetchone()["n"] == before

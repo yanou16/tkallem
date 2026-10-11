@@ -91,3 +91,12 @@ html, body { background: #fdfdfb; color: #111; }
 body { -webkit-font-smoothing: antialiased; }
 :focus-visible { outline: 2px solid #111; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* Voice state indicator (DESIGN.md "State indicator"): listening bars, thinking dots, speaking circle.
+   The reduced-motion rule above stops them; the label always stays. */
+@keyframes tk-bar { 0%, 100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
+@keyframes tk-dot { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+@keyframes tk-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+.tk-bar { animation: tk-bar 900ms ease-out infinite; transform-origin: center; }
+.tk-dot { animation: tk-dot 1200ms ease-out infinite; }
+.tk-breathe { animation: tk-breathe 800ms ease-out infinite; }

@@ -1,4 +1,5 @@
 """Voice providers back each other up: a rate limit during the demo must cost a second, not the voice."""
+import httpx
 import pytest
 
 from app.config import settings
@@ -99,3 +100,36 @@ def test_unreadable_audio_is_reported_as_the_students_problem_only_if_all_agree(
     with pytest.raises(SttError) as e:
         stt.transcribe(b"audio")
     assert not e.value.bad_audio  # one provider is down: not the student's fault
+
+
+def test_a_connection_failure_is_retried_once_on_the_same_provider(monkeypatch):
+    calls = []
+
+    def flaky(client, text, voice):
+        calls.append("groq")
+        if len(calls) == 1:
+            raise httpx.ConnectTimeout("no route")
+        return [b"wav"], "audio/wav", [0.1]
+
+    monkeypatch.setattr(tts, "PROVIDERS", {"groq": flaky, "deepinfra": lambda *a: (_ for _ in ()).throw(AssertionError("not needed"))})
+    assert tts.synthesize("Hi.").provider == "groq"
+    assert calls == ["groq", "groq"]
+
+
+def test_a_refusal_is_not_retried_on_the_same_provider(monkeypatch):
+    calls = []
+    monkeypatch.setattr(tts, "PROVIDERS", fake_tts(calls, {"groq": TtsError("quota", 429), "deepinfra": None}))
+    tts.synthesize("Hi.")
+    assert calls == ["groq", "deepinfra"]
+
+
+def test_stt_connection_failure_retried_then_falls_back(monkeypatch):
+    calls = []
+
+    def down(client, audio, filename, ctype, language, fillers):
+        calls.append("groq")
+        raise httpx.ConnectError("refused")
+
+    monkeypatch.setattr(stt, "PROVIDERS", {"groq": down, **fake_stt(calls, {"deepinfra": None})})
+    assert stt.transcribe(b"audio").provider == "deepinfra"
+    assert calls == ["groq", "groq", "deepinfra"]

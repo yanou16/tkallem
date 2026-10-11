@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     tts_provider: str = "groq,deepinfra"  # backup chain: groq (Orpheus, limited to 100 voices/day) | deepinfra (Kokoro, needs a balance)
     deepinfra_api_key: str = ""
     voice_timeout: float = 20.0
+    voice_connect_timeout: float = 3.0  # a provider that cannot be reached in 3 s is retried once, then the next one answers
     database_url: str = ""
     test_database_url: str = ""
     clerk_jwks_url: str = ""

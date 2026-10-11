@@ -28,6 +28,7 @@ class SttError(RuntimeError):
     def __init__(self, message: str, status: int | None = None):
         super().__init__(message)
         self.status = status
+        self.transient = False  # the connection itself failed: one immediate retry is worth it
 
     @property
     def bad_audio(self) -> bool:
@@ -127,7 +128,7 @@ def _transcribe_one(name, audio, filename, content_type, language, keep_fillers,
     if name not in PROVIDERS:
         raise SttError(f"unknown STT provider {name!r}: expected one of {list(PROVIDERS)}")
     own = client is None
-    http = client or httpx.Client(timeout=settings.voice_timeout)
+    http = client or httpx.Client(timeout=httpx.Timeout(settings.voice_timeout, connect=settings.voice_connect_timeout))
     t0 = time.perf_counter()
     try:
         text, duration, words, segments = PROVIDERS[name](http, audio, filename, content_type, language, keep_fillers)
@@ -136,7 +137,9 @@ def _transcribe_one(name, audio, filename, content_type, language, keep_fillers,
     except httpx.HTTPStatusError as e:
         raise SttError(f"{name} answered {e.response.status_code}{provider_message(e.response)}", e.response.status_code) from e
     except (httpx.HTTPError, ValueError) as e:  # network, timeout, invalid JSON
-        raise SttError(f"{name} failed: {type(e).__name__}") from e
+        error = SttError(f"{name} failed: {type(e).__name__}")
+        error.transient = isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout))  # never reached the provider: safe to retry
+        raise error from e
     finally:
         if own:
             http.close()
@@ -164,7 +167,12 @@ def transcribe(
     errors: list[SttError] = []
     for name in chain:
         try:
-            heard = _transcribe_one(name, audio, filename, content_type, language, keep_fillers, client)
+            try:
+                heard = _transcribe_one(name, audio, filename, content_type, language, keep_fillers, client)
+            except SttError as first:
+                if not first.transient:
+                    raise
+                heard = _transcribe_one(name, audio, filename, content_type, language, keep_fillers, client)
         except SttError as e:
             errors.append(e)
             if "is not set" not in str(e) and not e.bad_audio:

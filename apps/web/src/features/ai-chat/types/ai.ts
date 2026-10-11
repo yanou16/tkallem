@@ -12,6 +12,8 @@ export type ChatMessage = {
   content: string;
   createdAt?: string; // absent for messages reloaded from the server (no time is stored per line)
   status?: SentenceStatus;
+  audioUrl?: string | null; // coach lines spoken by the server (data: URL), for the replay button
+  pending?: boolean; // shown at once while the answer is processed, replaced by the real lines
 };
 
 export type SentenceStatus = "green" | "orange" | "red";
@@ -70,4 +72,4 @@ export type TurnResponse = {
   credits?: Credits; // balance after this answer
 };
 
-export type VoiceState = "idle" | "recording" | "uploading" | "processing" | "speaking" | "error";
+export type Spoken = { text: string; audio_url: string | null };

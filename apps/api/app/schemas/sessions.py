@@ -19,6 +19,11 @@ class FirstQuestion(BaseModel):
     audio_url: str | None = None
 
 
+class Spoken(BaseModel):
+    text: str
+    audio_url: str | None = None  # None when every voice provider failed: the app uses the browser's voice
+
+
 class SessionStarted(BaseModel):
     session_id: str
     first_question: FirstQuestion

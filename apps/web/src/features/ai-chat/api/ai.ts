@@ -1,6 +1,6 @@
 import { api } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
-import type { AiSession, SessionDetail, SessionReport, StartSessionInput, StartSessionResponse, TurnResponse } from "../types/ai";
+import type { Spoken, AiSession, SessionDetail, SessionReport, StartSessionInput, StartSessionResponse, TurnResponse } from "../types/ai";
 
 export const createSession = (input: StartSessionInput) =>
   api.post<StartSessionResponse>(endpoints.ai.sessions, input);
@@ -37,3 +37,6 @@ export async function getSession(sessionId: string): Promise<AiSession> {
 }
 
 export const endSession = (sessionId: string) => api.post<SessionReport>(endpoints.ai.end(sessionId));
+
+/** Switch to voice mid-session: the coach says its last line again and the next replies are spoken. */
+export const speakLastLine = (sessionId: string) => api.post<Spoken>(endpoints.ai.speak(sessionId));

@@ -148,6 +148,27 @@ paths:
                   ended: { type: boolean, description: The report was made, no more answers }
         "401": { description: Missing or invalid token }
         "404": { description: Session not found (or not this student's) }
+  /sessions/{id}/speak:
+    post:
+      summary: Switch an ongoing session to voice; the coach says its last line again
+      description: The session becomes a voice session (next replies come with audio). Limited to a few calls per session, each one is a paid voice request.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The coach's last line, with its audio (null if every voice provider failed)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [text]
+                properties:
+                  text: { type: string }
+                  audio_url: { type: [string, "null"] }
+        "401": { description: Missing or invalid token }
+        "404": { description: Session not found (or not this student's) }
+        "409": { description: Session already ended }
+        "429": { description: The coach already repeated this many times in this session }
   /sessions/{id}/turn:
     post:
       summary: Send one student turn (audio file or text)

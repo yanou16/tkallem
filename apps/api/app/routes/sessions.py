@@ -8,13 +8,15 @@ from tkallem_agent import AgentError, CoachSession, ScenarioNotFound
 from app import credits
 from app.config import settings
 from app.db.connection import ConnFactory, get_conn, get_conn_factory
-from app.db.sessions import create_session, end_session, get_session_for_user, save_turn
+from app.db.sessions import create_session, end_session, get_session_for_user, save_turn, set_session_mode
 from app.dependencies import get_current_user, user_for_claims
-from app.schemas.sessions import SessionCreate, SessionDetail, SessionReport, SessionStarted, TurnResult
+from app.schemas.sessions import SessionCreate, SessionDetail, SessionReport, SessionStarted, Spoken, TurnResult
 from app.security import ClerkClaims, get_clerk_claims
 from app.voice import SttError, TtsError, run_turn, synthesize, transcribe
 
 logger = logging.getLogger(__name__)
+SPEAK_LIMIT = 6  # voice replays per session and per process: each one is a paid TTS request with a daily quota
+_speak_calls: dict[UUID, int] = {}
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -78,7 +80,7 @@ def _answer(session_id: UUID, session: dict, text: str | None, audio: UploadFile
             if exc.bad_audio:
                 raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "We could not read this recording, try again")
             raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Speech recognition is unavailable, try again or type your answer")
-        if not heard.text.strip():
+        if not any(c.isalpha() for c in heard.text):  # "" or "." : noise, nothing said
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "We did not hear anything, try again")
         if heard.unclear:
             logger.info("Unclear transcription on session %s: %r", session_id, heard.text[:80])
@@ -153,6 +155,34 @@ def read_session(
         "finished": coach.finished,
         "ended": session["ended_at"] is not None,
     }
+
+
+@router.post("/{session_id}/speak", response_model=Spoken)
+def speak_last_line(
+    session_id: UUID,
+    user: dict = Depends(get_current_user),
+    connect: ConnFactory = Depends(get_conn_factory),
+) -> dict:
+    """The student switched to voice in the middle of a session: the coach says its last line again, and the coming
+    replies are spoken too (the session becomes a voice session). Only the session's own last line can be spoken."""
+    with connect() as conn:
+        session = get_session_for_user(conn, session_id, user["id"])
+        if session is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+        if session["ended_at"] is not None:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
+        set_session_mode(conn, session_id, user["id"], "voice")
+    if _speak_calls.get(session_id, 0) >= SPEAK_LIMIT:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "The coach already repeated this many times: answer to continue")
+    _speak_calls[session_id] = _speak_calls.get(session_id, 0) + 1
+    coach = CoachSession.from_state(session["state"], max_text_chars=settings.max_text_chars)
+    text = coach.turns[-1].reply if coach.turns else coach.opening
+    try:
+        audio_url = synthesize(text).data_uri  # outside the DB connection: TTS takes about a second
+    except TtsError as exc:
+        logger.warning("Speak without audio on session %s: %s", session_id, exc)
+        audio_url = None
+    return {"text": text, "audio_url": audio_url}
 
 
 @router.post("/{session_id}/turn", response_model=TurnResult)

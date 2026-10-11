@@ -83,6 +83,10 @@ def save_turn(
     return turn["id"]
 
 
+def set_session_mode(conn: Connection, session_id: UUID, user_id: int, mode: str) -> None:
+    conn.execute("UPDATE practice_sessions SET mode = %s WHERE id = %s AND user_id = %s", (mode, session_id, user_id))
+
+
 def end_session(conn: Connection, session_id: UUID, note: str, metrics: dict) -> bool:
     ended = conn.execute(
         """

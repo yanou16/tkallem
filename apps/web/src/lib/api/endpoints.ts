@@ -28,6 +28,7 @@ export const endpoints = {
     session: (id: string) => `/sessions/${id}`,
     turn: (id: string) => `/sessions/${id}/turn`,
     end: (id: string) => `/sessions/${id}/end`,
+    speak: (id: string) => `/sessions/${id}/speak`,
   },
   groups: {
     list: "/api/groups",

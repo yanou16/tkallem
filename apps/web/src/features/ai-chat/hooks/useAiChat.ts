@@ -1,6 +1,6 @@
 "use client";
 import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createSession, endSession, getSession, sendText, sendVoice } from "../api/ai";
+import { createSession, endSession, getSession, sendText, sendVoice, speakLastLine } from "../api/ai";
 import type { AiSession, SessionReport, StartSessionResponse, TurnResponse } from "../types/ai";
 import { CREDITS_KEY } from "@/features/credits/hooks/useCredits";
 
@@ -39,6 +39,7 @@ export const useCreateSession = () => {
           role: "assistant",
           content: s.first_question.text,
           createdAt: new Date().toISOString(),
+          audioUrl: s.first_question.audio_url,
         }],
         corrections: [],
       });
@@ -55,7 +56,7 @@ function merge(qc: ReturnType<typeof useQueryClient>, sessionId: string, transcr
           messages: [
             ...prev.messages,
             { id: `${sessionId}-${prev.messages.length}`, role: "user", content: transcript, createdAt: new Date().toISOString(), status: r.sentence_status },
-            { id: `${sessionId}-${prev.messages.length + 1}`, role: "assistant", content: r.reply, createdAt: new Date().toISOString() },
+            { id: `${sessionId}-${prev.messages.length + 1}`, role: "assistant", content: r.reply, createdAt: new Date().toISOString(), audioUrl: r.reply_audio_url },
           ],
           corrections: [...prev.corrections, ...r.corrections],
           finished: r.finished ?? prev.finished,
@@ -77,5 +78,21 @@ export const useSendVoice = (sessionId?: string) => {
   return useMutation({
     mutationFn: (audio: Blob) => sendVoice(sessionId!, audio),
     onSuccess: (r) => sessionId && merge(qc, sessionId, r.transcript, r),
+  });
+};
+
+export const useSpeakLastLine = (sessionId?: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => speakLastLine(sessionId!),
+    onSuccess: (r) =>
+      qc.setQueryData<AiSession>(key(sessionId), (prev) => {
+        if (!prev) return prev;
+        const messages = [...prev.messages];
+        for (let i = messages.length - 1; i >= 0; i--) {
+          if (messages[i].role === "assistant") { messages[i] = { ...messages[i], audioUrl: r.audio_url }; break; }
+        }
+        return { ...prev, messages };
+      }),
   });
 };
