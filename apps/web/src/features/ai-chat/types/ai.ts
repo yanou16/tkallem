@@ -1,3 +1,4 @@
+import type { Credits } from "@/features/credits/types/credits";
 export type Correction = {
   original: string;
   fixed: string;
@@ -40,6 +41,8 @@ export type TurnResponse = {
   reply_audio_url: string | null;
   corrections: Correction[];
   sentence_status: "green" | "orange" | "red";
+  finished?: boolean;
+  credits?: Credits; // balance after this answer
 };
 
 export type VoiceState = "idle" | "recording" | "uploading" | "processing" | "speaking" | "error";

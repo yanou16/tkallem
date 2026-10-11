@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from psycopg import Connection
 from tkallem_agent import AgentError, CoachSession, ScenarioNotFound
 
+from app import credits
 from app.config import settings
 from app.db.connection import ConnFactory, get_conn, get_conn_factory
 from app.db.sessions import create_session, end_session, get_session_for_user, save_turn
@@ -64,26 +65,8 @@ def start_session(
     }
 
 
-@router.post("/{session_id}/turn", response_model=TurnResult)
-def send_turn(
-    session_id: UUID,
-    text: str | None = Form(None),
-    audio: UploadFile | None = File(None),
-    claims: ClerkClaims = Depends(get_clerk_claims),
-    connect: ConnFactory = Depends(get_conn_factory),
-    llm=Depends(get_llm),
-) -> dict:
-    """One answer, typed (`text`) or spoken (`audio`, webm from Chrome, mp4 from Safari): exactly one of the two."""
-    if (text is None) == (audio is None):
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Send exactly one of `text` or `audio`")
-    with connect() as conn:
-        user = get_or_create_by_clerk_id(conn, claims.user_id)
-        session = get_session_for_user(conn, session_id, user["id"])
-    if session is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
-    if session["ended_at"] is not None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
-
+def _answer(session_id: UUID, session: dict, text: str | None, audio: UploadFile | None, llm, connect: ConnFactory) -> dict:
+    """Transcribe (if spoken), run the coach, speak the reply, save the turn. Any exception means: nothing was saved."""
     audio_seconds, pauses, stt_s = None, 0, None
     if audio is not None:
         data = audio.file.read(settings.max_audio_bytes + 1)
@@ -142,6 +125,51 @@ def send_turn(
         "sentence_status": turn.sentence_status,
         "finished": coach.finished,
     }
+
+
+@router.post("/{session_id}/turn", response_model=TurnResult)
+def send_turn(
+    session_id: UUID,
+    text: str | None = Form(None),
+    audio: UploadFile | None = File(None),
+    claims: ClerkClaims = Depends(get_clerk_claims),
+    connect: ConnFactory = Depends(get_conn_factory),
+    llm=Depends(get_llm),
+) -> dict:
+    """One answer, typed (`text`) or spoken (`audio`, webm from Chrome, mp4 from Safari): exactly one of the two."""
+    if (text is None) == (audio is None):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Send exactly one of `text` or `audio`")
+    with connect() as conn:
+        user = get_or_create_by_clerk_id(conn, claims.user_id)
+        session = get_session_for_user(conn, session_id, user["id"])
+    if session is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    if session["ended_at"] is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
+
+    with connect() as conn:
+        try:
+            wallet = credits.spend(conn, user, session_id)  # the credit is taken BEFORE the paid providers are called
+        except credits.NoCredits as exc:
+            next_at = exc.next_refill_at.isoformat() if exc.next_refill_at else None
+            raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, detail={"code": "no_credits", "balance": 0, "next_refill_at": next_at})
+        except credits.DailyBudgetReached:
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={"code": "daily_budget_reached", "message": "Today's free practice is used up, come back tomorrow"},
+            )
+
+    try:
+        answer = _answer(session_id, session, text, audio, llm, connect)
+    except Exception:
+        try:  # a student never pays for an outage or for an answer that could not be processed
+            with connect() as conn:
+                credits.refund(conn, user, session_id)
+        except Exception:
+            logger.exception("Could not refund the credit of session %s", session_id)
+        raise
+    answer["credits"] = wallet.as_dict()
+    return answer
 
 
 @router.post("/{session_id}/end", response_model=SessionReport)

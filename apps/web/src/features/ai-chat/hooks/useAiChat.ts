@@ -2,6 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createSession, sendText, sendVoice } from "../api/ai";
 import type { AiSession, StartSessionResponse, TurnResponse } from "../types/ai";
+import { CREDITS_KEY } from "@/features/credits/hooks/useCredits";
 
 const key = (id?: string) => ["ai-session", id] as const;
 
@@ -28,6 +29,7 @@ export const useCreateSession = () => {
 };
 
 function merge(qc: ReturnType<typeof useQueryClient>, sessionId: string, transcript: string, r: TurnResponse) {
+  if (r.credits) qc.setQueryData(CREDITS_KEY, r.credits); // the header counter follows every answer
   qc.setQueryData<AiSession>(key(sessionId), (prev) =>
     prev
       ? {

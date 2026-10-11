@@ -2,12 +2,14 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowDown, ChevronDown, ChevronRight, CircleAlert, Lightbulb, Mic, MessageCircle, Send, Square, ChartNoAxesColumn } from "lucide-react";
+import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOfCredits";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
 import { useAiSession, useCreateSession, useSendMessage, useSendVoice } from "@/features/ai-chat/hooks/useAiChat";
 import { useVoiceRecorder } from "@/features/ai-chat/hooks/useVoiceRecorder";
 import type { ChatMessage, Correction, VoiceState } from "@/features/ai-chat/types/ai";
 import { Avatar, Card, EmptyState, ErrorState, PageHeader, Skeleton } from "@/components/ui";
+import { ApiError } from "@/lib/api/client";
 import { Icon } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +24,7 @@ function Chat() {
   const params = useSearchParams();
   const sessionId = params.get("sessionId") ?? undefined;
   const scenarioId = params.get("scenarioId") ?? undefined;
-  const { user, activeLanguage } = useCurrentUser();
+  const { user, activeLanguage, isGuest } = useCurrentUser();
   const scenarios = useScenarios();
   const create = useCreateSession();
   const session = useAiSession(sessionId);
@@ -122,7 +124,13 @@ function Chat() {
             <div ref={bottom} />
           </div>
 
-          {(send.error || voice.error || rec.error) && <div className="px-6 pb-2"><ErrorState error={send.error ?? voice.error ?? new Error(rec.error ?? "")} /></div>}
+          {(send.error || voice.error || rec.error) && (
+            <div className="px-6 pb-2">
+              {isCreditError(send.error ?? voice.error)
+                ? <OutOfCredits error={(send.error ?? voice.error) as ApiError} isGuest={isGuest} />
+                : <ErrorState error={send.error ?? voice.error ?? new Error(rec.error ?? "")} />}
+            </div>
+          )}
 
           <div className="flex items-center gap-4 border-t border-line p-4">
             <div className="flex flex-col items-center">

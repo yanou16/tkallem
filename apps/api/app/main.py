@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.db.connection import close_pool, open_pool
 
+from app.routes.credits import router as credits_router
 from app.routes.me import router as me_router
 from app.routes.sessions import router as sessions_router
 
@@ -35,6 +36,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(credits_router)
 app.include_router(me_router)
 app.include_router(sessions_router)
 

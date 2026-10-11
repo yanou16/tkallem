@@ -21,5 +21,16 @@ class Settings(BaseSettings):
     max_text_chars: int = 1000
     frontend_origin: str = "http://localhost:3000"
 
+    # Credits (see docs/CREDITS.md). 1 credit = 1 answer from the student.
+    guest_secret: str = ""  # signs guest tokens (32+ characters); empty = guest mode disabled
+    guest_credits: int = 40  # given once to a visitor without account
+    login_bonus: int = 60  # given once to a new signed-in student
+    daily_refill: int = 15  # added each day to a signed-in student...
+    refill_cap: int = 45  # ...but never above this balance
+    guest_ip_daily_cap: int = 30  # guest accounts one network address may create per day (shared mobile IPs are common)
+    guest_daily_cap: int = 2000  # guest accounts created per day by everyone (keeps the table from being flooded)
+    forwarded_hops: int = 0  # reverse proxies in front of the API (Render, Railway: 1); 0 = use the socket address
+    daily_spend_cap: int = 5000  # credits spent by everyone per day: the switch that bounds the bill (credits x cost per credit)
+
 
 settings = Settings()

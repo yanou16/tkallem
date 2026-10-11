@@ -4,6 +4,8 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 from tkallem_agent.schemas import Correction, ExplainLang, Status
 
+from app.schemas.credits import Credits
+
 class SessionCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -28,6 +30,7 @@ class TurnResult(BaseModel):
     corrections: list[Correction] = Field(max_length=3)
     sentence_status: Status
     finished: bool
+    credits: Credits | None = None  # balance after this answer
 
 
 class ReportLine(BaseModel):

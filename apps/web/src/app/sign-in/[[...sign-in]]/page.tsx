@@ -128,6 +128,11 @@ export default function SignInPage() {
               Create an account
             </Link>
           </p>
+          <p className="text-center text-[13px] text-[#6b6b75]">
+            <Link href="/ai-chat?scenarioId=visa-us" className="font-medium text-ink hover:underline">
+              Try it first, no account needed
+            </Link>
+          </p>
         </form>
       </AuthCard>
     </AuthShell>

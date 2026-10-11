@@ -34,6 +34,32 @@ export const tokenStore = {
   },
 };
 
+/* ---------- guest token (visitor without account, see docs/CREDITS.md) ---------- */
+const GUEST_KEY = "tkallem.guest";
+export const GUEST_EVENT = "tkallem:guest-changed";
+let guestCreationFailed = false;
+export const guestFailure = {
+  get: () => guestCreationFailed,
+  set(value: boolean) {
+    guestCreationFailed = value;
+    if (typeof window !== "undefined") window.dispatchEvent(new Event(GUEST_EVENT));
+  },
+};
+export const guestStore = {
+  get(): string | null {
+    if (typeof window === "undefined") return null;
+    try { return window.localStorage.getItem(GUEST_KEY); } catch { return null; }
+  },
+  set(token: string) {
+    try { window.localStorage.setItem(GUEST_KEY, token); } catch {}
+    if (typeof window !== "undefined") window.dispatchEvent(new Event(GUEST_EVENT));
+  },
+  clear() {
+    try { window.localStorage.removeItem(GUEST_KEY); } catch {}
+    if (typeof window !== "undefined") window.dispatchEvent(new Event(GUEST_EVENT));
+  },
+};
+
 /* ---------- 401 handling ---------- */
 let onUnauthorized: (() => void) | null = null;
 export function setUnauthorizedHandler(fn: (() => void) | null) { onUnauthorized = fn; }
@@ -65,7 +91,12 @@ export async function apiFetch<T>(endpoint: string, options: Options = {}): Prom
   finalHeaders.set("Accept", "application/json");
   if (body !== undefined && !isForm) finalHeaders.set("Content-Type", "application/json");
   const token = requestToken ?? (await authTokenProvider?.()) ?? tokenStore.get();
-  if (token) finalHeaders.set("Authorization", `Bearer ${token}`);
+  if (token) {
+    finalHeaders.set("Authorization", `Bearer ${token}`);
+  } else {
+    const guest = guestStore.get(); // signed out: a visitor identifies itself with its guest token
+    if (guest) finalHeaders.set("Authorization", `Guest ${guest}`);
+  }
 
   let res: Response;
   try {
@@ -85,9 +116,11 @@ export async function apiFetch<T>(endpoint: string, options: Options = {}): Prom
 
   if (!res.ok) {
     if (res.status === 401 && !skipAuthRedirect) { tokenStore.clear(); onUnauthorized?.(); }
+    const detail = data && typeof data === "object" ? (data as any).detail : undefined;
+    const detailText = detail && typeof detail === "object" ? (detail.message ?? detail.code) : detail; // 402/429 send an object
     const msg =
       (data && typeof data === "object" && ("message" in data || "detail" in data)
-        ? String((data as any).message ?? (data as any).detail)
+        ? String((data as any).message ?? detailText)
         : null) ?? `Request failed (${res.status})`;
     throw new ApiError(msg, res.status, data);
   }

@@ -6,6 +6,7 @@ class Me(BaseModel):
     first_name: str | None
     level: Level | None
     explain_lang: ExplainLang
+    is_guest: bool = False  # visitor without account (Authorization: Guest ...)
 
 
 class MeUpdate(BaseModel):

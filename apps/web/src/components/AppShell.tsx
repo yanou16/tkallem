@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 import { ROUTES } from "@/lib/config";
 import { ApiError, setUnauthorizedHandler } from "@/lib/api/client";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
+import CreditsPill from "@/components/CreditsPill";
+import { useIdentity } from "@/features/credits/hooks/useCredits";
 
 const NAV = [
   { href: "/", label: "Home", icon: House },
@@ -28,13 +30,20 @@ function Logo() {
   );
 }
 
+/** A visitor without account only sees the screens that work without one. */
+const GUEST_NAV = NAV.filter((n) => n.href === "/practice" || n.href === "/ai-chat");
+function useNav() {
+  return useIdentity().isGuest ? GUEST_NAV : NAV;
+}
+
 function Sidebar() {
   const path = usePathname();
+  const nav = useNav();
   return (
     <aside className="sticky top-0 hidden h-screen w-[260px] shrink-0 flex-col gap-8 border-r border-line bg-white/60 p-5 md:flex">
       <Logo />
       <nav className="flex flex-col gap-1.5" aria-label="Main">
-        {NAV.map(({ href, label, icon: I }) => {
+        {nav.map(({ href, label, icon: I }) => {
           const active = href === "/" ? path === "/" : path.startsWith(href);
           return (
             <Link key={href} href={href} aria-current={active ? "page" : undefined}
@@ -51,9 +60,10 @@ function Sidebar() {
 
 function MobileNav() {
   const path = usePathname();
+  const nav = useNav();
   return (
     <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-line bg-white/95 py-2 md:hidden">
-      {NAV.map(({ href, label, icon: I }) => {
+      {nav.map(({ href, label, icon: I }) => {
         const active = href === "/" ? path === "/" : path.startsWith(href);
         return (
           <Link key={href} href={href} className={cn("flex flex-col items-center gap-0.5 px-2 text-[11px]", active ? "font-semibold text-ink" : "text-muted")}>
@@ -69,6 +79,7 @@ function HeaderBar() {
   const { user, isLoaded } = useUser();
   const { user: appUser } = useCurrentUser();
   const { signOut } = useClerk();
+  const { isGuest } = useIdentity();
   const [open, setOpen] = useState(false);
 
   const avatarSrc = appUser?.avatarUrl || user?.imageUrl;
@@ -78,10 +89,13 @@ function HeaderBar() {
     <div className="flex items-center justify-between px-6 pt-5 md:justify-end md:px-10">
       <div className="md:hidden"><Logo /></div>
       <div className="flex items-center gap-5">
+        <CreditsPill />
         <button aria-label="Notifications" className="relative rounded-full p-2 hover:bg-black/5">
           <Bell size={22} strokeWidth={1.7} />
         </button>
-        {!isLoaded || !user ? (
+        {isGuest ? (
+          <Link href={ROUTES.signIn} className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white">Sign in</Link>
+        ) : !isLoaded || !user ? (
           <div className="flex items-center gap-3"><Skeleton className="h-10 w-10 !rounded-full" /><Skeleton className="h-4 w-16" /></div>
         ) : (
           <div className="relative">
@@ -107,6 +121,7 @@ function HeaderBar() {
 export default function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { user, error, refetch } = useCurrentUser();
+  const { guestFailed } = useIdentity();
 
   useEffect(() => {
     setUnauthorizedHandler(() => router.replace(ROUTES.signIn));
@@ -125,10 +140,22 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <div className="min-w-0 flex-1 pb-20 md:pb-0">
         <HeaderBar />
         <main className="px-6 pb-10 pt-2 md:px-10">
-          {fatal ? <ErrorState error={error} onRetry={() => refetch()} className="mt-8" /> : !user && !error ? <PageSkeleton /> : children}
+          {fatal ? <ErrorState error={error} onRetry={() => refetch()} className="mt-8" />
+            : !user && !error && guestFailed ? <GuestUnavailable />
+            : !user && !error ? <PageSkeleton /> : children}
         </main>
       </div>
       <MobileNav />
+    </div>
+  );
+}
+
+function GuestUnavailable() {
+  return (
+    <div className="mt-8 max-w-md rounded-2xl border border-line bg-white p-5">
+      <p className="text-lg font-semibold">Please sign in to start</p>
+      <p className="mt-1 text-sm text-muted">Practice without an account is not available right now. Signing in is free and gives you credits to practise.</p>
+      <Link href={ROUTES.signUp} className="mt-4 inline-block rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white">Create a free account</Link>
     </div>
   );
 }

@@ -3,6 +3,7 @@ from psycopg import Connection
 from tkallem_agent import ScenarioNotFound
 from tkallem_agent.scenarios import load_scenario
 
+from app import guests
 from app.db.connection import get_conn
 from app.db.sessions import list_sessions_for_user
 from app.db.users import update_profile
@@ -15,9 +16,13 @@ from app.schemas.progress import Progress
 router = APIRouter(prefix="/me", tags=["me"])
 DAILY_GOAL_SECONDS = 600
 
+def _with_guest_flag(user: dict) -> dict:
+    return {**user, "is_guest": guests.is_guest_clerk_id(user["clerk_user_id"])}
+
+
 @router.get("", response_model=Me)
 def read_me(user: dict = Depends(get_current_user)) -> dict:
-    return user
+    return _with_guest_flag(user)
 
 
 @router.patch("", response_model=Me)
@@ -26,7 +31,7 @@ def update_me(
     user: dict = Depends(get_current_user),
     conn: Connection = Depends(get_conn),
 ) -> dict:
-    return update_profile(conn, user["id"], body.changes())
+    return _with_guest_flag(update_profile(conn, user["id"], body.changes()))
 
 
 def _summary(row: dict) -> dict:

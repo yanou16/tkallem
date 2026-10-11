@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getCurrentUser } from "../api/getCurrentUser";
 import { ApiError } from "@/lib/api/client";
 import { getActiveLanguage, type User } from "../types/user";
+import { useGuestToken } from "@/features/credits/hooks/useCredits";
 
 export const CURRENT_USER_KEY = ["current-user"] as const;
 
@@ -11,10 +12,12 @@ export const CURRENT_USER_KEY = ["current-user"] as const;
 export function useCurrentUser() {
   const { getToken, isLoaded: isAuthLoaded, isSignedIn } = useAuth();
   const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
+  const guestToken = useGuestToken();
+  const isGuest = isAuthLoaded && isSignedIn !== true && guestToken !== null;
   const q = useQuery({
-    queryKey: CURRENT_USER_KEY,
-    queryFn: async () => getCurrentUser(await getToken()),
-    enabled: isAuthLoaded && isSignedIn === true,
+    queryKey: [...CURRENT_USER_KEY, isGuest ? "guest" : "signed-in"],
+    queryFn: async () => getCurrentUser(isGuest ? null : await getToken()), // a guest is identified by its stored token
+    enabled: isAuthLoaded && (isSignedIn === true || isGuest),
     staleTime: 5 * 60_000,
     retry: (count, err) => !(err instanceof ApiError && err.status === 401) && count < 2,
   });
@@ -42,6 +45,7 @@ export function useCurrentUser() {
   return {
     user: combinedUser,
     activeLanguage: getActiveLanguage(combinedUser),
+    isGuest,
     isLoading: q.isLoading || (!isUserLoaded && isSignedIn === true),
     error: q.error as ApiError | null,
     refetch: q.refetch,

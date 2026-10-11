@@ -25,7 +25,7 @@ def test_get_me_creates_profile_on_first_visit(client):
     response = client.get("/me")
 
     assert response.status_code == 200
-    assert response.json() == {"first_name": None, "level": None, "explain_lang": "fr"}
+    assert response.json() == {"first_name": None, "level": None, "explain_lang": "fr", "is_guest": False}
 
 
 def test_patch_me_updates_level(client):

@@ -3,9 +3,10 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app import guests
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -63,7 +64,14 @@ def verify_clerk_token(token: str) -> ClerkClaims:
 
 def get_clerk_claims(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    request: Request = None,  # type: ignore[assignment]  # FastAPI injects it; None when called directly (tests)
 ) -> ClerkClaims:
+    header = request.headers.get("authorization", "") if request is not None else ""
+    if header[:6].lower() == "guest ":  # visitor without account: `Authorization: Guest <signed token>`
+        guest_id = guests.verify(header[6:].strip())
+        if guest_id is None:
+            raise _unauthorized("Invalid guest token")
+        return ClerkClaims(user_id=guests.clerk_id(guest_id), session_id=None)
     if credentials is None:
         raise _unauthorized("Missing bearer token")
     return verify_clerk_token(credentials.credentials)
