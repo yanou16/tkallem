@@ -37,7 +37,7 @@ export type ProgressMetrics = {
 
 export type TopMistake = {
   id: string;
-  /** The correction type: grammar, vocabulary, word_choice or other. */
+  /** The fine-grained rule (verb_tense, preposition...), else the correction type (grammar, vocabulary...). */
   category: string;
   original: string;
   correction: string;
@@ -58,9 +58,21 @@ export type Progress = {
   streakDays: number;
 };
 
+/** Labels of the top mistake categories: the 9 rules, then the 4 correction types (used when there is no rule). */
 export const MISTAKE_LABELS: Record<string, string> = {
+  verb_tense: "Verb tenses",
+  subject_verb_agreement: "Subject-verb agreement",
+  verb_pattern: "Verb patterns",
+  preposition: "Prepositions",
+  article: "Articles",
+  plural_uncountable: "Plurals and uncountables",
+  word_order: "Word order",
+  word_form: "Word forms",
+  other: "Other",
   grammar: "Grammar",
   vocabulary: "Vocabulary",
   word_choice: "Word choice",
-  other: "Other",
 };
+
+/** A category the front does not know yet is shown as the API sent it. */
+export const mistakeLabel = (category: string) => MISTAKE_LABELS[category] ?? category;

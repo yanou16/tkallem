@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+import psycopg
 import pytest
 
 from app.db.sessions import (
@@ -140,16 +141,41 @@ def test_other_user_cannot_read_the_session_detail(db, session_id):
 
 
 def test_list_turns_in_order_with_their_corrections(db, user, session_id):
-    first = {"original": "I go", "fixed": "I'm going", "type": "grammar", "why": "Projet futur."}
+    first = {"original": "I go", "fixed": "I'm going", "type": "grammar", "why": "Projet futur.", "rule": "verb_tense"}
     second = {"original": "for study", "fixed": "to study", "type": "grammar", "why": "Le but : to + verbe."}
     save_turn(db, session_id, {"turns": [1]}, "I go to the US for study.", "Why?", "orange", None, [first, second], expected_turns=0)
     save_turn(db, session_id, {"turns": [1, 2]}, "To study.", "Good.", "green", "purpose", [], expected_turns=1)
 
     assert list_turns(db, session_id, user["id"]) == [
         {"position": 1, "transcript": "I go to the US for study.", "reply": "Why?", "sentence_status": "orange",
-         "corrections": [first, second]},
+         "corrections": [first, {**second, "rule": None}]},
         {"position": 2, "transcript": "To study.", "reply": "Good.", "sentence_status": "green", "corrections": []},
     ]
+
+
+def test_save_turn_stores_the_rule_or_null(db, session_id):
+    base = {"fixed": "x", "type": "grammar", "why": "w"}
+    corrections = [
+        {**base, "original": "with rule", "rule": "verb_pattern"},
+        {**base, "original": "rule is None", "rule": None},
+        {**base, "original": "no rule key"},
+    ]
+
+    save_turn(db, session_id, {"turns": [1]}, "Hello", "Hi", "red", None, corrections, expected_turns=0)
+
+    stored = db.execute("SELECT original, rule FROM corrections ORDER BY id").fetchall()
+    assert stored == [
+        {"original": "with rule", "rule": "verb_pattern"},
+        {"original": "rule is None", "rule": None},
+        {"original": "no rule key", "rule": None},
+    ]
+
+
+def test_the_database_refuses_an_unknown_rule(db, session_id):
+    correction = {"original": "I go", "fixed": "I went", "type": "grammar", "why": "w", "rule": "spelling"}
+
+    with pytest.raises(psycopg.errors.CheckViolation):
+        save_turn(db, session_id, {"turns": [1]}, "I go", "Hi", "orange", None, [correction], expected_turns=0)
 
 
 def test_other_user_cannot_list_the_turns(db, session_id):

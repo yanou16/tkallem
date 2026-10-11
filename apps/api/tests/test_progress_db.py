@@ -248,7 +248,8 @@ def test_unfinished_sessions_are_ignored_by_metrics(db, user):
     assert get_metrics(db, user["id"])["current"]["mistakes_per_100"] == pytest.approx(3)
 
 
-def add_correction(db, session_id, category: str, original: str):
+def add_correction(db, session_id, category: str, original: str, rule: str | None = None):
+    """`category` is the correction type (grammar...); `rule` the optional fine-grained category."""
     turn = db.execute(
         """
         INSERT INTO turns (session_id, position, transcript, reply, sentence_status)
@@ -258,8 +259,8 @@ def add_correction(db, session_id, category: str, original: str):
         (session_id, session_id),
     ).fetchone()
     db.execute(
-        "INSERT INTO corrections (turn_id, original, fixed, type, why) VALUES (%s, %s, %s, %s, 'because')",
-        (turn["id"], original, f"{original} fixed", category),
+        "INSERT INTO corrections (turn_id, original, fixed, type, why, rule) VALUES (%s, %s, %s, %s, 'because', %s)",
+        (turn["id"], original, f"{original} fixed", category, rule),
     )
 
 
@@ -308,3 +309,44 @@ def test_top_mistakes_ignores_other_users(db, user):
     add_correction(db, sid, "grammar", "not yours")
 
     assert get_top_mistakes(db, user["id"]) == []
+
+
+def categories_and_counts(db, user) -> list[tuple[str, int]]:
+    return [(m["category"], m["count"]) for m in get_top_mistakes(db, user["id"])]
+
+
+def test_top_mistakes_are_grouped_by_rule(db, user):
+    sid = add_session(db, user["id"], days_back=0, finished=False)
+    add_correction(db, sid, "grammar", "I go yesterday", rule="verb_tense")
+    add_correction(db, sid, "grammar", "she go", rule="subject_verb_agreement")
+    add_correction(db, sid, "grammar", "I have went", rule="verb_tense")
+
+    assert get_top_mistakes(db, user["id"])[0] == {
+        "category": "verb_tense", "original": "I have went", "correction": "I have went fixed", "count": 2,
+    }
+    assert categories_and_counts(db, user) == [("verb_tense", 2), ("subject_verb_agreement", 1)]
+
+
+def test_top_mistakes_fall_back_to_the_type_without_rule(db, user):
+    sid = add_session(db, user["id"], days_back=0, finished=False)
+    add_correction(db, sid, "vocabulary", "a big fault", rule=None)
+
+    assert categories_and_counts(db, user) == [("vocabulary", 1)]
+
+
+def test_top_mistakes_fall_back_to_the_type_when_the_rule_is_other(db, user):
+    sid = add_session(db, user["id"], days_back=0, finished=False)
+    add_correction(db, sid, "word_choice", "make a photo", rule="other")
+    add_correction(db, sid, "word_choice", "do a mistake")
+
+    assert categories_and_counts(db, user) == [("word_choice", 2)]
+
+
+def test_old_corrections_without_rule_are_still_shown(db, user):
+    old = add_session(db, user["id"], days_back=2, finished=False)
+    add_correction(db, old, "grammar", "old one")
+    add_correction(db, old, "grammar", "old two")
+    new = add_session(db, user["id"], days_back=0, finished=False)
+    add_correction(db, new, "grammar", "for study", rule="preposition")
+
+    assert categories_and_counts(db, user) == [("grammar", 2), ("preposition", 1)]

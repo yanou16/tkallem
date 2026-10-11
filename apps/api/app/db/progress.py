@@ -141,6 +141,8 @@ def get_metrics(conn: Connection, user_id: int) -> dict:
     return {"current": combine_metrics(recent), "baseline": combine_metrics(first)}
 
 def get_top_mistakes(conn: Connection, user_id: int) -> list[dict]:
+    """The most frequent mistake categories of the last sessions, each with its latest example.
+    The category is the fine-grained rule (verb_tense, preposition...), else the broad type (grammar...)."""
     return conn.execute(
         """
         WITH recent AS (
@@ -150,15 +152,22 @@ def get_top_mistakes(conn: Connection, user_id: int) -> list[dict]:
             ORDER BY started_at DESC, id DESC
             LIMIT %(sessions)s
         ),
-        ranked AS (
-            SELECT c.type, c.original, c.fixed,
-                   COUNT(*) OVER (PARTITION BY c.type) AS count,
-                   ROW_NUMBER() OVER (PARTITION BY c.type ORDER BY t.created_at DESC, c.id DESC) AS rank
+        mistakes AS (
+            SELECT
+                -- No rule (older corrections, or the model left it out) or 'other': the type says more.
+                CASE WHEN c.rule IS NULL OR c.rule = 'other' THEN c.type ELSE c.rule END AS category,
+                c.original, c.fixed, c.id, t.created_at
             FROM corrections c
             JOIN turns t ON t.id = c.turn_id
             JOIN recent r ON r.id = t.session_id
+        ),
+        ranked AS (
+            SELECT category, original, fixed,
+                   COUNT(*) OVER (PARTITION BY category) AS count,
+                   ROW_NUMBER() OVER (PARTITION BY category ORDER BY created_at DESC, id DESC) AS rank
+            FROM mistakes
         )
-        SELECT type AS category, original, fixed AS correction, count
+        SELECT category, original, fixed AS correction, count
         FROM ranked
         WHERE rank = 1
         ORDER BY count DESC, category

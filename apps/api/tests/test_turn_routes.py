@@ -270,3 +270,17 @@ def test_get_session_with_invalid_id_returns_422(client):
 
 def test_get_session_requires_a_token():
     assert read(TestClient(app), uuid4().hex).status_code == 401
+
+def test_the_rule_of_a_correction_is_returned_saved_and_reloaded(client, db, session_id):
+    with_rule = {"corrections": [{**FOUND["corrections"][0], "rule": "preposition"}]}
+    use_llm(FakeChat([with_rule], [reply()]))
+
+    turn = send(client, session_id).json()
+
+    assert turn["corrections"][0]["rule"] == "preposition"
+    stored = db.execute(
+        "SELECT c.rule FROM corrections c JOIN turns t ON t.id = c.turn_id WHERE t.session_id = %s",
+        (UUID(session_id),),
+    ).fetchall()
+    assert stored == [{"rule": "preposition"}]
+    assert read(client, session_id).json()["turns"][0]["corrections"][0]["rule"] == "preposition"
