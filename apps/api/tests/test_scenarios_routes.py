@@ -28,17 +28,12 @@ def test_lists_every_scenario_of_the_agent(client):
 def test_guided_scenario_has_its_questions_count(client):
     visa = load_scenario("visa-us")
 
-    assert by_id(client)["visa-us"] == {
-        "id": "visa-us",
-        "title": visa.title,
-        "mode": "guided",
-        "minutes": visa.minutes,
-        "total_questions": len(visa.questions),
-        "description": None,
-        "category": None,
-        "level": None,
-        "icon": None,
-    }
+    card = by_id(client)["visa-us"]
+
+    assert card["mode"] == "guided"
+    assert card["title"] == visa.title
+    assert card["minutes"] == visa.minutes
+    assert card["total_questions"] == len(visa.questions)
 
 
 def test_free_talk_has_no_questions_count(client):
@@ -51,3 +46,14 @@ def test_free_talk_has_no_questions_count(client):
 
 def test_scenarios_require_a_token():
     assert TestClient(app).get("/scenarios").status_code == 401
+
+
+def test_scenarios_include_card_fields(client):
+    cards = by_id(client)
+
+    for scenario in list_scenarios():
+        card = cards[scenario.id]
+        assert card["description"] == scenario.description
+        assert card["category"] == scenario.category
+        assert card["level"] == scenario.level
+        assert card["icon"] == scenario.icon
