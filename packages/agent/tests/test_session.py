@@ -11,13 +11,17 @@ FOUND = {"corrections": [{"original": "for study", "fixed": "to study", "type": 
 NONE = {"corrections": []}
 
 
-def reply(text="Good."):
-    return {"reaction": text, "goal_covered": None}
+GOALS = load_scenario("visa-us").goals
+
+
+def reply(text="Good.", goal=None):
+    """Fake coach output. `goal`: the goal the answer covered (None = the student did not answer the question)."""
+    return {"reaction": text, "goal_covered": goal}
 
 
 def test_full_guided_session_and_report():
     qs = load_scenario("visa-us").questions
-    llm = FakeChat([FOUND] + [NONE] * 5, [reply()] * 6, text=["Honest note."])
+    llm = FakeChat([FOUND] + [NONE] * 5, [reply(goal=g) for g in GOALS], text=["Honest note."])
     s = CoachSession("visa-us", "B1", "fr", llm=llm)
     assert s.opening == qs[0]
     first = s.turn("I go to the US for study.", audio_seconds=3)
@@ -40,7 +44,7 @@ def test_coach_sees_the_opening_question_in_its_history():
 
 
 def test_state_roundtrip_continues_the_same_conversation():
-    llm = FakeChat([NONE, NONE], [reply(), reply()])
+    llm = FakeChat([NONE, NONE], [reply(goal=GOALS[0]), reply(goal=GOALS[1])])
     s = CoachSession("visa-us", "B2", "en", llm=llm, session_id="abc")
     s.turn("To study computer science.")
     saved = json.loads(json.dumps(s.to_state()))  # must survive JSON storage
@@ -200,7 +204,7 @@ def test_pauses_are_stored_validated_and_survive_the_state_roundtrip():
 def test_coach_skips_study_questions_when_the_student_does_not_study():
     qs = load_scenario("visa-us").questions
     skip = {"reaction": "I see, you will work.", "goal_covered": "purpose_of_trip", "skip_next": True}
-    llm = FakeChat([NONE] * 3, [skip, reply(), reply()])
+    llm = FakeChat([NONE] * 3, [skip, reply(goal="ties_to_algeria"), reply(goal="plans_after")])
     s = CoachSession("visa-us", "B1", "fr", llm=llm)
     first = s.turn("I go to work, not to study.")
     assert first.reply.endswith(qs[4])  # university, funding and why-abroad are skipped: ties to Algeria
@@ -228,7 +232,7 @@ def test_skipping_survives_the_state_roundtrip():
     skip = {"reaction": "OK.", "goal_covered": None, "skip_next": True}
     s = CoachSession("visa-us", "B1", "fr", llm=FakeChat([NONE] * 2, [skip, reply()]))
     s.turn("I work.")
-    again = CoachSession.from_state(s.to_state(), llm=FakeChat([NONE], [reply()]))
+    again = CoachSession.from_state(s.to_state(), llm=FakeChat([NONE], [reply(goal="ties_to_algeria")]))
     assert again.turn("My family is here.").reply.endswith(qs[5])
 
 
@@ -263,3 +267,23 @@ def test_fallback_list_is_parsed():
     assert parse_fallbacks("") == []
     with pytest.raises(ValueError):
         parse_fallbacks("nonsense")
+
+
+def test_clarification_question_gets_the_question_again_then_the_interview_goes_on():
+    qs = load_scenario("visa-us").questions
+    llm = FakeChat([NONE] * 3, [reply("I mean the reason of your trip."), reply("I see.", goal=None), reply(goal=GOALS[1])])
+    s = CoachSession("visa-us", "B1", "fr", llm=llm)
+    assert s.turn("What do you mean?").reply == f"I mean the reason of your trip. {qs[0]}"
+    assert s.turn("Hmm.").reply.endswith(qs[1])  # asked twice already: the interview moves on
+    assert not s.finished
+
+
+def test_an_answer_given_in_advance_is_not_asked_again_after_a_roundtrip():
+    qs = load_scenario("visa-business").questions
+    goals = load_scenario("visa-business").goals
+    llm = FakeChat([NONE] * 3, [reply(goal=goals[0]), reply("You are a developer.", goal="occupation"), reply(goal="length_of_stay")])
+    s = CoachSession("visa-business", "B1", "fr", llm=llm)
+    s.turn("A conference in Boston.")
+    assert s.turn("I am a software developer.").reply == f"You are a developer. {qs[1]}"  # length not answered yet
+    again = CoachSession.from_state(s.to_state(), llm=llm)
+    assert again.turn("Two weeks.").reply.endswith(qs[3])  # occupation (q2) already answered: straight to funding

@@ -138,11 +138,13 @@ class CoachSession:
         """
         text = self._clean_input(student_text, audio_seconds, pauses)
         scenario, history = self.scenario.model_dump(), self.history()
+        covered = [t.goal_covered for t in self.turns if t.goal_covered]
         state = {
             "level": self.level,
             "explain_lang": self.explain_lang,
             "scenario": scenario,
             "history": history,
+            "covered_goals": covered,
             "student_text": text,
         }
         t0 = time.perf_counter()
@@ -162,7 +164,7 @@ class CoachSession:
                 timings.update(data.get("timings", {}))
                 if node == "coach" and data.get("reply") is not None:
                     timings["reply_ready"] = time.perf_counter() - t0
-                    yield {"type": "reply", "reply": compose_reply(data["reply"], scenario, history)}
+                    yield {"type": "reply", "reply": compose_reply(data["reply"], scenario, history, covered)}
                 elif node == "correct":
                     corrections, status = final_corrections(data.get("found", []), scenario, text, data.get("changes_meaning", False))
                     yield {"type": "corrections", "corrections": corrections, "sentence_status": status}
