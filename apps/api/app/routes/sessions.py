@@ -89,7 +89,7 @@ def _answer(session_id: UUID, session: dict, text: str | None, audio: UploadFile
     expected_turns = len(session["state"]["turns"])
     coach = CoachSession.from_state(session["state"], llm=llm, max_text_chars=settings.max_text_chars)
     try:
-        result = run_turn(coach, text, audio_seconds=audio_seconds, pauses=pauses, want_audio=session["mode"] == "voice")
+        result = run_turn(coach, text, audio_seconds=audio_seconds, pauses=pauses, want_audio=session["mode"] == "voice" or audio is not None)
         turn = result.turn
     except ValueError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc))

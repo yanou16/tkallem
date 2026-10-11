@@ -99,10 +99,10 @@ def test_long_pauses_measured_on_the_audio_are_stored_as_hesitations(client, db,
     assert state["turns"][0]["pauses"] == 2
 
 
-def test_text_session_can_still_receive_an_audio_answer_without_voice_reply(client, db):
+def test_spoken_answer_in_a_text_session_still_gets_a_voice_reply(client, db):
     sid = start(client, db, "text").json()["session_id"]
     body = send_audio(client, sid).json()
-    assert body["transcript"] and body["reply_audio_url"] is None
+    assert body["transcript"] and body["reply_audio_url"].startswith("data:audio/wav")
 
 
 def test_voice_failure_never_fails_the_turn(client, db, monkeypatch):
