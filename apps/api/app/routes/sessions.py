@@ -148,10 +148,23 @@ def read_session(
         "started_at": session["started_at"],
         "ended_at": session["ended_at"],
         **_scenario_view(session),
-        "turns": list_turns(conn, session_id, user["id"]),
+        "turns": _with_praise(list_turns(conn, session_id, user["id"]), session["state"]),
         "note": session["note"],
         "metrics": {key: session[key] for key in METRIC_KEYS} if session["ended_at"] else None,
     }
+
+
+def _with_praise(turns: list[dict], state: dict) -> list[dict]:
+    """Praise and priority correction of each answer (improvement 4), from the session state the agent keeps: the
+    turns table does not store them. Position 1 is the first answer."""
+    logged = state.get("turns", [])
+    out = []
+    for t in turns:
+        log = logged[t["position"] - 1] if 0 < t["position"] <= len(logged) else {}
+        n = len(t.get("corrections") or [])
+        priority = log.get("priority_index", 0)
+        out.append({**t, "praise": log.get("praise"), "priority_index": priority if 0 <= priority < max(n, 1) else 0})
+    return out
 
 
 def _spend(connect: ConnFactory, user: dict, session_id: UUID) -> credits.CreditStatus:
@@ -191,6 +204,8 @@ def _save(connect: ConnFactory, session_id: UUID, coach: CoachSession, turn, exp
         "reply": turn.reply,
         "corrections": corrections,
         "sentence_status": turn.sentence_status,
+        "praise": turn.praise,
+        "priority_index": turn.priority_index,
         "finished": coach.finished,
     }
 
@@ -231,7 +246,8 @@ def _stream_answer(session_id: UUID, session: dict, user: dict, wallet, text: st
                 if ev["type"] == "reply":
                     yield _sse("reply", {"text": ev["reply"]})
                 elif ev["type"] == "corrections":
-                    yield _sse("corrections", {"corrections": ev["corrections"], "sentence_status": ev["sentence_status"]})
+                    yield _sse("corrections", {"corrections": ev["corrections"], "sentence_status": ev["sentence_status"],
+                                               "praise": ev.get("praise"), "priority_index": ev.get("priority_index", 0)})
                 elif ev["type"] == "audio":
                     yield _sse("audio", {"audio_url": ev["speech"].data_uri if ev["speech"] else None})
                 elif ev["type"] == "done":

@@ -59,6 +59,10 @@ components:
           maxItems: 3
           items: { $ref: "#/components/schemas/Correction" }
         sentence_status: { $ref: "#/components/schemas/SentenceStatus" }
+        praise:
+          type: [string, "null"]
+          description: "Improvement 4: one short true positive about the answer, shown before the corrections. Checked by the agent's code (never generic, never the mistake); null when refused."
+        priority_index: { type: integer, minimum: 0, description: "The correction shown in full; the others are folded. 0 when there is none." }
         finished:
           type: boolean
           description: True once every question of a guided scenario is answered (show the report button). Always false in free talk.
@@ -144,6 +148,8 @@ paths:
                         corrections:
                           type: array
                           items: { $ref: "#/components/schemas/Correction" }
+                        praise: { type: [string, "null"], description: "Student lines: the checked praise (improvement 4)" }
+                        priority_index: { type: integer, minimum: 0, description: "Student lines: the correction shown in full" }
                   finished: { type: boolean, description: Every guided question answered (offer the report) }
                   ended: { type: boolean, description: The report was made, no more answers }
         "401": { description: Missing or invalid token }
@@ -255,9 +261,9 @@ paths:
       summary: Send one student turn (audio file or text)
       description: |
         JSON by default. With `Accept: text/event-stream` the answer is streamed as Server-Sent Events, each part as
-        soon as it exists: `transcript` {text}, `reply` {text}, `corrections` {corrections, sentence_status},
+        soon as it exists: `transcript` {text}, `reply` {text}, `corrections` {corrections, sentence_status, praise, priority_index},
         `audio` {audio_url} (voice sessions and spoken answers only; may come before or after corrections), then
-        `done` {transcript, reply, corrections, sentence_status, finished, credits} once the turn is saved, or
+        `done` {transcript, reply, corrections, sentence_status, praise, priority_index, finished, credits} once the turn is saved, or
         `error` {status, detail} (nothing saved, credit given back). Errors found before the stream starts (401, 402,
         404, 409, 413, 422, 429, 502 from speech recognition) are plain JSON responses as below.
       parameters:
