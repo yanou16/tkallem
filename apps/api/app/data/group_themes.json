@@ -1,0 +1,114 @@
+[
+  {
+    "id": "travel-trips",
+    "title": "Trips and travel",
+    "category": "travel",
+    "questions": [
+      "What is the best trip you have ever taken?",
+      "Which country would you like to visit, and why?",
+      "Do you prefer to travel by plane, train or car?",
+      "What do you always pack in your bag before a trip?",
+      "Tell us about a problem you had while traveling.",
+      "What should a tourist see first in your city?",
+      "Where would you go this weekend if you could go anywhere?"
+    ]
+  },
+  {
+    "id": "work-jobs",
+    "title": "Work and jobs",
+    "category": "work",
+    "questions": [
+      "What job would you like to have in five years?",
+      "What makes a good boss?",
+      "Would you prefer to work from home or in an office?",
+      "What was your first job, or the first job you want to have?",
+      "Which skill is the most useful at work?",
+      "How do you prepare for a job interview?",
+      "What did you learn this week, at work or outside work?"
+    ]
+  },
+  {
+    "id": "study-university",
+    "title": "University life",
+    "category": "study",
+    "questions": [
+      "What are you studying, or what would you like to study?",
+      "How do you organize your week when you have a lot of work?",
+      "Do you prefer to study alone or with friends?",
+      "Which teacher helped you the most, and how?",
+      "What would you change at your university or school?",
+      "Would you like to study abroad? Where?",
+      "What is your favorite place to study?"
+    ]
+  },
+  {
+    "id": "daily-food",
+    "title": "Food and cooking",
+    "category": "daily_life",
+    "questions": [
+      "What did you eat for breakfast today?",
+      "What is a traditional dish from your region? How is it made?",
+      "Do you like to cook? What can you cook well?",
+      "What food from another country would you like to try?",
+      "Do you prefer eating at home or at a restaurant?",
+      "What do you usually eat during Ramadan or on special days?",
+      "Describe your perfect weekend lunch."
+    ]
+  },
+  {
+    "id": "exams-learning",
+    "title": "Exams and learning English",
+    "category": "exams",
+    "questions": [
+      "Why are you learning English?",
+      "What is the most difficult part of English for you?",
+      "How do you prepare for an important exam?",
+      "Do you get stressed before exams? What helps you?",
+      "Which English word did you learn recently?",
+      "Do you watch films or series in English? Which ones?",
+      "What is your goal in English for this month?"
+    ]
+  },
+  {
+    "id": "daily-city",
+    "title": "My city and neighborhood",
+    "category": "daily_life",
+    "questions": [
+      "Describe the street where you live.",
+      "What do you like most about your city?",
+      "What is missing in your neighborhood?",
+      "How do you go to school or work every day?",
+      "Where do young people meet in your city?",
+      "Is your city better in summer or in winter? Why?",
+      "If you were the mayor, what would you change first?"
+    ]
+  },
+  {
+    "id": "work-future",
+    "title": "Plans and dreams",
+    "category": "work",
+    "questions": [
+      "Where do you see yourself in ten years?",
+      "What is one dream you want to make real?",
+      "Would you like to start your own business? What kind?",
+      "Which person do you admire, and why?",
+      "What new skill do you want to learn this year?",
+      "Would you live in another country for work?",
+      "What advice would you give to your younger self?"
+    ]
+  },
+  {
+    "id": "daily-free-time",
+    "title": "Free time and hobbies",
+    "category": "daily_life",
+    "questions": [
+      "What do you do to relax after a long day?",
+      "Do you play a sport? Which one?",
+      "What was the last book, film or series you liked?",
+      "Do you prefer spending time online or outside?",
+      "What hobby would you like to start?",
+      "How do you usually spend your Friday?",
+      "Tell us about a happy moment from this week."
+    ]
+  }
+]
