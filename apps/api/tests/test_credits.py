@@ -253,3 +253,48 @@ def test_ten_simultaneous_answers_spend_exactly_the_credits_available():
 def test_guest_starts_at_b1(db):
     user, _ = credits.create_guest(db, "9.9.9.9")
     assert user["level"] == "B1"
+
+
+class _Now:
+    """threading.Thread stand-in that runs the target at once, so the webhook call can be checked."""
+
+    def __init__(self, target, args=(), daemon=None):
+        self.target, self.args = target, args
+
+    def start(self):
+        self.target(*self.args)
+
+
+def test_budget_alert_fires_once_near_the_cap_and_once_when_reached(db, monkeypatch):
+    sent = []
+    monkeypatch.setattr(credits, "_alerted", {"near": None, "reached": None})
+    monkeypatch.setattr(credits.threading, "Thread", _Now)
+    monkeypatch.setattr(credits, "_post_alert", sent.append)
+    monkeypatch.setattr(settings, "alert_webhook_url", "https://hooks.example/alert")
+    monkeypatch.setattr(settings, "budget_alert_ratio", 0.8)
+    now = datetime.now(timezone.utc)
+    monkeypatch.setattr(settings, "daily_spend_cap", credits.spent_today(db, now) + 5)
+    a = student(db, "user_alert_a")
+
+    for _ in range(3):                                  # 3 of 5: below 80 %
+        credits.spend(db, a, None, now)
+    assert sent == []
+    credits.spend(db, a, None, now)                    # 4 of 5 = 80 %: one warning
+    credits.spend(db, a, None, now)                    # 5 of 5: no second "near" warning
+    assert len(sent) == 1 and "4 of" in sent[0]
+    with pytest.raises(credits.DailyBudgetReached):    # over the cap: one "used up" warning, then silence
+        credits.spend(db, a, None, now)
+    with pytest.raises(credits.DailyBudgetReached):
+        credits.spend(db, a, None, now)
+    assert len(sent) == 2 and "used up" in sent[1]
+
+
+def test_budget_alert_without_webhook_only_logs(db, monkeypatch, caplog):
+    monkeypatch.setattr(credits, "_alerted", {"near": None, "reached": None})
+    monkeypatch.setattr(settings, "alert_webhook_url", "")
+    monkeypatch.setattr(credits, "_post_alert", lambda text: (_ for _ in ()).throw(AssertionError("no webhook")))
+    now = datetime.now(timezone.utc)
+    monkeypatch.setattr(settings, "daily_spend_cap", credits.spent_today(db, now) + 1)
+    with caplog.at_level("WARNING"):
+        credits.spend(db, student(db, "user_alert_b"), None, now)
+    assert any("credits spent today" in r.message for r in caplog.records)
