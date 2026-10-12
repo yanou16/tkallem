@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { askHint, endSession, getSession, sendAnswer, speakLastLine, startSession, streamAnswer, type AnswerInput, type LiveTurn } from "../api/ai";
+import { askHint, endSession, repeatAnswer, getSession, sendAnswer, speakLastLine, startSession, streamAnswer, type AnswerInput, type LiveTurn } from "../api/ai";
 import { CREDITS_KEY } from "@/features/credits/hooks/useCredits";
 import { MY_SESSIONS_KEY } from "@/features/practice/hooks/usePractice";
 import { ACHIEVEMENTS_KEY } from "@/features/profile/hooks/useProfile";
@@ -116,3 +116,7 @@ export const useSpeakLastLine = (sessionId?: string) => {
 /** "Help me start" on the current question: free, at most 2 per question (the API answers 429 after that). */
 export const useHint = (sessionId?: string) =>
   useMutation({ mutationFn: (body: HintRequestDto) => askHint(sessionId!, body) });
+
+/** "Say it again" on one corrected answer: free, 3 tries per answer (the API answers 429 after that). */
+export const useRepeat = (sessionId?: string) =>
+  useMutation({ mutationFn: ({ turn, audio }: { turn: number; audio: Blob }) => repeatAnswer(sessionId!, turn, audio) });

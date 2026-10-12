@@ -2,7 +2,7 @@ import { ApiError, api, apiStream } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
 import { mapMetrics } from "@/features/progress/api/progress";
 import type {
-  AiSession, ChatMessage, HintDto, HintRequestDto, ReportLine, ReportLineDto, SessionDetailDto, SessionReport, SessionReportDto, SessionStarted,
+  AiSession, ChatMessage, HintDto, HintRequestDto, RepeatDto, ReportLine, ReportLineDto, SessionDetailDto, SessionReport, SessionReportDto, SessionStarted,
   SessionStartedDto, SpokenDto, StartSessionDto, Turn, TurnDto,
 } from "../types/ai";
 
@@ -124,3 +124,11 @@ export async function streamAnswer(
 export const speakLastLine = (sessionId: string) => api.post<SpokenDto>(endpoints.ai.speak(sessionId));
 
 export const askHint = (sessionId: string, body: HintRequestDto) => api.post<HintDto>(endpoints.ai.hint(sessionId), body);
+
+/** "Say it again": the corrected version of answer number `turn` (0 = first), said out loud. */
+export const repeatAnswer = (sessionId: string, turn: number, audio: Blob) => {
+  const form = new FormData();
+  form.append("turn", String(turn));
+  form.append("audio", audio, audio.type.includes("mp4") ? "repeat.mp4" : "repeat.webm");
+  return api.post<RepeatDto>(endpoints.ai.repeat(sessionId), form);
+};
