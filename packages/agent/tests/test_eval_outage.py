@@ -76,3 +76,10 @@ def test_never_retries_a_bad_answer():
     with pytest.raises(ValueError):
         retry_outage("s01", fn, waits=(1, 2), sleep=lambda _: None)
     assert len(calls) == 1
+
+
+def test_an_outage_swallowed_by_the_coach_node_is_recognised():
+    # Seen in the gate: the coach node keeps only the class name of the provider error.
+    e = RuntimeError("invalid agent output after retry: no usable output (OpenAIAPIError). Your previous answer was invalid")
+    assert provider_down(e)
+    assert not provider_down(RuntimeError("invalid agent output after retry: reaction too long"))

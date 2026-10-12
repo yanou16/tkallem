@@ -16,6 +16,31 @@
     "Have you traveled outside Algeria before?",
     "What ties do you have to Algeria?"
   ],
-  "goals": ["purpose_of_trip", "length_of_stay", "occupation", "funding", "travel_history", "ties_to_algeria"],
-  "useful_words": ["conference", "meeting", "client", "employer", "invitation", "return ticket", "hotel", "savings", "family"]
+  "goals": [
+    "purpose_of_trip",
+    "length_of_stay",
+    "occupation",
+    "funding",
+    "travel_history",
+    "ties_to_algeria"
+  ],
+  "useful_words": [
+    "conference",
+    "meeting",
+    "client",
+    "employer",
+    "invitation",
+    "return ticket",
+    "hotel",
+    "savings",
+    "family"
+  ],
+  "starters": [
+    "The purpose of my trip is to",
+    "I will stay in the United States for",
+    "I work as",
+    "My trip will be paid by",
+    "Outside Algeria, I have been to",
+    "My strongest tie to Algeria is"
+  ]
 }
