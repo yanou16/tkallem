@@ -37,6 +37,7 @@ export type SessionDetailDto = {
   /** What /end stored, null before. levels and redo_index are not stored. */
   note: string | null;
   metrics: ProgressMetricsDto | null;
+  progress?: string | null;
 };
 
 export type StartSessionDto = {
@@ -86,6 +87,8 @@ export type ReportLineDto = {
 export type SessionReportDto = {
   lines: ReportLineDto[];
   note: string;
+  /** Improvement 4: the report's first line, progress since the last finished session, written by code. */
+  progress?: string | null;
   metrics: ProgressMetricsDto;
   levels: {
     mistakes_per_100: SentenceStatus | null;
@@ -124,6 +127,8 @@ export type ReportLine = {
 export type SessionReport = {
   lines: ReportLine[];
   note: string;
+  /** Progress since the last finished session (or the starting point), shown before the mistakes. */
+  progress: string | null;
   metrics: ProgressMetrics;
   /** Traffic light per metric, null when the metric is not available (hesitations in text mode). */
   levels: {

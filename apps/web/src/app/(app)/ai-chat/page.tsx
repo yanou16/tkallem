@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowDown, ChartNoAxesColumn, Check, ChevronDown, ChevronRight, CircleAlert, Lightbulb, MessageCircle, Mic, Send, Square, UserRound, Volume2 } from "lucide-react";
+import { ArrowDown, ChartNoAxesColumn, Check, ChevronDown, ChevronRight, CircleAlert, Lightbulb, MessageCircle, Mic, Send, Square, TrendingUp, UserRound, Volume2 } from "lucide-react";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
 import { useAiSession, useAnswer, useEndSession, useSpeakLastLine, useStartSession } from "@/features/ai-chat/hooks/useAiChat";
@@ -590,6 +590,11 @@ function Report({ report, title, onRestart }: { report: SessionReport; title?: s
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader eyebrow={title} title="Your session report" />
+      {report.progress && (
+        <p className="mb-4 flex items-start gap-2 rounded-2xl bg-good-bg px-4 py-3 font-medium text-good">
+          <TrendingUp size={20} className="mt-0.5 shrink-0" aria-hidden /> <span>{report.progress}</span>
+        </p>
+      )}
       <Card>
         <h2 className="text-lg font-semibold">Your coach's note</h2>
         <p className="mt-2 whitespace-pre-wrap">{report.note}</p>

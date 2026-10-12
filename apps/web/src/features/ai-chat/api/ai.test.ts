@@ -138,6 +138,7 @@ describe("mapSessionDetail", () => {
       ...OPEN_SESSION,
       ended_at: "2026-10-10T10:08:00Z",
       note: "Honest note.",
+      progress: "First interview done: this is your starting point.",
       metrics: { mistakes_per_100: 14.3, words_per_answer: 7, hesitations_per_min: null, speaking_seconds: null },
     });
 
@@ -148,6 +149,7 @@ describe("mapSessionDetail", () => {
         { role: "coach", text: "Good. Which university?", status: null, corrections: [] },
       ],
       note: "Honest note.",
+      progress: "First interview done: this is your starting point.",
       metrics: { mistakesPer100: 14.3, wordsPerAnswer: 7, hesitationsPerMin: null, speakingSeconds: null },
       levels: { mistakesPer100: null, wordsPerAnswer: null, hesitationsPerMin: null },
       redoIndex: null,

@@ -29,6 +29,7 @@ const mapReportLine = (l: ReportLineDto) => ({ role: l.role, text: l.text, statu
 export const mapReport = (r: SessionReportDto): SessionReport => ({
   lines: r.lines.map(mapReportLine),
   note: r.note,
+  progress: r.progress ?? null,
   metrics: mapMetrics(r.metrics),
   levels: {
     mistakesPer100: r.levels.mistakes_per_100,
@@ -60,6 +61,7 @@ export function mapSessionDetail(s: SessionDetailDto): AiSession {
       ? {
           lines,
           note: s.note ?? "",
+          progress: s.progress ?? null,
           metrics: mapMetrics(s.metrics),
           levels: { mistakesPer100: null, wordsPerAnswer: null, hesitationsPerMin: null },
           redoIndex: null,
