@@ -16,6 +16,8 @@
     "@tanstack/react-query": "^5.104.1",
     "lucide-react": "^1.55.0",
     "next": "^16.4.0",
+    "@pipecat-ai/client-js": "^1.13.1",
+    "@pipecat-ai/small-webrtc-transport": "^1.10.8",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "three": "^0.170.0"

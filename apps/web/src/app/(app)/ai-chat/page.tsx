@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowDown, ChartNoAxesColumn, ChevronDown, ChevronRight, CircleAlert, Lightbulb, MessageCircle, Mic, Send, Square, Volume2 } from "lucide-react";
+import { ArrowDown, ChartNoAxesColumn, ChevronDown, ChevronRight, CircleAlert, Lightbulb, MessageCircle, Mic, MicOff, PhoneCall, PhoneOff, Send, Square, Volume2 } from "lucide-react";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
 import { useAiSession, useAnswer, useEndSession, useSpeakLastLine, useStartSession } from "@/features/ai-chat/hooks/useAiChat";
@@ -10,6 +10,7 @@ import { CoachAvatar } from "@/components/CoachAvatar";
 import VoiceState, { formatTime, type CoachState } from "@/features/ai-chat/components/VoiceState";
 import { MAX_RECORDING_S, useVoiceRecorder, type Recording } from "@/features/ai-chat/hooks/useVoiceRecorder";
 import { useCoachVoice } from "@/features/ai-chat/hooks/useCoachVoice";
+import { useRealtimeVoice } from "@/features/ai-chat/hooks/useRealtimeVoice";
 import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOfCredits";
 import type { ChatMessage, Correction, SentenceStatus, SessionReport } from "@/features/ai-chat/types/ai";
 import { Avatar, Button, Card, EmptyState, PageHeader, Skeleton } from "@/components/ui";
@@ -101,6 +102,7 @@ function Chat() {
 
   const [mode, setMode] = useState<"text" | "voice">(readMode);
   const [avatarOn, setAvatarOn] = useState(true);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const coach = useCoachVoice(mode === "voice" && avatarOn);
   // The coach's voice is played as soon as it arrives, while the corrections are still being written.
   const send = useAnswer(sessionId, (url, reply) => coach.play(url, reply));
@@ -111,6 +113,28 @@ function Chat() {
   const lastRecording = useRef<Recording | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
   const rec = useVoiceRecorder({ onAutoStop: (r) => r && sendRecording(r) });
+
+  const rtVoice = useRealtimeVoice({
+    sessionId,
+    onUserTranscript: (userText) => {
+      // live transcript event
+    },
+    onBotTranscript: () => {
+      session.refetch();
+    },
+    onCorrection: () => {
+      session.refetch();
+    },
+    onError: (err) => {
+      setVoiceError(err.message);
+    },
+  });
+
+  const startCall = () => {
+    setVoiceError(null);
+    coach.stop();
+    void rtVoice.start().catch(() => undefined);
+  };
 
   const begin = (id: string) => {
     started.current = id;
@@ -135,6 +159,7 @@ function Chat() {
   const restart = (id = scenarioId) => {
     setText("");
     coach.stop();
+    rtVoice.stop();
     send.reset();
     end.reset();
     if (!id) return router.push("/practice");
@@ -175,6 +200,7 @@ function Chat() {
     try { localStorage.setItem(MODE_KEY, m); } catch { /* private mode */ }
     if (m === "text") {
       coach.stop();
+      rtVoice.stop();
       if (rec.isRecording) rec.stop();
       return;
     }
@@ -182,6 +208,7 @@ function Chat() {
     if (sessionId && s && !s.finished && !send.isPending) speakLast.mutate(undefined, { onSuccess: (r) => coach.play(r.audio_url, r.text) });
   }
   const finish = () => {
+    rtVoice.stop();
     if (sessionId && !end.isPending) end.mutate();
   };
 
@@ -191,7 +218,15 @@ function Chat() {
   if (s?.report) return <Report report={s.report} title={title} onRestart={() => restart()} />;
 
   const live = send.live;
-  const coachState: CoachState = rec.isRecording ? "listening" : coach.speaking ? "speaking" : send.isPending || speakLast.isPending ? "thinking" : "idle";
+  const coachState: CoachState = rtVoice.isConnected
+    ? rtVoice.state
+    : rec.isRecording
+    ? "listening"
+    : coach.speaking
+    ? "speaking"
+    : send.isPending || speakLast.isPending || rtVoice.isConnecting
+    ? "thinking"
+    : "idle";
   const barState: CoachState = coachState === "thinking" && pending ? "idle" : coachState; // "Thinking…" already shows in the chat
 
   const answers = s?.messages.filter((m) => m.role === "user") ?? [];
@@ -251,10 +286,64 @@ function Chat() {
 
         {mode === "voice" && (
           <div className="mb-4">
-            <div className="mb-2 flex justify-end">
+            <div className="mb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => (rtVoice.isConnected || rtVoice.isConnecting) ? rtVoice.stop() : startCall()}
+                  disabled={!sessionId}
+                  className={cn(
+                    "flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-all",
+                    rtVoice.isConnected || rtVoice.isConnecting
+                      ? "border border-rose-deep bg-rose text-ink"
+                      : "border border-mint-deep bg-mint text-ink hover:bg-mint-deep/60",
+                    rtVoice.isConnecting && "cursor-wait opacity-70"
+                  )}
+                >
+                  {rtVoice.isConnecting ? (
+                    "Connecting…"
+                  ) : rtVoice.isConnected ? (
+                    <>
+                      <PhoneOff size={14} /> End call
+                    </>
+                  ) : (
+                    <>
+                      <PhoneCall size={14} /> Start Voice Call
+                    </>
+                  )}
+                </button>
+                {rtVoice.isConnected && (
+                  <span className="flex items-center gap-1.5 rounded-full bg-mint-deep/20 px-2.5 py-1 text-[11px] font-medium text-ink">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-success" /> Connected · {formatTime(rtVoice.duration)}
+                  </span>
+                )}
+              </div>
               <button onClick={() => { coach.stop(); setAvatarOn((v) => !v); }} className="rounded-full border border-line px-3 py-1 text-xs font-semibold">{avatarOn ? "Hide 3D coach" : "Show 3D coach"}</button>
             </div>
-            {avatarOn && <CoachAvatar {...coach.avatarProps} />}
+            <div className="rounded-card border border-line bg-white p-4">
+              <div className="flex items-center gap-4">
+                {avatarOn ? <CoachAvatar {...coach.avatarProps} /> : <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-mint"><Icon name={icon ?? "briefcase"} /></span>}
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold">Your AI tutor</p>
+                  <p className="text-sm text-muted">
+                    {rtVoice.isConnecting ? "Requesting microphone and connecting…" : rtVoice.isConnected ? "Connected — speak naturally" : "Start a call to practice hands-free"}
+                  </p>
+                  <div className="mt-3 flex h-8 items-center gap-1" aria-label="Microphone activity">
+                    {Array.from({ length: 24 }).map((_, i) => {
+                      const wave = rtVoice.isConnected ? Math.max(0.15, rtVoice.audioLevel * (0.55 + ((i % 5) / 5))) : 0.12;
+                      return <span key={i} className={cn("w-1 rounded-full transition-[height] duration-100", rtVoice.isConnected ? "bg-brand" : "bg-line")} style={{ height: `${Math.max(4, wave * 30)}px` }} />;
+                    })}
+                  </div>
+                </div>
+                {rtVoice.isConnected && (
+                  <button type="button" onClick={rtVoice.toggleMute} aria-label={rtVoice.isMuted ? "Unmute microphone" : "Mute microphone"} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line">
+                    {rtVoice.isMuted ? <MicOff size={18} /> : <Mic size={18} />}
+                  </button>
+                )}
+              </div>
+              {rtVoice.isConnected && <VoiceState state={rtVoice.state} className="mt-3" />}
+              {voiceError && <p role="alert" className="mt-3 rounded-xl bg-rose/60 px-3 py-2 text-sm">{voiceError}</p>}
+            </div>
           </div>
         )}
 
@@ -311,8 +400,22 @@ function Chat() {
               <p className="text-muted">You answered every question.</p>
               <Button onClick={finish} disabled={end.isPending}>{end.isPending ? "Preparing your report…" : "See my report"}</Button>
             </div>
-          ) : (
-            <div className="flex items-center gap-4 border-t border-line p-4">
+          ) : rtVoice.isConnected || rtVoice.isConnecting ? (
+              <div className="flex items-center justify-between gap-4 border-t border-line p-4">
+                <div className="flex items-center gap-3 text-sm text-muted">
+                  <span className={cn("h-3 w-3 rounded-full", rtVoice.isConnected ? "bg-success animate-pulse" : "bg-butter-deep animate-pulse")} />
+                  {rtVoice.isConnecting ? "Connecting to your tutor…" : rtVoice.isMuted ? "Microphone muted" : "Call in progress — no button needed"}
+                </div>
+                {rtVoice.isConnected && <button type="button" onClick={rtVoice.toggleMute} className="rounded-full border border-line px-4 py-2 text-sm font-semibold">{rtVoice.isMuted ? "Unmute" : "Mute"}</button>}
+              </div>
+            ) : mode === "voice" ? (
+              <div className="flex items-center justify-between gap-4 border-t border-line p-4">
+                <p className="text-sm text-muted">Voice call is ready. Start the call above and speak naturally.</p>
+                <button type="button" onClick={startCall} disabled={!s || !sessionId} className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
+                  Start call
+                </button>
+              </div>
+            ) : <div className="flex items-center gap-4 border-t border-line p-4">
               <div className="flex flex-col items-center">
                 <button onClick={toggleMic} disabled={!s || send.isPending} aria-label={rec.isRecording ? "Stop and send" : "Answer by voice"}
                   className={cn("flex h-14 w-14 items-center justify-center rounded-full bg-ink text-white disabled:opacity-50", rec.isRecording && "ring-[6px] ring-brand")}>
@@ -325,7 +428,7 @@ function Chat() {
               ) : (
                 <div className="flex-1">
                   <input value={text} maxLength={MAX} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()}
-                    disabled={!s || send.isPending} placeholder={mode === "voice" ? "Or type your answer…" : "Type your response here…"}
+                    disabled={!s || send.isPending} placeholder="Type your response here…"
                     className="w-full rounded-full border border-line px-5 py-3.5 outline-none focus:border-ink disabled:bg-black/[0.03]" />
                   <p className="mt-1 text-right text-xs text-muted">{text.length} / {MAX}</p>
                 </div>
@@ -337,7 +440,7 @@ function Chat() {
                   className="flex h-14 w-14 items-center justify-center rounded-full bg-ink text-white disabled:opacity-40"><Send size={20} /></button>
               )}
             </div>
-          )}
+          }
         </div>
       </div>
 

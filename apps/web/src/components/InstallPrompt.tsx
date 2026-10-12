@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
 type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
@@ -29,6 +29,10 @@ export default function InstallPrompt() {
   const [hidden, setHidden] = useState(true);
   const [waited, setWaited] = useState(false);
   const pathname = usePathname() ?? "";
+  const pathnameRef = useRef(pathname);
+  const waitedRef = useRef(waited);
+  pathnameRef.current = pathname;
+  waitedRef.current = waited;
 
   useEffect(() => {
     const t = window.setTimeout(() => setWaited(true), DELAY_MS);
@@ -37,11 +41,14 @@ export default function InstallPrompt() {
 
   useEffect(() => {
     const standalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true;
-    if (standalone || readDismissed()) return;
     const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent) && !/crios|fxios/i.test(navigator.userAgent);
     setIos(isIos);
-    setHidden(!isIos); // on iPhone the hint is shown at once, elsewhere we wait for the browser's install event
+    setHidden(!isIos);
+    if (standalone || readDismissed()) return;
     const onPrompt = (e: Event) => {
+      const mobile = window.matchMedia("(max-width: 767px)").matches;
+      const quiet = QUIET_PATHS.some((p) => pathnameRef.current.startsWith(p));
+      if (!mobile || quiet || !waitedRef.current) return;
       e.preventDefault();
       setEvent(e as InstallEvent);
       setHidden(false);
