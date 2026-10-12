@@ -19,16 +19,16 @@ export function shouldNudge(s: NudgeState): boolean {
 export type HintView = {
   title: string;
   lines: string[]; // as shown
-  fill: string; // what "Use it" puts in the answer field
+  fills: string[]; // what tapping each line puts in the answer field
 };
 
 /** What the student reads. `asked` is what they asked for: a refused translation comes back as a starter. */
 export function hintView(hint: HintDto, asked: "starter" | "translate"): HintView {
   if (hint.kind === "translation") {
-    return { title: "In English, read it aloud:", lines: hint.lines, fill: hint.lines[0] };
+    return { title: "In English, read it aloud:", lines: hint.lines, fills: hint.lines };
   }
   const title = asked === "translate" ? "We could not turn this into English. You can start with:" : "You can start with:";
-  return { title, lines: hint.lines.map((l) => `${l}…`), fill: `${hint.lines[0]} ` };
+  return { title, lines: hint.lines.map((l) => `${l}…`), fills: hint.lines.map((l) => `${l} `) };
 }
 
 export function remainingText(remaining: number): string {

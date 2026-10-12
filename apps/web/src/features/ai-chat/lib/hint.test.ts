@@ -18,17 +18,17 @@ describe("shouldNudge", () => {
 });
 
 describe("hintView", () => {
-  it("shows starters with an ellipsis and fills the field with the first one", () => {
+  it("shows starters with an ellipsis, each one ready to go in the answer field", () => {
     const v = hintView({ kind: "starter", lines: ["The main purpose of my trip is to", "I am going to"], fallback: false, remaining: 1 }, "starter");
     expect(v.lines).toEqual(["The main purpose of my trip is to…", "I am going to…"]);
-    expect(v.fill).toBe("The main purpose of my trip is to ");
+    expect(v.fills).toEqual(["The main purpose of my trip is to ", "I am going to "]);
     expect(v.title).toBe("You can start with:");
   });
 
   it("shows the English version of the student's idea as is", () => {
     const v = hintView({ kind: "translation", lines: ["My father will pay for my studies."], fallback: false, remaining: 1 }, "translate");
     expect(v.lines).toEqual(["My father will pay for my studies."]);
-    expect(v.fill).toBe("My father will pay for my studies.");
+    expect(v.fills).toEqual(["My father will pay for my studies."]);
   });
 
   it("says so when a translation was refused and a starter came back instead", () => {

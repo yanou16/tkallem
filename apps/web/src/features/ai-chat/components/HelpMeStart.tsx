@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Languages, Lightbulb, X } from "lucide-react";
+import { ApiError } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 import { useHint } from "../hooks/useAiChat";
 import { NUDGE_AFTER_MS, hintView, remainingText, shouldNudge, type HintView } from "../lib/hint";
@@ -40,11 +41,15 @@ export default function HelpMeStart({ sessionId, questionKey, typing, recording,
   }, [shownAt]);
 
   const nudge = !open && shouldNudge({ questionShownAt: shownAt, now, typing, recording, busy });
+  const used = left === 0;
+  // Closing or using a hint brings the two choices back next time (the count of hints left stays).
+  const close = () => { setOpen(false); setTranslating(false); setIdea(""); setView(null); hint.reset(); };
   if (recording) return null;
 
   const ask = (type: "starter" | "translate") =>
     hint.mutate(type === "starter" ? { type } : { type, text: idea.trim() }, {
       onSuccess: (h) => { setView(hintView(h, type)); setLeft(h.remaining); setTranslating(false); },
+      onError: (e) => { if (e instanceof ApiError && e.status === 429) setLeft(0); }, // the API's message says why
     });
 
   if (!open) {
@@ -65,7 +70,7 @@ export default function HelpMeStart({ sessionId, questionKey, typing, recording,
     <section aria-label="Help me start" className="mx-4 mt-3 rounded-2xl border border-line bg-surface p-3 text-sm">
       <div className="flex items-start justify-between gap-2">
         <p className="font-semibold">Help me start</p>
-        <button onClick={() => setOpen(false)} aria-label="Close help" className="relative -m-1 rounded-full p-1 after:absolute after:-inset-2.5 after:content-['']">
+        <button onClick={close} aria-label="Close help" className="relative -m-1 rounded-full p-1 after:absolute after:-inset-2.5 after:content-['']">
           <X size={16} />
         </button>
       </div>
@@ -74,18 +79,20 @@ export default function HelpMeStart({ sessionId, questionKey, typing, recording,
         {view && (
           <>
             <p className="mt-1 text-charcoal">{view.title}</p>
-            {view.lines.map((l) => <p key={l} className="rounded-xl bg-white px-3 py-2 text-base text-ink">{l}</p>)}
-            <div className="flex flex-wrap items-center gap-3 pt-1">
-              <button onClick={() => { onUse(view.fill); setOpen(false); }}
-                className="inline-flex min-h-11 items-center rounded-full bg-ink px-4 font-semibold text-white">Use it</button>
-              {left !== null && <span className="text-muted">{remainingText(left)}</span>}
-            </div>
+            {view.lines.map((l, i) => (
+              <button key={l} onClick={() => { onUse(view.fills[i]); close(); }}
+                className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 text-left text-base text-ink">
+                <span>{l}</span><span className="shrink-0 text-sm font-semibold">Use it</span>
+              </button>
+            ))}
+            {left !== null && <p className="pt-1 text-muted">{remainingText(left)}</p>}
           </>
         )}
         {error && <p className="mt-1 text-ink">{error}</p>}
       </div>
 
-      {!view && !translating && (
+      {!view && !translating && used && !error && <p className="mt-1 text-charcoal">{remainingText(0)} Try with a short sentence.</p>}
+      {!view && !translating && !used && (
         <div className="mt-2 flex flex-wrap gap-2">
           <button onClick={() => ask("starter")} disabled={hint.isPending}
             className="inline-flex min-h-11 items-center gap-2 rounded-full bg-ink px-4 font-semibold text-white disabled:opacity-50">
