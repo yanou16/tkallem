@@ -17,7 +17,7 @@ const map: Record<string, LucideIcon> = {
 };
 
 export function getIcon(name?: string): LucideIcon {
-  return (name && map[name.toLowerCase()]) || Sparkles;
+  return (name && map[name.toLowerCase()]) || MessageCircle; // DESIGN.md: no sparkle icons
 }
 export function Icon({ name, className, size = 20 }: { name?: string; className?: string; size?: number }) {
   const C = getIcon(name);
