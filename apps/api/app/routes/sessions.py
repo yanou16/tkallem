@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 import logging
 import time
 from collections import deque
@@ -19,10 +20,12 @@ from app.db.sessions import (
     get_session_detail,
     get_session_for_user,
     list_turns,
+    previous_finished,
     save_turn,
     set_session_mode,
 )
 from app.dependencies import get_current_user, user_for_claims
+from app.progress_line import progress_line
 from app.schemas.sessions import (
     HintRequest, HintResult, RepeatResult, SessionCreate, SessionDetail, SessionReport, SessionStarted, Spoken,
     TurnResult,
@@ -151,7 +154,16 @@ def read_session(
         "turns": list_turns(conn, session_id, user["id"]),
         "note": session["note"],
         "metrics": {key: session[key] for key in METRIC_KEYS} if session["ended_at"] else None,
+        "progress": _progress(conn, user["id"], session),
     }
+
+
+def _progress(conn: Connection, user_id: int, session: dict) -> str | None:
+    """A finished session shows the same first line as its report did: progress since the session finished before it."""
+    if session["ended_at"] is None:
+        return None
+    before, count = previous_finished(conn, user_id, session["id"], session["ended_at"])
+    return progress_line({key: session[key] for key in METRIC_KEYS}, before, count)
 
 
 def _spend(connect: ConnFactory, user: dict, session_id: UUID) -> credits.CreditStatus:
@@ -452,7 +464,8 @@ def end_practice_session(
 
     with connect() as conn:
         ended = end_session(conn, session_id, report.note, report.metrics)
-    if not ended:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
+        if not ended:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
+        before, count = previous_finished(conn, user["id"], session_id, datetime.now(timezone.utc))
 
-    return report.model_dump()
+    return {**report.model_dump(), "progress": progress_line(report.metrics, before, count)}

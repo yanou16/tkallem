@@ -317,6 +317,9 @@ paths:
                           type: array
                           items: { $ref: "#/components/schemas/Correction" }
                   note: { type: string }
+                  progress:
+                    type: [string, "null"]
+                    description: "Improvement 4: the report's first line, progress since the student's last finished session (or the starting point), written by code from the metrics, never by the model."
                   metrics: { $ref: "#/paths/~1me~1progress/get/responses/200/content/application~1json/schema/properties/current" }
                   levels:
                     type: object
