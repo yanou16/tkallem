@@ -63,6 +63,10 @@ export type TurnDto = {
 /** POST /sessions/{id}/speak: the coach's last line again, spoken (switch to voice in the middle of a session). */
 export type SpokenDto = { text: string; audio_url: string | null };
 
+/** "Help me start" (POST /sessions/{id}/hint). A translation refused by the code comes back as the scenario's starter. */
+export type HintRequestDto = { type: "starter" } | { type: "translate"; text: string };
+export type HintDto = { kind: "starter" | "translation"; lines: string[]; fallback: boolean; remaining: number };
+
 export type ReportLineDto = {
   role: "coach" | "student";
   text: string;
