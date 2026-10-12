@@ -85,3 +85,11 @@ class ReportCreate(BaseModel):
 
 class ReportResult(BaseModel):
     hidden: bool  # this report was the one that hid the message for the whole group
+
+
+class LeaderboardEntry(BaseModel):
+    rank: int  # 1 = most practice this week; equal practice time and streak share the same rank
+    member: GroupMember
+    week_seconds: float  # practice time over the last 7 days, as in GET /me/progress (seconds, like every time)
+    streak_days: int  # current streak of practice days
+    is_me: bool

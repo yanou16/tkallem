@@ -26,13 +26,14 @@ from app.db.groups import (
     recommended_groups,
     report_message,
 )
-from app.db.progress import TIMEZONE
+from app.db.progress import TIMEZONE, get_activity
 from app.dependencies import user_for_claims
 from app.schemas.groups import (
     GroupDetail,
     GroupMessage,
     GroupSummary,
     GroupThemeFile,
+    LeaderboardEntry,
     MessageCreate,
     ReportCreate,
     ReportResult,
@@ -219,6 +220,28 @@ def read_group(group_id: int, student: dict = Depends(get_student), conn: Connec
         "members": [{"id": m["id"], "first_name": m["first_name"]} for m in list_members(conn, group_id)],
         "theme": theme_of_the_day(algiers_today(conn)),
     }
+
+
+@router.get("/groups/{group_id}/leaderboard", response_model=list[LeaderboardEntry])
+def read_leaderboard(group_id: int, student: dict = Depends(get_student), conn: Connection = Depends(get_conn)) -> list[dict]:
+    """The members ranked by practice time over the last 7 days, then by streak. Same numbers as GET /me/progress
+    (get_activity): 8 members at most, so one get_activity per member stays cheap."""
+    _member_group(conn, group_id, student["id"])
+    entries = []
+    for member in list_members(conn, group_id):
+        activity = get_activity(conn, member["id"])
+        entries.append({
+            "member": {"id": member["id"], "first_name": member["first_name"]},
+            "week_seconds": activity["week_seconds"],
+            "streak_days": activity["streak_days"],
+            "is_me": member["id"] == student["id"],
+        })
+    entries.sort(key=lambda e: (-e["week_seconds"], -e["streak_days"], e["member"]["id"]))
+    for position, entry in enumerate(entries, start=1):
+        previous = entries[position - 2] if position > 1 else None
+        tied = previous and (previous["week_seconds"], previous["streak_days"]) == (entry["week_seconds"], entry["streak_days"])
+        entry["rank"] = previous["rank"] if tied else position  # ties share a rank: 1, 2, 2, 4
+    return entries
 
 
 @router.get("/groups/{group_id}/messages", response_model=list[GroupMessage])

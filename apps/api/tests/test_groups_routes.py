@@ -6,7 +6,8 @@ from fastapi.testclient import TestClient
 
 from app import guests, rate_limit
 from app.db.connection import get_conn, get_conn_factory
-from app.db.groups import GROUP_MAX_MEMBERS, REPORTS_TO_HIDE, join_group
+from app.db.groups import GROUP_MAX_MEMBERS, REPORTS_TO_HIDE, join_group, leave_group
+from app.db.sessions import create_session
 from app.db.users import get_or_create_by_clerk_id, update_profile
 from app.main import app
 from app.routes.groups import load_themes
@@ -23,6 +24,7 @@ ROUTES = [
     ("POST", "/groups/1/messages", {"body": "Hello"}),
     ("DELETE", "/groups/1/members/me", None),
     ("POST", "/groups/1/messages/1/report", {"reason": "spam"}),
+    ("GET", "/groups/1/leaderboard", None),
 ]
 
 
@@ -388,3 +390,73 @@ def test_report_rules(students, client, db):
     assert report(client, group, 999999999).status_code == 404
     students.act_as(elsewhere)  # another student, not in this group
     assert report(client, group, message["id"]).status_code == 403
+
+
+# ---------- GET /groups/{id}/leaderboard ----------
+
+def practiced(db, user_id: int, days_back: int, seconds: float) -> None:
+    """A finished spoken session `days_back` days ago: get_activity counts its spoken seconds."""
+    sid = uuid4()
+    create_session(db, sid, user_id, "visa-us", "voice", "fr", {"turns": []})
+    db.execute(
+        """
+        UPDATE practice_sessions
+        SET started_at = now() - make_interval(days => %s), ended_at = now() - make_interval(days => %s)
+        WHERE id = %s
+        """,
+        (days_back, days_back, sid),
+    )
+    db.execute("INSERT INTO session_metrics (session_id, words, speaking_seconds) VALUES (%s, 50, %s)", (sid, seconds))
+
+
+def test_leaderboard_ranks_members_by_practice_this_week_then_streak(students, client, db):
+    group = new_group(db)
+    amina, yacine, sara, nour = (member(students, group, name) for name in ("Amina", "Yacine", "Sara", "Nour"))
+    practiced(db, amina["id"], 0, 300)
+    practiced(db, yacine["id"], 1, 600)
+    practiced(db, sara["id"], 0, 120)
+    practiced(db, sara["id"], 1, 180)  # 300 s like Amina, but a 2-day streak
+    practiced(db, nour["id"], 10, 900)  # more than 7 days ago: not this week
+    students.act_as(amina)
+
+    response = client.get(f"/groups/{group}/leaderboard")
+
+    assert response.status_code == 200
+    board = response.json()
+    assert [(e["rank"], e["member"]["first_name"]) for e in board] == [(1, "Yacine"), (2, "Sara"), (3, "Amina"), (4, "Nour")]
+    assert [e["week_seconds"] for e in board] == pytest.approx([600, 300, 300, 0])
+    assert [e["streak_days"] for e in board] == [1, 2, 1, 0]
+    assert [e["is_me"] for e in board] == [False, False, True, False]
+
+
+def test_leaderboard_ties_share_a_rank(students, client, db):
+    group = new_group(db)
+    amina, yacine, sara = (member(students, group, name) for name in ("Amina", "Yacine", "Sara"))
+    practiced(db, amina["id"], 0, 300)
+    practiced(db, yacine["id"], 0, 300)
+    students.act_as(sara)
+
+    board = client.get(f"/groups/{group}/leaderboard").json()
+
+    assert [e["rank"] for e in board] == [1, 1, 3]
+
+
+def test_leaderboard_shows_only_current_members_of_this_group(students, client, db):
+    group, other = new_group(db), new_group(db)
+    amina, former = member(students, group, "Amina"), member(students, group, "Former")
+    member(students, other, "Elsewhere")  # another student's group
+    leave_group(db, group, former["id"])
+    students.act_as(amina)
+
+    board = client.get(f"/groups/{group}/leaderboard").json()
+
+    assert [e["member"]["first_name"] for e in board] == ["Amina"]
+
+
+def test_leaderboard_is_for_members_only(students, client, db):
+    group = new_group(db)
+    member(students, group)
+    students.act_as(students.new())  # another student, not a member
+
+    assert client.get(f"/groups/{group}/leaderboard").status_code == 403
+    assert client.get("/groups/999999999/leaderboard").status_code == 404
