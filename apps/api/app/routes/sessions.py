@@ -8,7 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import StreamingResponse
 from psycopg import Connection
-from tkallem_agent import AgentError, CoachSession, HintError, ScenarioNotFound
+from tkallem_agent import AgentError, CoachSession, HintError, ScenarioNotFound, match_repeat
 
 from app import credits
 from app.config import settings
@@ -24,7 +24,8 @@ from app.db.sessions import (
 )
 from app.dependencies import get_current_user, user_for_claims
 from app.schemas.sessions import (
-    HintRequest, HintResult, SessionCreate, SessionDetail, SessionReport, SessionStarted, Spoken, TurnResult,
+    HintRequest, HintResult, RepeatResult, SessionCreate, SessionDetail, SessionReport, SessionStarted, Spoken,
+    TurnResult,
 )
 from app.security import ClerkClaims, get_clerk_claims
 from app.voice import SttError, TtsError, run_turn, stream_turn, synthesize, transcribe
@@ -37,6 +38,10 @@ HINT_LIMIT = 2  # hints per question (docs/JURY_BRIEF.md): help to start, not to
 HINTS_PER_HOUR = 30  # per student and per process: hints are free for the student but each is a paid model call
 _hint_calls: dict[tuple[UUID, int], int] = {}
 _hint_times: dict[str, deque] = {}
+REPEAT_LIMIT = 3  # tries per corrected answer (docs/JURY_BRIEF.md)
+REPEATS_PER_HOUR = 40  # per student and per process: each try is a paid transcription
+_repeat_calls: dict[tuple[UUID, int], int] = {}
+_repeat_times: dict[str, deque] = {}
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -276,14 +281,18 @@ def speak_last_line(
     return {"text": text, "audio_url": audio_url}
 
 
-def _hint_rate_ok(user_key: str, now: float) -> bool:
-    times = _hint_times.setdefault(user_key, deque())
+def _hourly_ok(log: dict[str, deque], user_key: str, limit: int, now: float) -> bool:
+    times = log.setdefault(user_key, deque())
     while times and now - times[0] > 3600:
         times.popleft()
-    if len(times) >= HINTS_PER_HOUR:
+    if len(times) >= limit:
         return False
     times.append(now)
     return True
+
+
+def _hint_rate_ok(user_key: str, now: float) -> bool:
+    return _hourly_ok(_hint_times, user_key, HINTS_PER_HOUR, now)
 
 
 @router.post("/{session_id}/hint", response_model=HintResult)
@@ -323,6 +332,42 @@ def ask_hint(
     except AgentError:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Hints are unavailable right now")
     return {**hint.model_dump(), "remaining": HINT_LIMIT - used - 1}
+
+
+@router.post("/{session_id}/repeat", response_model=RepeatResult)
+def say_it_again(
+    session_id: UUID,
+    turn: int = Form(..., ge=0),
+    audio: UploadFile = File(...),
+    user: dict = Depends(get_current_user),
+    connect: ConnFactory = Depends(get_conn_factory),
+) -> dict:
+    """"Say it again": the student says the corrected version of answer number `turn` (0 = first answer) out loud. The
+    code decides if it matches (tkallem_agent.repeat). Free, at most REPEAT_LIMIT tries per answer; the interview does
+    not move on, and it works after the session ended too (to practise from the report)."""
+    with connect() as conn:
+        session = get_session_for_user(conn, session_id, user["id"])
+    if session is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    coach = CoachSession.from_state(session["state"], max_text_chars=settings.max_text_chars)
+    if turn >= len(coach.turns):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Answer not found")
+    answer = coach.turns[turn]
+    if not answer.corrections:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This answer had nothing to correct")
+    key = (session_id, turn)
+    used = _repeat_calls.get(key, 0)
+    if used >= REPEAT_LIMIT:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "You tried 3 times: go on with the interview, you can practise it again later")
+    if not _hourly_ok(_repeat_times, str(user["id"]), REPEATS_PER_HOUR, time.monotonic()):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many tries in the last hour: take a break and come back")
+    data = audio.file.read(settings.max_audio_bytes + 1)
+    if len(data) > settings.max_audio_bytes:
+        raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, "Recording too long: say only the corrected sentence")
+    heard, _, _, _ = _hear(session_id, data, audio.filename or "repeat.webm", audio.content_type or "audio/webm")
+    _repeat_calls[key] = used + 1  # counted once the recording was understood: a failed transcription costs no try
+    result = match_repeat(answer.student_text, answer.corrections, heard)
+    return {**result.model_dump(), "heard": heard, "tries_left": REPEAT_LIMIT - used - 1}
 
 
 @router.post("/{session_id}/turn", response_model=TurnResult)

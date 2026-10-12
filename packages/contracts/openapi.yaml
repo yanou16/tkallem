@@ -208,6 +208,48 @@ paths:
         "409": { description: Session already ended, or the interview is over }
         "422": { description: Unknown type, or `translate` without text }
         "429": { description: 2 hints already for this question, or too many in the last hour }
+  /sessions/{id}/repeat:
+    post:
+      summary: '"Say it again": the student says the corrected version of one of their answers'
+      description: |
+        Judged by code, not by the model: at least 85 % of the words of the corrected sentence, every corrected phrase
+        heard, the mistake not said again (case, punctuation, contractions, number words and fillers ignored). Free, at
+        most 3 tries per answer and 40 per hour per student; the interview does not move on, and it also works after
+        the session ended. A recording that cannot be understood costs no try.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [turn, audio]
+              properties:
+                turn: { type: integer, minimum: 0, description: "Which answer, 0 = the first one" }
+                audio: { type: string, format: binary }
+      responses:
+        "200":
+          description: The verdict
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [nailed, heard, target, missing, similarity, tries_left]
+                properties:
+                  nailed: { type: boolean }
+                  heard: { type: string }
+                  target: { type: string, description: The corrected sentence }
+                  missing: { type: array, items: { type: string }, description: Corrected phrases not heard, or said with the mistake again }
+                  similarity: { type: number }
+                  tries_left: { type: integer }
+        "401": { description: Missing or invalid token }
+        "404": { description: Session or answer not found }
+        "409": { description: This answer had nothing to correct }
+        "413": { description: Recording too long }
+        "422": { description: Recording empty, silent or not understood (no try used) }
+        "429": { description: 3 tries already for this answer, or too many in the last hour }
+        "502": { description: Speech recognition unavailable }
   /sessions/{id}/turn:
     post:
       summary: Send one student turn (audio file or text)
