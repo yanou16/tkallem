@@ -43,6 +43,10 @@ class AgentTurn(BaseModel):
     corrections: list[Correction] = Field(default_factory=list, max_length=3)
     sentence_status: Status
     goal_covered: str | None = None
+    # "Reassure before correcting" (docs/JURY_BRIEF.md, improvement 4): one short true positive about the answer, checked
+    # by code (praise_problem), and the correction to show first; the others are folded in the app.
+    praise: str | None = None
+    priority_index: int = Field(0, ge=0)
 
     @model_validator(mode="after")
     def status_matches_corrections(self):
@@ -54,6 +58,8 @@ class AgentTurn(BaseModel):
             raise ValueError("corrections present, status cannot be green")
         if n == 3 and self.sentence_status != "red":
             raise ValueError("3 corrections means red")
+        if self.priority_index >= max(n, 1):
+            raise ValueError("priority_index must point at a correction")
         return self
 
 
@@ -75,6 +81,65 @@ def _only_study_number(original: str, fixed: str) -> bool:
     return len(a) == len(b) and a != b and all(x == y or swap.get(x) == y for x, y in zip(a, b))
 
 
+PRAISE_MAX_WORDS = 12
+# Words a praise uses about anything: they do not show it is about THIS answer.
+_PRAISE_WORDS = frozenset("""
+good great nice well very really clear clearly answer answers sentence sentences idea ideas your with this that these
+use used using word words english speak spoke said told explain explained explaining detail details specific strong
+solid natural naturally correct correctly perfect excellent fluent confident confidently structure grammar vocabulary
+tense past present future simple polite politely direct directly short full complete good-job job done keep point
+reason reasons answered give gave giving well-done mention mentioned""".split())
+_NOT_ONLY_POSITIVE = re.compile(r"\b(but|however|although|though|instead|should|next time|try|mistake|mistakes|error|errors|wrong)\b", re.I)
+_QUOTED = re.compile(r"[\"“‘']([^\"”’']{2,})[\"”’']")
+
+
+def _same_root(a: str, b: str) -> bool:
+    """study / studies / studying: same word for a praise anchor."""
+    if a == b:
+        return True
+    n = 0
+    for x, y in zip(a, b):
+        if x != y:
+            break
+        n += 1
+    return n >= 4 and n >= min(len(a), len(b)) - 1
+
+
+def _names(text: str) -> set[str]:
+    """_protected() for a praise: quotes around a word ('from Turkey') do not hide the name."""
+    return {w.strip("'").lower() for w in _protected(text.replace("‘", "'").replace("’", "'"))} - {""}
+
+
+def praise_quotes(praise: str) -> list[str]:
+    return [q for q in _QUOTED.findall(praise) if q.strip()]
+
+
+def praise_problem(praise: str, student_text: str) -> str | None:
+    """Why this praise is refused, or None. A praise must be short, only positive, and about something the learner
+    actually said: a quoted fragment of their answer, or one of its words. Generic praise ("Good job!") is refused."""
+    words = praise.split()
+    if not words:
+        return "empty"
+    if len(words) > PRAISE_MAX_WORDS:
+        return f"more than {PRAISE_MAX_WORDS} words"
+    if _NOT_ONLY_POSITIVE.search(praise):
+        return "not only positive"
+    said = _norm(student_text)
+    quoted = praise_quotes(praise)
+    if any(_norm(part) not in said for q in quoted for part in re.split(r"\.\.\.|…", q) if part.strip()):
+        return "quotes words the learner did not say"
+    if _names(praise) - _names(student_text) - set(said.split()):
+        return "names something that is not in the answer"
+    if re.search(r"\d", praise) and not set(re.findall(r"\d+", praise)) <= set(re.findall(r"\d+", student_text)):
+        return "a number that is not in the answer"
+    content = [w for w in _norm(praise).split() if len(w) > 3 and w not in _PRAISE_WORDS]
+    answer_words = [w for w in said.split() if len(w) > 2]
+    shared_names = _names(praise) & _names(student_text)  # "the US", "Algiers", "2 hours"
+    if not quoted and not shared_names and not any(_same_root(w, a) for w in content for a in answer_words):
+        return "generic: about nothing the learner said"
+    return None
+
+
 def sanitize(raw: dict, goals: list[str] | None = None, student_text: str | None = None) -> dict:
     """Guardrails applied to raw model output before validation.
 
@@ -82,10 +147,13 @@ def sanitize(raw: dict, goals: list[str] | None = None, student_text: str | None
     removes a number or proper noun (meaning change, e.g. Germany -> USA); or rewrites far more words than it replaces.
     Keeps at most 3, derives the status from the corrections so the model cannot contradict itself
     (a model-declared "red" is kept when corrections remain), and only accepts goal ids from the scenario.
+    Keeps the praise only when praise_problem() finds nothing, and follows priority_index to the kept corrections
+    (the first one when it points at a dropped or unknown correction).
     """
     out = dict(raw)
     kept = []
-    for c in out.get("corrections") or []:
+    positions = []  # index of each kept correction in the model's list, to follow its priority_index
+    for i, c in enumerate(out.get("corrections") or []):
         if not isinstance(c, dict):
             c = c.model_dump() if isinstance(c, BaseModel) else {}
         if c.get("rule") not in RULES:
@@ -106,8 +174,18 @@ def sanitize(raw: dict, goals: list[str] | None = None, student_text: str | None
         if _only_study_number(original, fixed):
             continue
         kept.append(c)
+        positions.append(i)
     kept = kept[:3]
     out["corrections"] = kept
+    wanted = raw.get("priority_index")
+    out["priority_index"] = positions.index(wanted) if isinstance(wanted, int) and wanted in positions[:3] else 0
+    praise = raw.get("praise")
+    praise = " ".join(praise.split()) if isinstance(praise, str) else ""
+    # A praise that quotes the wrong words ("Clear purpose: 'for study'") would praise the mistake itself.
+    wrong = [_norm(str(c.get("original", ""))) for c in kept]
+    praises_a_mistake = any(_norm(q) in w or w in _norm(q) for q in praise_quotes(praise) for w in wrong if w and _norm(q))
+    ok = praise and student_text is not None and not praises_a_mistake and praise_problem(praise, student_text) is None
+    out["praise"] = praise if ok else None
     if goals is not None and out.get("goal_covered") not in goals:
         out["goal_covered"] = None
     if not kept:

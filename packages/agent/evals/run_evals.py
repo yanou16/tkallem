@@ -14,6 +14,7 @@ from pathlib import Path
 from tkallem_agent.graph import build_graph
 from tkallem_agent.llm import get_llm
 from tkallem_agent.scenarios import load_scenario
+from tkallem_agent.schemas import praise_problem
 
 sys.path.insert(0, str(Path(__file__).parent))
 from outage import retry_outage  # noqa: E402
@@ -53,6 +54,7 @@ def evaluate() -> dict:
     graph = build_graph(get_llm())
     rows = json.loads((ROOT / "correction_set.json").read_text())
     total = found = exact = harmful = false_alarms = invalid = reds = 0
+    praised = praise_refused = praise_invented = 0  # improvement 4: the praise the student sees, and what the code refused
     rule_ok = rule_checked = rule_missing = 0
     for r in rows:
         state = {"level": r["level"], "scenario": SCENARIO, "student_text": r["sentence"], "history": [],
@@ -84,6 +86,14 @@ def evaluate() -> dict:
         tag = "OK " if ok else ("BAD" if bad else "MISS")
         reds += turn.sentence_status == "red"
         print(f"{r['id']} {tag} [{turn.sentence_status}] | {r['sentence']} -> {result}")
+        raw_praise = out.get("praise")
+        if turn.praise:
+            praised += 1
+            praise_invented += praise_problem(turn.praise, r["sentence"]) is not None  # must stay 0: the code checked it
+            print(f"      praise: {turn.praise!r}")
+        elif raw_praise:
+            praise_refused += 1
+            print(f"      praise refused: {raw_praise!r} ({praise_problem(str(raw_praise), r['sentence'])})")
         for c in turn.corrections:
             print(f"      {c.original!r} -> {c.fixed!r} | {c.why}")
     rate = found / total if total else 0
@@ -92,8 +102,10 @@ def evaluate() -> dict:
         f"harmful {harmful} (0) | false alarms {false_alarms} (0) | invalid {invalid} (0) | red {reds}"
     )
     print(f"RULE (informative, labels are one person's judgment) correct {rule_ok}/{rule_checked}, missing {rule_missing}")
+    print(f"PRAISE shown {praised}/{len(rows) - invalid} | refused by the code {praise_refused} | invented shown {praise_invented} (0)")
     return {"found": found, "total": total, "exact": exact, "rows": len(rows), "harmful": harmful,
-            "false_alarms": false_alarms, "invalid": invalid, "red": reds}
+            "false_alarms": false_alarms, "invalid": invalid, "red": reds,
+            "praised": praised, "praise_refused": praise_refused, "praise_invented": praise_invented}
 
 
 def main() -> int:
