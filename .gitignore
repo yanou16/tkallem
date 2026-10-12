@@ -23,3 +23,7 @@ docs/debriefs/
 # Voice benchmark: personal recordings and generated audio
 apps/api/scripts/samples/
 apps/api/scripts/out/
+
+# Azure deploy secrets (infra/azure)
+infra/azure/api.env
+infra/azure/publish-profile.xml

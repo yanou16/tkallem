@@ -79,3 +79,9 @@ def test_unconfigured_auth_returns_503(monkeypatch):
     with pytest.raises(HTTPException) as exc:
         security.verify_clerk_token(make_token())
     assert exc.value.status_code == 503
+
+
+def test_any_configured_front_origin_is_accepted(monkeypatch):
+    monkeypatch.setattr(settings, "frontend_origin", f"{ORIGIN}, https://tkallem.vercel.app/")
+    claims = security.verify_clerk_token(make_token(azp="https://tkallem.vercel.app"))
+    assert claims.user_id
