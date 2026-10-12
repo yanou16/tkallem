@@ -105,6 +105,55 @@ def test_unknown_rule_becomes_none_without_losing_the_correction():
     assert len(turn.corrections) == 1 and turn.corrections[0].rule is None
 
 
+def _fix(original, fixed, why="x"):
+    return {"original": original, "fixed": fixed, "type": "grammar", "why": why}
+
+
+def test_overlapping_corrections_become_one_so_the_corrected_sentence_is_right():
+    # Seen in production: the corrected sentence still said "to study my master", the second fix shown apart.
+    text = "I go to US for study my master in computer science."
+    raw = {"reply": "OK.", "sentence_status": "orange", "corrections": [
+        _fix("go to US for study", "go to the US to study", "Article et but."),
+        _fix("study my master", "study for my master's", "Study for + master's."),
+    ]}
+    out = sanitize(raw, None, text)
+    assert len(out["corrections"]) == 1
+    c = out["corrections"][0]
+    assert c["original"] == "go to US for study my master"
+    assert c["fixed"] == "go to the US to study for my master's"
+    assert c["why"] == "Article et but. Study for + master's."
+    assert out["sentence_status"] == "orange"
+    AgentTurn.model_validate(out)
+
+
+def test_separate_corrections_stay_apart_in_sentence_order():
+    text = "Yesterday I go to the embassy and he have my papers."
+    raw = {"reply": "OK.", "sentence_status": "orange", "corrections": [
+        _fix("he have", "he has"), _fix("I go", "I went"),
+    ]}
+    out = sanitize(raw, None, text)
+    assert [c["original"] for c in out["corrections"]] == ["I go", "he have"]
+
+
+def test_overlap_that_cannot_be_combined_keeps_the_first():
+    text = "I am agree with this plan."
+    raw = {"reply": "OK.", "sentence_status": "orange", "corrections": [
+        _fix("am agree", "agree"), _fix("I am agree", "I am in agreement"),
+    ]}
+    out = sanitize(raw, None, text)
+    assert len(out["corrections"]) == 1
+
+
+def test_sentence_end_is_not_doubled_when_merging():
+    text = "My father pay my studies."
+    raw = {"reply": "OK.", "sentence_status": "orange", "corrections": [
+        _fix("My father pay", "My father pays"), _fix("pay my studies.", "pay for my studies."),
+    ]}
+    c = sanitize(raw, None, text)["corrections"][0]
+    assert c["original"] == "My father pay my studies"
+    assert c["fixed"] == "My father pays for my studies"
+
+
 # ---------- improvement 4: praise and priority ----------
 
 from tkallem_agent.schemas import praise_problem  # noqa: E402
@@ -175,3 +224,16 @@ def test_a_praise_never_quotes_the_mistake():
     base = {"reply": "OK.", "sentence_status": "orange", "corrections": [C]}  # C fixes "for study"
     assert sanitize({**base, "praise": "You included a clear purpose: 'for study'."}, None, "I go to the US for study.")["praise"] is None
     assert sanitize({**base, "praise": "Clear goal: 'I go to the US'."}, None, "I go to the US for study.")["praise"] == "Clear goal: 'I go to the US'."
+
+
+def test_priority_follows_a_merged_correction():
+    # The model's priority (index 1, "study my master") is merged into the first fix: the merged one is the priority.
+    text = "I go to US for study my master in computer science and he have a car."
+    raw = {"reply": "OK.", "sentence_status": "orange", "priority_index": 1, "corrections": [
+        _fix("go to US for study", "go to the US to study"), _fix("study my master", "study for my master's"),
+        _fix("he have", "he has")]}
+    out = sanitize(raw, None, text)
+    assert [c["original"] for c in out["corrections"]] == ["go to US for study my master", "he have"]
+    assert out["priority_index"] == 0
+    raw["priority_index"] = 2
+    assert sanitize(raw, None, text)["priority_index"] == 1
