@@ -6,10 +6,9 @@ import { useScenarios } from "@/features/practice/hooks/usePractice";
 import { startHref } from "@/components/cards";
 import InstallButton from "@/components/InstallButton";
 import { Icon } from "@/lib/icons";
+import { scenarioTint } from "@/lib/tint";
 import { cn } from "@/lib/utils";
 
-/** One tint per kind of situation (DESIGN.md: a pastel always carries a scenario meaning). */
-const TINT: Record<string, string> = { travel: "bg-mint", study: "bg-butter", work: "bg-peach", exams: "bg-rose" };
 const FIRST_SCENARIO = "visa-us";
 
 /**
@@ -32,7 +31,7 @@ export default function WelcomePage() {
         {isSignedIn ? (
           <Link href="/" className="rounded-full border border-black/15 px-4 py-2 text-sm font-medium">My dashboard</Link>
         ) : (
-          <Link href="/sign-in" className="rounded-full border border-black/15 px-4 py-2 text-sm font-medium">Sign in</Link>
+          <Link href="/sign-in" className="rounded-full border border-black/15 px-4 py-3 text-sm font-medium">Sign in</Link>
         )}
       </header>
 
@@ -61,8 +60,8 @@ export default function WelcomePage() {
             <p className="max-w-[85%] rounded-[20px] bg-white px-4 py-3">What is the purpose of your trip?</p>
             <p className="ml-auto max-w-[85%] rounded-[20px] bg-ink px-4 py-3 text-white">I go to the US for study.</p>
             <div className="ml-auto max-w-[90%] rounded-2xl border border-black/5 bg-white p-3 text-sm">
-              <p className="text-muted">I go to the US <s className="text-red-700">for study</s>.</p>
-              <p className="font-medium">I go to the US <span className="font-semibold text-emerald-700">to study</span>.</p>
+              <p className="text-muted">I go to the US <s className="text-bad">for study</s>.</p>
+              <p className="font-medium">I go to the US <span className="font-semibold text-good">to study</span>.</p>
               <p className="mt-1 text-muted">Pour exprimer le but, on utilise to + verbe.</p>
             </div>
           </figure>
@@ -75,16 +74,16 @@ export default function WelcomePage() {
             {scenarios.isLoading && [0, 1, 2].map((i) => <li key={i} className="h-36 animate-pulse rounded-[28px] bg-black/[0.04]" />)}
             {list.map((s) => (
               <li key={s.id}>
-                <Link href={startHref(s.id)} className={cn("flex h-full flex-col justify-between gap-4 rounded-[28px] p-5 hover:opacity-90", (s.category && TINT[s.category]) || "bg-black/[0.03]")}>
+                <Link href={startHref(s.id)} className={cn("flex h-full flex-col justify-between gap-4 rounded-[28px] p-5 hover:opacity-90", scenarioTint(s.category))}>
                   <span className="flex items-start gap-3">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/70"><Icon name={s.icon ?? undefined} /></span>
                     <span>
                       <span className="block font-semibold">{s.title}</span>
-                      <span className="block text-sm text-muted">{s.description}</span>
+                      <span className="block text-sm text-charcoal">{s.description}</span>
                     </span>
                   </span>
                   <span className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1.5 text-muted"><Clock size={14} /> {s.minutes ?? 10} min{s.level ? ` · ${s.level}` : ""}</span>
+                    <span className="flex items-center gap-1.5 text-charcoal"><Clock size={14} /> {s.minutes ?? 10} min{s.level ? ` · ${s.level}` : ""}</span>
                     <span className="inline-flex items-center gap-1 font-semibold">Start <ArrowRight size={14} /></span>
                   </span>
                 </Link>

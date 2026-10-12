@@ -72,7 +72,7 @@ export function PageHeader({ eyebrow, title, subtitle }: { eyebrow?: ReactNode; 
   return (
     <header className="mb-6">
       {eyebrow && <p className="mb-1 text-sm text-muted">{eyebrow}</p>}
-      <h1 className="text-4xl font-extrabold tracking-tight md:text-5xl">{title}</h1>
+      <h1 className="text-4xl font-medium tracking-tight md:text-5xl">{title}</h1>
       {subtitle && <p className="mt-2 text-lg text-muted">{subtitle}</p>}
     </header>
   );

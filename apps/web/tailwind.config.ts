@@ -1,12 +1,16 @@
 import type { Config } from "tailwindcss";
+import preset from "./tailwind.preset";
 
 const config: Config = {
+  // DESIGN.md tokens (canvas, surface, ink, charcoal, slate, steel, stone, hairline, tint-*, good/warn/bad, type scale).
+  presets: [preset as Config],
   content: ["./src/**/*.{ts,tsx}"],
+  // On phones a tap would otherwise leave `hover:` styles stuck on the tapped control.
+  future: { hoverOnlyWhenSupported: true },
   theme: {
     extend: {
       fontFamily: { sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"] },
       colors: {
-        ink: "#111111",
         muted: "#6b6b76",
         line: "#ececf0",
         brand: "#FFD02F",

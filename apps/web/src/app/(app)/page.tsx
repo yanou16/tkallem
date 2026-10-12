@@ -65,7 +65,7 @@ function StatCards({ p }: { p: Progress }) {
       <div className="rounded-card bg-ink p-5 text-white">
         <p className="text-sm text-white/70">Mistakes per 100 words</p>
         <div className="mt-2 flex items-center gap-3">
-          <span className="text-5xl font-extrabold">{formatNumber(mistakes)}</span>
+          <span className="text-5xl font-medium">{formatNumber(mistakes)}</span>
           {change !== null && (
             <span className={cn("rounded-full px-3 py-1 text-sm font-semibold", change <= 0 ? "bg-success" : "bg-red-500")}>
               {change > 0 ? "+" : ""}{formatNumber(change)}
@@ -79,14 +79,14 @@ function StatCards({ p }: { p: Progress }) {
       <div className="rounded-card bg-mint p-5">
         <p className="text-sm text-muted">Practice this week</p>
         <div className="mt-2 flex items-end justify-between">
-          <span className="text-4xl font-extrabold">{formatMinutes(p.weekSpeakingSeconds / 60)}</span>
+          <span className="text-4xl font-medium">{formatMinutes(p.weekSpeakingSeconds / 60)}</span>
           <ChartNoAxesColumn className="text-success" size={36} />
         </div>
       </div>
       <div className="rounded-card bg-butter p-5">
         <p className="text-sm text-muted">Streak</p>
         <div className="mt-2 flex items-end justify-between">
-          <span className="text-4xl font-extrabold">{plural(p.streakDays, "day")}</span>
+          <span className="text-4xl font-medium">{plural(p.streakDays, "day")}</span>
           <Flame className="text-orange-500" size={36} />
         </div>
       </div>
@@ -110,7 +110,7 @@ function DailyGoalCard() {
                   <Icon name="target" size={24} />
                 </ProgressRing>
                 <div>
-                  <p className="text-2xl font-bold">{done} / {goal} min</p>
+                  <p className="text-2xl font-semibold">{done} / {goal} min</p>
                   <p className="text-muted">Practice today</p>
                 </div>
               </div>
