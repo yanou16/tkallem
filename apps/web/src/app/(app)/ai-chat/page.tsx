@@ -348,7 +348,7 @@ function Chat() {
                   )}
                 </div>
               )}
-              <div className="flex items-center gap-4 p-4">
+              <div className="flex items-center gap-3 p-3 sm:p-4">
                 <div className="flex flex-col items-center">
                   <button onClick={toggleMic} disabled={!s || send.isPending} aria-label={rec.isRecording ? "Stop and send" : "Answer by voice"}
                     className={cn("flex h-14 w-14 items-center justify-center rounded-full bg-ink text-white disabled:opacity-50", rec.isRecording && "ring-[6px] ring-brand")}>
@@ -361,8 +361,8 @@ function Chat() {
                 ) : (
                   <div className="flex-1">
                     <input value={text} maxLength={MAX} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()}
-                      disabled={!s || send.isPending} aria-label="Your answer" placeholder="Type your answer"
-                      className="w-full rounded-full border border-line px-4 py-3.5 outline-none focus:border-ink disabled:bg-black/[0.03]" />
+                      disabled={!s || send.isPending} aria-label="Your answer" placeholder="Type here"
+                      className="w-full rounded-full border border-line px-3.5 py-3.5 outline-none focus:border-ink disabled:bg-black/[0.03]" />
                     <p className="mt-1 text-right text-xs text-muted">{text.length} / {MAX}</p>
                   </div>
                 )}

@@ -31,7 +31,7 @@ export default function WelcomePage() {
         {isSignedIn ? (
           <Link href="/" className="rounded-full border border-black/15 px-4 py-2 text-sm font-medium">My dashboard</Link>
         ) : (
-          <Link href="/sign-in" className="rounded-full border border-black/15 px-4 py-2 text-sm font-medium">Sign in</Link>
+          <Link href="/sign-in" className="rounded-full border border-black/15 px-4 py-3 text-sm font-medium">Sign in</Link>
         )}
       </header>
 
