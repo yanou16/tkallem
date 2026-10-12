@@ -17,6 +17,8 @@ export const mapTurn = (t: TurnDto): Turn => ({
   reply: t.reply,
   corrections: t.corrections,
   sentenceStatus: t.sentence_status,
+  praise: t.praise ?? null,
+  priorityIndex: t.priority_index ?? 0,
   finished: t.finished,
   audioUrl: t.reply_audio_url ?? null,
   credits: t.credits,
@@ -42,7 +44,7 @@ export function mapSessionDetail(s: SessionDetailDto): AiSession {
   const add = (message: Omit<ChatMessage, "id">) => messages.push({ id: `${s.session_id}-${messages.length}`, ...message });
   if (s.first_question) add({ role: "assistant", content: s.first_question });
   for (const t of s.turns) {
-    add({ role: "user", content: t.transcript, status: t.sentence_status, corrections: t.corrections });
+    add({ role: "user", content: t.transcript, status: t.sentence_status, corrections: t.corrections, praise: t.praise ?? null, priorityIndex: t.priority_index ?? 0 });
     add({ role: "assistant", content: t.reply });
   }
 
@@ -89,7 +91,10 @@ export const endSession = (sessionId: string) =>
 export type AnswerInput = { text: string } | { audio: Blob };
 
 /** What is known so far about an answer being processed (Server-Sent Events from POST /turn). */
-export type LiveTurn = { transcript?: string; reply?: string; corrections?: Turn["corrections"]; status?: Turn["sentenceStatus"] };
+export type LiveTurn = {
+  transcript?: string; reply?: string; corrections?: Turn["corrections"]; status?: Turn["sentenceStatus"];
+  praise?: string | null; priorityIndex?: number;
+};
 
 /**
  * One answer, typed or spoken, read as a stream: `onLive` gets the transcript, the coach's text and the corrections
@@ -111,7 +116,7 @@ export async function streamAnswer(
   await apiStream(endpoints.ai.turn(sessionId), form, (name, data) => {
     if (name === "transcript") onLive({ transcript: data.text });
     else if (name === "reply") { reply = data.text; onLive({ reply }); }
-    else if (name === "corrections") onLive({ corrections: data.corrections, status: data.sentence_status });
+    else if (name === "corrections") onLive({ corrections: data.corrections, status: data.sentence_status, praise: data.praise ?? null, priorityIndex: data.priority_index ?? 0 });
     else if (name === "audio") { audioUrl = data.audio_url; onAudio(audioUrl, reply); }
     else if (name === "done") done = { ...data, reply_audio_url: audioUrl ?? data.reply_audio_url ?? null };
     else if (name === "error") error = new ApiError(data.detail, data.status, data);

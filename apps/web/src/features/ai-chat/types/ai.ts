@@ -18,6 +18,8 @@ export type TurnDetailDto = {
   reply: string;
   sentence_status: SentenceStatus;
   corrections: Correction[];
+  praise?: string | null;
+  priority_index?: number;
 };
 
 export type SessionDetailDto = {
@@ -55,6 +57,9 @@ export type TurnDto = {
   reply_audio_url: string | null;
   corrections: Correction[];
   sentence_status: SentenceStatus;
+  /** Improvement 4: one short true positive, checked by the agent's code (null when refused). */
+  praise?: string | null;
+  priority_index?: number;
   finished: boolean;
   /** Balance after this answer (docs/CREDITS.md). */
   credits?: Credits;
@@ -99,6 +104,9 @@ export type Turn = {
   reply: string;
   corrections: Correction[];
   sentenceStatus: SentenceStatus;
+  praise: string | null;
+  /** The correction shown in full; the others are folded. */
+  priorityIndex: number;
   /** Guided scenario: every question is answered, time for the report. Always false in free talk. */
   finished: boolean;
   /** The coach's reply spoken (data: URL), voice sessions and spoken answers only. */
@@ -136,6 +144,9 @@ export type ChatMessage = {
   /** Student answers only. */
   status?: SentenceStatus;
   corrections?: Correction[];
+  /** Student answers: a short true positive shown before the corrections, and the correction shown in full. */
+  praise?: string | null;
+  priorityIndex?: number;
   /** Coach lines spoken by the server (data: URL), for the Listen button. */
   audioUrl?: string | null;
   /** Shown at once while the answer is processed (a recording not transcribed yet). */
