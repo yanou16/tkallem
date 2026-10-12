@@ -1,14 +1,19 @@
-# Tests on every push and pull request. Database tests are skipped here (no TEST_DATABASE_URL): run them locally
-# against a scratch Neon branch. LLM evals are not run here (they cost money and need keys): see packages/agent/README.md.
+# Every check a change must pass before it reaches main (branch protection requires the "CI ok" job).
+# Pull requests run everything; the AI evals run only when packages/agent changes (they call a paid model).
 name: CI
 
 on:
+  pull_request:
   push:
     branches: [main]
-  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  python:
+  agent:
+    name: Agent tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,18 +25,51 @@ jobs:
       - name: Install
         working-directory: apps/api
         run: pip install -r requirements.txt jsonschema pyyaml
-      - name: Agent tests
+      - name: Tests
         working-directory: packages/agent
         run: pytest -q
-      - name: API tests
+
+  api:
+    name: API tests (with Postgres)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tkallem_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/tkallem_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - name: Install
+        working-directory: apps/api
+        run: pip install -r requirements.txt
+      - name: Migrations (the same ones the container runs at start)
+        working-directory: apps/api
+        run: DATABASE_URL="$TEST_DATABASE_URL" alembic upgrade head
+      - name: Tests (database tests included)
         working-directory: apps/api
         run: pytest -q
 
   web:
+    name: Front typecheck, tests and build
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: apps/web
+    env:
+      # The build needs a key in Clerk's format, not a real one (a CI build never calls Clerk)
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
+      NEXT_PUBLIC_API_URL: http://localhost:8000
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -42,3 +80,60 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - run: npm run build
+
+  docker:
+    name: API image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  evals:
+    name: AI evals (agent changes)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: changes
+        name: Did the agent change?
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then echo "run=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -qE '^packages/agent/(tkallem_agent|evals)/'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"; echo "No change in the agent: evals not needed."
+          fi
+      - uses: actions/setup-python@v5
+        if: steps.changes.outputs.run == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/requirements.txt
+      - name: Gate (29/29 errors detected, 0 false alarm, 9/9 attacks handled)
+        if: steps.changes.outputs.run == 'true'
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          LLM_FALLBACKS: ""
+        run: |
+          if [ -z "$OPENROUTER_API_KEY" ]; then echo "::error::The agent changed but the OPENROUTER_API_KEY secret is missing: evals cannot run."; exit 1; fi
+          pip install -r apps/api/requirements.txt
+          cd packages/agent && python evals/gate.py
+
+  ok:
+    name: CI ok
+    if: always()
+    needs: [agent, api, web, docker, evals]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every job passed
+        run: |
+          echo '${{ toJSON(needs) }}' | python3 -c "import json,sys; bad={k:v['result'] for k,v in json.load(sys.stdin).items() if v['result']!='success'}; print(bad or 'all green'); sys.exit(1 if bad else 0)"

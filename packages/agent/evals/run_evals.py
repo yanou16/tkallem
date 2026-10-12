@@ -45,7 +45,8 @@ def apply(sentence: str, corrections) -> str:
     return s
 
 
-def main() -> int:
+def evaluate() -> dict:
+    """Runs the correction set once, prints each sentence, returns the counts (used by main and by evals/gate.py)."""
     graph = build_graph(get_llm())
     rows = json.loads((ROOT / "correction_set.json").read_text())
     total = found = exact = harmful = false_alarms = invalid = reds = 0
@@ -87,7 +88,14 @@ def main() -> int:
         f"harmful {harmful} (0) | false alarms {false_alarms} (0) | invalid {invalid} (0) | red {reds}"
     )
     print(f"RULE (informative, labels are one person's judgment) correct {rule_ok}/{rule_checked}, missing {rule_missing}")
-    return 0 if rate >= 0.85 and harmful == 0 and false_alarms == 0 and invalid == 0 else 1
+    return {"found": found, "total": total, "exact": exact, "rows": len(rows), "harmful": harmful,
+            "false_alarms": false_alarms, "invalid": invalid, "red": reds}
+
+
+def main() -> int:
+    m = evaluate()
+    rate = m["found"] / m["total"] if m["total"] else 0
+    return 0 if rate >= 0.85 and m["harmful"] == 0 and m["false_alarms"] == 0 and m["invalid"] == 0 else 1
 
 
 if __name__ == "__main__":

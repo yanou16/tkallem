@@ -9,7 +9,12 @@ from app.main import app
 def test_health():
     r = TestClient(app).get("/health")
     assert r.status_code == 200
-    assert r.json() == {"status": "ok"}
+    assert r.json() == {"status": "ok", "version": "dev"}
+
+
+def test_health_reports_the_deployed_version(monkeypatch):
+    monkeypatch.setenv("TKALLEM_VERSION", "0fd362e1a2b3")
+    assert TestClient(app).get("/health").json()["version"] == "0fd362e1a2b3"
 
 
 def test_startup_without_database_logs_a_warning(monkeypatch, caplog):

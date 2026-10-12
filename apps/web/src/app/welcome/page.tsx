@@ -4,6 +4,7 @@ import { useAuth } from "@clerk/nextjs";
 import { ArrowRight, Clock, MessageCircle, Mic, FileText } from "lucide-react";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
 import { startHref } from "@/components/cards";
+import InstallButton from "@/components/InstallButton";
 import { Icon } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +53,7 @@ export default function WelcomePage() {
               </Link>
               {!isSignedIn && <p className="text-sm text-muted">No account needed · 40 free answers</p>}
             </div>
+            <InstallButton className="mt-4" />
           </div>
 
           {/* A real correction from the coach (correction set, sentence s01), so the value shows before any click. */}
