@@ -1,4 +1,5 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -44,4 +45,5 @@ app.include_router(sessions_router)
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok"}
+    # version: the git commit the image was built from (set by the image workflow), so a deploy can be checked
+    return {"status": "ok", "version": os.getenv("TKALLEM_VERSION", "dev")}

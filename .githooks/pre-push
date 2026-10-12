@@ -1,0 +1,16 @@
+#!/bin/sh
+# Quick checks before anything leaves this machine (the full suite runs in CI, and main only accepts green PRs).
+# Enable once per clone:  git config core.hooksPath .githooks      Skip in an emergency:  git push --no-verify
+set -e
+root="$(git rev-parse --show-toplevel)"
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    echo "pre-push: main only takes pull requests with green CI. Push a branch and open a PR." >&2
+    exit 1
+  fi
+done
+py="$root/apps/api/.venv/bin/python"
+echo "pre-push: agent tests"; (cd "$root/packages/agent" && "$py" -m pytest -q -x >/dev/null) || { echo "agent tests failed"; exit 1; }
+echo "pre-push: API tests (without database)"; (cd "$root/apps/api" && TEST_DATABASE_URL= "$py" -m pytest -q -x >/dev/null) || { echo "API tests failed"; exit 1; }
+echo "pre-push: front typecheck and tests"; (cd "$root/apps/web" && npx tsc --noEmit >/dev/null && npx vitest run >/dev/null) || { echo "front checks failed"; exit 1; }
+echo "pre-push: ok"

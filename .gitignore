@@ -27,3 +27,6 @@ apps/api/scripts/out/
 # Azure deploy secrets (infra/azure)
 infra/azure/api.env
 infra/azure/publish-profile.xml
+
+# TypeScript incremental build cache (generated)
+apps/web/tsconfig.tsbuildinfo

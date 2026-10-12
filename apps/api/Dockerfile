@@ -15,6 +15,9 @@ COPY apps/api/requirements.txt apps/api/
 RUN cd apps/api && pip install -r requirements.txt
 
 COPY apps/api apps/api
+# The commit this image was built from, shown by /health (the deploy workflow checks it went live)
+ARG TKALLEM_VERSION=dev
+ENV TKALLEM_VERSION=$TKALLEM_VERSION
 RUN chmod +x apps/api/start.sh && useradd --create-home --uid 10001 tkallem
 USER tkallem
 WORKDIR /srv/apps/api

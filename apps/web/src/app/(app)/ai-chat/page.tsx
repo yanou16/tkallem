@@ -7,6 +7,7 @@ import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
 import { useAiSession, useAnswer, useEndSession, useSpeakLastLine, useStartSession } from "@/features/ai-chat/hooks/useAiChat";
 import { CoachAvatar } from "@/components/CoachAvatar";
+import InstallButton from "@/components/InstallButton";
 import VoiceState, { formatTime, type CoachState } from "@/features/ai-chat/components/VoiceState";
 import { MAX_RECORDING_S, useVoiceRecorder, type Recording } from "@/features/ai-chat/hooks/useVoiceRecorder";
 import { useCoachVoice } from "@/features/ai-chat/hooks/useCoachVoice";
@@ -546,6 +547,7 @@ function Report({ report, title, onRestart }: { report: SessionReport; title?: s
         <Link href="/practice" className="inline-flex items-center justify-center gap-2 rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-black/5">
           Back to practice
         </Link>
+        <InstallButton />
       </div>
     </div>
   );

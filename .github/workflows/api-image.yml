@@ -37,6 +37,9 @@ jobs:
           tags: |
             ${{ steps.tag.outputs.image }}
             ${{ env.IMAGE }}:latest
+          build-args: TKALLEM_VERSION=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   deploy:
     needs: build
@@ -50,3 +53,15 @@ jobs:
           app-name: ${{ vars.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           images: ${{ needs.build.outputs.image }}
+      - name: Smoke test (the new version is live and answers)
+        run: |
+          url="https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+          for i in $(seq 1 60); do
+            version=$(curl -s -m 10 "$url/health" | python3 -c "import json,sys; print(json.load(sys.stdin).get('version',''))" 2>/dev/null || true)
+            [ "$version" = "$GITHUB_SHA" ] && break
+            sleep 10
+          done
+          if [ "$version" != "$GITHUB_SHA" ]; then echo "::error::$url/health still reports '$version', expected $GITHUB_SHA"; exit 1; fi
+          count=$(curl -s -m 10 "$url/scenarios" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
+          [ "$count" -ge 1 ] || { echo "::error::/scenarios returned $count scenarios"; exit 1; }
+          echo "Live: $GITHUB_SHA, $count scenarios"

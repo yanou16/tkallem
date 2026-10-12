@@ -15,6 +15,9 @@ from tkallem_agent.graph import build_graph
 from tkallem_agent.llm import get_llm
 from tkallem_agent.scenarios import load_scenario
 
+sys.path.insert(0, str(Path(__file__).parent))
+from outage import retry_outage  # noqa: E402
+
 ROOT = Path(__file__).parent
 SCENARIO = load_scenario("visa-us").model_dump()
 STOP = {"the", "a", "an", "to", "i", "my"}
@@ -45,16 +48,18 @@ def apply(sentence: str, corrections) -> str:
     return s
 
 
-def main() -> int:
+def evaluate() -> dict:
+    """Runs the correction set once, prints each sentence, returns the counts (used by main and by evals/gate.py)."""
     graph = build_graph(get_llm())
     rows = json.loads((ROOT / "correction_set.json").read_text())
     total = found = exact = harmful = false_alarms = invalid = reds = 0
     rule_ok = rule_checked = rule_missing = 0
     for r in rows:
+        state = {"level": r["level"], "scenario": SCENARIO, "student_text": r["sentence"], "history": [],
+                 "explain_lang": os.getenv("EXPLAIN_LANG", "fr")}
         try:
-            out = graph.invoke({"level": r["level"], "scenario": SCENARIO, "student_text": r["sentence"], "history": [],
-                                "explain_lang": os.getenv("EXPLAIN_LANG", "fr")})
-        except Exception as e:  # network or provider error: count the row as invalid, keep going
+            out = retry_outage(r["id"], lambda: graph.invoke(state))
+        except Exception as e:  # provider still down after the retries, or another error: the row is invalid
             out = {"error": f"{type(e).__name__}: {e}"}
         turn = out.get("turn")
         if turn is None:
@@ -87,7 +92,14 @@ def main() -> int:
         f"harmful {harmful} (0) | false alarms {false_alarms} (0) | invalid {invalid} (0) | red {reds}"
     )
     print(f"RULE (informative, labels are one person's judgment) correct {rule_ok}/{rule_checked}, missing {rule_missing}")
-    return 0 if rate >= 0.85 and harmful == 0 and false_alarms == 0 and invalid == 0 else 1
+    return {"found": found, "total": total, "exact": exact, "rows": len(rows), "harmful": harmful,
+            "false_alarms": false_alarms, "invalid": invalid, "red": reds}
+
+
+def main() -> int:
+    m = evaluate()
+    rate = m["found"] / m["total"] if m["total"] else 0
+    return 0 if rate >= 0.85 and m["harmful"] == 0 and m["false_alarms"] == 0 and m["invalid"] == 0 else 1
 
 
 if __name__ == "__main__":
