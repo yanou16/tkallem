@@ -2,13 +2,15 @@
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowDown, ChartNoAxesColumn, ChevronDown, ChevronRight, CircleAlert, Lightbulb, MessageCircle, Mic, Send, Square, Volume2 } from "lucide-react";
+import { ArrowDown, ChartNoAxesColumn, ChevronDown, ChevronRight, CircleAlert, Lightbulb, MessageCircle, Mic, Send, Square, UserRound, Volume2 } from "lucide-react";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
 import { useAiSession, useAnswer, useEndSession, useSpeakLastLine, useStartSession } from "@/features/ai-chat/hooks/useAiChat";
 import { CoachAvatar } from "@/components/CoachAvatar";
 import InstallButton from "@/components/InstallButton";
 import VoiceState, { formatTime, type CoachState } from "@/features/ai-chat/components/VoiceState";
+import HelpMeStart from "@/features/ai-chat/components/HelpMeStart";
+import SayItAgain from "@/features/ai-chat/components/SayItAgain";
 import { MAX_RECORDING_S, useVoiceRecorder, type Recording } from "@/features/ai-chat/hooks/useVoiceRecorder";
 import { useCoachVoice } from "@/features/ai-chat/hooks/useCoachVoice";
 import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOfCredits";
@@ -130,6 +132,8 @@ function Chat() {
   const started = useRef<string | null>(null);
   const lastRecording = useRef<Recording | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
+  const answerField = useRef<HTMLInputElement>(null);
+  const [nailed, setNailed] = useState<Set<string>>(() => new Set()); // answers said again correctly
   const rec = useVoiceRecorder({ onAutoStop: (r) => r && sendRecording(r) });
 
   const begin = (id: string) => {
@@ -219,6 +223,7 @@ function Chat() {
   const barState: CoachState = coachState === "thinking" && pending ? "idle" : coachState; // "Thinking…" already shows in the chat
 
   const answers = s?.messages.filter((m) => m.role === "user") ?? [];
+  const lastCoachLine = [...(s?.messages ?? [])].reverse().find((m) => m.role === "assistant");
   const last = answers[answers.length - 1];
   const creditProblem = send.error && isCreditError(send.error) ? (send.error as ApiError) : null;
   const problem = send.error && !creditProblem ? answerHelp(send.error) : end.error ? endHelp(end.error) : null;
@@ -233,16 +238,62 @@ function Chat() {
   } else if (!s) {
     body = <div className="space-y-4"><Skeleton className="h-20 w-2/3" /><Skeleton className="ml-auto h-20 w-2/3" /></div>;
   } else {
+    const answerIndex = new Map(s.messages.filter((m) => m.role === "user").map((m, i) => [m.id, i]));
     body = s.messages.map((m) => (
-      <Bubble key={m.id} m={m} icon={icon} tint={tint} user={user} onListen={m.role === "assistant" ? () => coach.play(m.audioUrl, m.content) : undefined} />
+      <Bubble key={m.id} m={m} icon={icon} tint={tint} user={user} nailed={nailed.has(m.id)}
+        onListen={m.role === "assistant" ? () => coach.play(m.audioUrl, m.content) : undefined}
+        sayItAgain={m.role === "user" && sessionId && m.corrections?.length ? (
+          <SayItAgain sessionId={sessionId} turn={answerIndex.get(m.id) ?? 0} disabled={rec.isRecording || send.isPending}
+            onStart={() => coach.stop()} onNailed={() => setNailed((prev) => new Set(prev).add(m.id))} />
+        ) : undefined} />
     ));
   }
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <div className="flex min-h-[calc(100vh-110px)] flex-col">
-        <PageHeader title="AI Chat" subtitle="Answer by voice or by typing. Your coach corrects each answer and explains why." />
+      <div className="flex min-h-[calc(100dvh-210px)] flex-col md:min-h-[calc(100vh-110px)]">
+        <PageHeader title="AI Chat" subtitle={s ? undefined : "Answer by voice or by typing. Your coach corrects each answer and explains why."} />
 
+        {s ? (
+          <>
+        {/* During an interview the settings shrink to one line, so the question and the answer field fit a phone. */}
+        <div className="relative mb-3 flex flex-wrap items-center gap-2">
+          <button onClick={() => setMenu((m) => !m)} aria-expanded={menu}
+            className={cn("inline-flex min-h-11 max-w-full items-center gap-2 rounded-full py-1.5 pl-1.5 pr-3 text-sm font-semibold", tint)}>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/70"><Icon name={icon ?? "briefcase"} size={16} /></span>
+            <span className="truncate">{title}</span><span className="sr-only">, change scenario</span>
+            <ChevronDown size={16} className="shrink-0" aria-hidden />
+          </button>
+          <span className="inline-flex min-h-11 items-center gap-1 rounded-full bg-surface px-3 text-sm">
+            <span className="text-slate">Level</span> <span className="font-semibold">{user?.level ?? "—"}</span>
+          </span>
+          <div className="inline-flex rounded-full bg-black/[0.03] p-0.5" role="radiogroup" aria-label="Answer mode">
+            {(["voice", "text"] as const).map((m) => (
+              <button key={m} role="radio" aria-checked={mode === m} onClick={() => chooseMode(m)}
+                className={cn("inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-semibold capitalize", mode === m ? "bg-ink text-white" : "text-muted")}>
+                {m === "text" ? <MessageCircle size={15} aria-hidden /> : <Mic size={15} aria-hidden />} {m}
+              </button>
+            ))}
+          </div>
+          {mode === "voice" && (
+            <button onClick={toggleAvatar} className="inline-flex min-h-11 items-center rounded-full border border-line px-3 text-xs font-semibold">
+              {avatarOn ? "Hide 3D coach" : "Show 3D coach"}
+            </button>
+          )}
+          {menu && (
+              <ul className="absolute left-0 top-full z-20 mt-2 max-h-72 w-full overflow-auto rounded-2xl border border-line bg-white p-1.5 shadow-soft">
+                {(scenarios.data ?? []).map((sc) => (
+                  <li key={sc.id}><button className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-black/5"
+                    onClick={() => { setMenu(false); restart(sc.id); }}><span className="block font-medium">{sc.title}</span><span className="block text-xs text-muted">{sc.description}</span></button></li>
+                ))}
+              </ul>
+            )}
+        </div>
+        {mode === "voice" && avatarOn && <div className="mb-4"><CoachAvatar {...coach.avatarProps} /></div>}
+
+          </>
+        ) : (
+          <>
         <div className="mb-4 grid gap-3 md:grid-cols-[1.3fr_0.8fr_1fr]">
           <div className="relative">
             <button onClick={() => setMenu((m) => !m)} className={cn("flex w-full items-center gap-3 rounded-2xl p-3 text-left", tint)}>
@@ -280,6 +331,9 @@ function Chat() {
             </div>
             {avatarOn && <CoachAvatar {...coach.avatarProps} />}
           </div>
+        )}
+
+          </>
         )}
 
         <div className="flex flex-1 flex-col overflow-hidden rounded-card border border-line bg-white">
@@ -348,6 +402,11 @@ function Chat() {
                   )}
                 </div>
               )}
+              {sessionId && s && (
+                <HelpMeStart sessionId={sessionId} questionKey={lastCoachLine?.id ?? "start"} typing={text.trim().length > 0}
+                  recording={rec.isRecording} busy={coachState === "thinking" || coachState === "speaking" || !!pending}
+                  onUse={(t) => { setText(t); answerField.current?.focus(); }} />
+              )}
               <div className="flex items-center gap-3 p-3 sm:p-4">
                 <div className="flex flex-col items-center">
                   <button onClick={toggleMic} disabled={!s || send.isPending} aria-label={rec.isRecording ? "Stop and send" : "Answer by voice"}
@@ -360,7 +419,7 @@ function Chat() {
                   <VoiceState state="listening" seconds={rec.seconds} className="flex-1" />
                 ) : (
                   <div className="flex-1">
-                    <input value={text} maxLength={MAX} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()}
+                    <input ref={answerField} value={text} maxLength={MAX} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()}
                       disabled={!s || send.isPending} aria-label="Your answer" placeholder="Type here"
                       className="w-full rounded-full border border-line px-3.5 py-3.5 outline-none focus:border-ink disabled:bg-black/[0.03]" />
                     <p className="mt-1 text-right text-xs text-muted">{text.length} / {MAX}</p>
@@ -409,8 +468,12 @@ function StatusPill({ status, label }: { status: SentenceStatus; label: string }
   return <span className={cn("inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-semibold", STATUS_STYLE[status])}>{label}</span>;
 }
 
-function Bubble({ m, icon, tint, user, onListen }: { m: ChatMessage; icon?: string; tint?: string; user?: ReturnType<typeof useCurrentUser>["user"]; onListen?: () => void }) {
+function Bubble({ m, icon, tint, user, onListen, sayItAgain, nailed }: {
+  m: ChatMessage; icon?: string; tint?: string; user?: ReturnType<typeof useCurrentUser>["user"]; onListen?: () => void;
+  sayItAgain?: ReactNode; nailed?: boolean;
+}) {
   const mine = m.role === "user";
+  const { isGuest: guest } = useCurrentUser(); // a guest has no name: a neutral icon, not "GU"
   const time = m.createdAt && new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   return (
     <div className={cn("flex items-start gap-3", mine && "justify-end")}>
@@ -420,8 +483,11 @@ function Bubble({ m, icon, tint, user, onListen }: { m: ChatMessage; icon?: stri
           {m.pending && <Mic size={16} aria-hidden />}{m.content}
         </p>
         {mine && !m.pending && m.corrections && m.corrections.length > 0 && <InlineCorrection text={m.content} corrections={m.corrections} />}
+        {mine && !m.pending && sayItAgain}
         <div className={cn("mt-1 flex items-center gap-2", mine && "justify-end")}>
-          {m.status && <StatusPill status={m.status} label={answerLabel(m.status, m.corrections?.length ?? 0)} />}
+          {m.status && (nailed
+            ? <StatusPill status="green" label="Nailed it" />
+            : <StatusPill status={m.status} label={answerLabel(m.status, m.corrections?.length ?? 0)} />)}
           {time && <span className="text-xs text-muted">{time}</span>}
           {onListen && (
             <button onClick={onListen} className="relative inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs text-muted hover:bg-black/5 after:absolute after:-inset-3 after:content-['']" aria-label="Listen to this line">
@@ -430,7 +496,9 @@ function Bubble({ m, icon, tint, user, onListen }: { m: ChatMessage; icon?: stri
           )}
         </div>
       </div>
-      {mine && <Avatar src={user?.avatarUrl} first={user?.firstName} last={user?.lastName} size={44} />}
+      {mine && (guest
+        ? <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black/[0.06]" aria-hidden><UserRound size={20} /></span>
+        : <Avatar src={user?.avatarUrl} first={user?.firstName} last={user?.lastName} size={44} />)}
     </div>
   );
 }

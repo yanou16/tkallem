@@ -5,7 +5,7 @@ import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useProgress } from "@/features/progress/hooks/useProgress";
 import { mistakeLabel, type Progress } from "@/features/progress/types/progress";
 import { useMySessions, useScenarios } from "@/features/practice/hooks/usePractice";
-import { Async, Card, EmptyState, GoalHint, PageHeader, ProgressRing, SectionTitle, Skeleton, toneAt } from "@/components/ui";
+import { Async, Card, EmptyState, GoalHint, PageHeader, ProgressRing, SectionTitle, Skeleton } from "@/components/ui";
 import { CardsSkeleton, ScenarioCard, SessionList } from "@/components/cards";
 import { Icon } from "@/lib/icons";
 import { cn, formatMinutes, formatNumber, plural } from "@/lib/utils";
@@ -39,7 +39,7 @@ export default function HomePage() {
             {(list) => (
               <div className="grid gap-4 md:grid-cols-2">
                 {/* Real situations only: free talk is on the practice page. */}
-                {list.filter((s) => s.mode === "guided").slice(0, 4).map((s, i) => <ScenarioCard key={s.id} s={s} tone={toneAt(i)} />)}
+                {list.filter((s) => s.mode === "guided").slice(0, 4).map((s) => <ScenarioCard key={s.id} s={s} />)}
               </div>
             )}
           </Async>

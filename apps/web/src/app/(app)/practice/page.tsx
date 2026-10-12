@@ -1,7 +1,7 @@
 "use client";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useMySessions, useScenarios } from "@/features/practice/hooks/usePractice";
-import { Async, Card, EmptyState, PageHeader, SectionTitle, Skeleton, toneAt } from "@/components/ui";
+import { Async, Card, EmptyState, PageHeader, SectionTitle, Skeleton } from "@/components/ui";
 import { CardsSkeleton, ScenarioCard, SessionList } from "@/components/cards";
 
 export default function PracticePage() {
@@ -24,7 +24,7 @@ export default function PracticePage() {
           empty={<EmptyState title="No scenarios yet" text="Scenarios for your learning language will appear here." />}>
           {(list) => (
             <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-              {list.map((s, i) => <ScenarioCard key={s.id} s={s} tone={toneAt(i)} />)}
+              {list.map((s) => <ScenarioCard key={s.id} s={s} />)}
             </div>
           )}
         </Async>

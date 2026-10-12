@@ -54,6 +54,8 @@ class TurnLog:
     audio_seconds: float | None = None
     pauses: int = 0  # long silences counted on the audio by the voice pipeline
     timings: dict = field(default_factory=dict)
+    praise: str | None = None  # improvement 4: shown before the corrections (None when the code refused it)
+    priority_index: int = 0  # the correction shown in full; the others are folded
 
 
 def _graph_for(llm: BaseChatModel):
@@ -132,7 +134,8 @@ class CoachSession:
 
         Events, "reply" and "corrections" in either order, "done" always last:
             {"type": "reply", "reply": str}
-            {"type": "corrections", "corrections": [Correction as dict], "sentence_status": "green|orange|red"}
+            {"type": "corrections", "corrections": [Correction as dict], "sentence_status": "green|orange|red",
+             "praise": str | None, "priority_index": int}
             {"type": "done", "turn": AgentTurn, "timings": {seconds}}
         Raises AgentError, possibly AFTER a "reply" or "corrections" event (for example the corrector failed twice
         while the reply was already sent). The turn is then not recorded: tell the student to repeat the answer;
@@ -169,8 +172,9 @@ class CoachSession:
                     also = [g for g in data["reply"].get("also_covered") or [] if g in self.scenario.goals]
                     yield {"type": "reply", "reply": compose_reply(data["reply"], scenario, history, covered)}
                 elif node == "correct":
-                    corrections, status = final_corrections(data.get("found", []), scenario, text, data.get("changes_meaning", False))
-                    yield {"type": "corrections", "corrections": corrections, "sentence_status": status}
+                    kept = final_corrections(data.get("found", []), scenario, text, data.get("changes_meaning", False),
+                                             data.get("praise"), data.get("priority_index", 0))
+                    yield {"type": "corrections", **kept}
                 elif node == "assemble":
                     turn, error = data.get("turn"), data.get("error")
         if turn is None:
@@ -185,6 +189,8 @@ class CoachSession:
                 status=turn.sentence_status,
                 goal_covered=turn.goal_covered,
                 also_covered=also,
+                praise=turn.praise,
+                priority_index=turn.priority_index,
                 audio_seconds=audio_seconds,
                 pauses=pauses,
                 timings=timings,

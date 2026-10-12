@@ -82,6 +82,8 @@ class Reply(BaseModel):
 class Found(BaseModel):
     corrections: list[Correction] = []
     changes_meaning: bool = False  # one mistake changes what the student meant: the sentence is red (spec)
+    praise: str | None = None  # one short true positive about the answer (checked by schemas.praise_problem)
+    priority_index: int = 0  # the correction that matters most for being understood
 
 
 def merge_dicts(a: dict | None, b: dict | None) -> dict:
@@ -97,6 +99,8 @@ class CoachState(TypedDict, total=False):
     student_text: str
     found: list[dict]
     changes_meaning: bool
+    praise: str | None
+    priority_index: int
     reply: dict | None
     coach_error: str
     turn: AgentTurn
@@ -217,11 +221,15 @@ def declared_status(changes_meaning: bool) -> str:
     return "red" if changes_meaning else "green"
 
 
-def final_corrections(found: list, scenario: dict, student_text: str, changes_meaning: bool = False) -> tuple[list[dict], str]:
-    """Corrections kept after the code guardrails, and the sentence status derived from them."""
-    out = sanitize({"corrections": found, "sentence_status": declared_status(changes_meaning)}, scenario.get("goals", []), student_text)
-    kept = [Correction.model_validate(c).model_dump() for c in out["corrections"]]
-    return kept, out["sentence_status"]
+def final_corrections(found: list, scenario: dict, student_text: str, changes_meaning: bool = False,
+                      praise: str | None = None, priority_index: int = 0) -> dict:
+    """What the code keeps of the corrector's output: corrections, the status derived from them, the praise (or None)
+    and the index of the correction to show first."""
+    raw = {"corrections": found, "sentence_status": declared_status(changes_meaning), "praise": praise,
+           "priority_index": priority_index}
+    out = sanitize(raw, scenario.get("goals", []), student_text)
+    return {"corrections": [Correction.model_validate(c).model_dump() for c in out["corrections"]],
+            "sentence_status": out["sentence_status"], "praise": out["praise"], "priority_index": out["priority_index"]}
 
 
 def build_graph(llm: BaseChatModel):
@@ -243,7 +251,11 @@ def build_graph(llm: BaseChatModel):
                 messages = [*messages, SystemMessage(RETRY_COMPACT)]
         found = raw.get("corrections") if isinstance(raw, dict) else None
         meaning = bool(raw.get("changes_meaning")) if isinstance(raw, dict) else False
-        return {"found": found or [], "changes_meaning": meaning, "timings": {"correct": time.perf_counter() - t0}}
+        praise = raw.get("praise") if isinstance(raw, dict) else None
+        priority = raw.get("priority_index") if isinstance(raw, dict) else 0
+        return {"found": found or [], "changes_meaning": meaning, "praise": praise if isinstance(praise, str) else None,
+                "priority_index": priority if isinstance(priority, int) else 0,
+                "timings": {"correct": time.perf_counter() - t0}}
 
     def coach_node(state: CoachState, config: RunnableConfig) -> CoachState:
         t0 = time.perf_counter()
@@ -280,6 +292,8 @@ def build_graph(llm: BaseChatModel):
             "goal_covered": reply.get("goal_covered"),
             "corrections": state.get("found", []),
             "sentence_status": declared_status(state.get("changes_meaning", False)),  # finalised by sanitize
+            "praise": state.get("praise"),
+            "priority_index": state.get("priority_index", 0),
         }
         try:
             turn = AgentTurn.model_validate(sanitize(merged, scenario.get("goals", []), state["student_text"]))

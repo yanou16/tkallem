@@ -40,6 +40,16 @@ class HintResult(BaseModel):
     remaining: int  # hints left for this question
 
 
+class RepeatResult(BaseModel):
+    """"Say it again" (docs/JURY_BRIEF.md, improvement 2): judged by code (tkallem_agent.repeat), never by the model."""
+    nailed: bool
+    heard: str  # what the transcription heard
+    target: str  # the corrected sentence
+    missing: list[str]  # corrected phrases not heard, or said with the mistake again
+    similarity: float
+    tries_left: int
+
+
 class SessionStarted(BaseModel):
     session_id: str
     first_question: FirstQuestion

@@ -152,3 +152,88 @@ def test_sentence_end_is_not_doubled_when_merging():
     c = sanitize(raw, None, text)["corrections"][0]
     assert c["original"] == "My father pay my studies"
     assert c["fixed"] == "My father pays for my studies"
+
+
+# ---------- improvement 4: praise and priority ----------
+
+from tkallem_agent.schemas import praise_problem  # noqa: E402
+
+ANSWER = "Yesterday I go to the embassy for my visa interview in Algiers, I wait 2 hours."
+
+
+@pytest.mark.parametrize("praise", [
+    "Nice detail about Algiers.",
+    "You gave the place: 'the embassy'.",
+    "Clear details about your visa interview.",
+    "Good detail: 'I wait 2 hours'.",
+])
+def test_true_and_specific_praise_is_kept(praise):
+    assert praise_problem(praise, ANSWER) is None
+
+
+@pytest.mark.parametrize("praise, why", [
+    ("Good job!", "generic"),
+    ("Great answer, keep going.", "generic"),
+    ("Good use of the past, but check 'go'.", "not only positive"),
+    ("You should add more details.", "not only positive"),
+    ("You quoted 'my passport' well.", "did not say"),
+    ("You named Paris clearly.", "not in the answer"),
+    ("Good detail: you waited 3 hours.", "not in the answer"),  # 3, not 2
+    ("You explained very clearly and calmly all the details of your visa interview in Algiers today.", "more than 12"),
+])
+def test_generic_invented_or_mixed_praise_is_refused(praise, why):
+    problem = praise_problem(praise, ANSWER)
+    assert problem and why in problem
+
+
+def test_sanitize_keeps_a_good_praise_and_drops_a_bad_one():
+    base = {"reply": "OK.", "sentence_status": "orange", "corrections": [C]}
+    text = "I go to the US for study."
+    assert sanitize({**base, "praise": "Clear goal: you go to the US."}, None, text)["praise"] == "Clear goal: you go to the US."
+    assert sanitize({**base, "praise": "Good job!"}, None, text)["praise"] is None
+    assert sanitize({**base, "praise": 42}, None, text)["praise"] is None
+    assert sanitize(base, None, text)["praise"] is None
+
+
+def test_priority_follows_the_kept_corrections():
+    text = "Yesterday I go to the embassy and he have my papers."
+    go = {"original": "I go", "fixed": "I went", "type": "grammar", "why": "x"}
+    have = {"original": "he have", "fixed": "he has", "type": "grammar", "why": "x"}
+    invented = {"original": "my passport", "fixed": "the passport", "type": "grammar", "why": "x"}  # not in the text
+    base = {"reply": "OK.", "sentence_status": "orange"}
+    assert sanitize({**base, "corrections": [go, have], "priority_index": 1}, None, text)["priority_index"] == 1
+    out = sanitize({**base, "corrections": [invented, go, have], "priority_index": 2}, None, text)
+    assert [c["original"] for c in out["corrections"]] == ["I go", "he have"] and out["priority_index"] == 1
+    assert sanitize({**base, "corrections": [invented, go], "priority_index": 0}, None, text)["priority_index"] == 0
+    assert sanitize({**base, "corrections": [go], "priority_index": 7}, None, text)["priority_index"] == 0
+    AgentTurn.model_validate(out)
+
+
+def test_priority_must_point_at_a_correction():
+    with pytest.raises(ValidationError):
+        AgentTurn(reply="Good.", corrections=[C], sentence_status="orange", priority_index=1)
+    AgentTurn(reply="Good.", corrections=[], sentence_status="green", priority_index=0)
+
+
+def test_praise_quotes_with_an_ellipsis_and_names_in_quotes():
+    assert praise_problem("Good parallel: 'my father is... and my mother too.'", "My father is a teacher and my mother too.") is None
+    assert praise_problem("You included a clear detail: 'from Turkey'.", "He have a scholarship from Turkey.") is None
+
+
+def test_a_praise_never_quotes_the_mistake():
+    base = {"reply": "OK.", "sentence_status": "orange", "corrections": [C]}  # C fixes "for study"
+    assert sanitize({**base, "praise": "You included a clear purpose: 'for study'."}, None, "I go to the US for study.")["praise"] is None
+    assert sanitize({**base, "praise": "Clear goal: 'I go to the US'."}, None, "I go to the US for study.")["praise"] == "Clear goal: 'I go to the US'."
+
+
+def test_priority_follows_a_merged_correction():
+    # The model's priority (index 1, "study my master") is merged into the first fix: the merged one is the priority.
+    text = "I go to US for study my master in computer science and he have a car."
+    raw = {"reply": "OK.", "sentence_status": "orange", "priority_index": 1, "corrections": [
+        _fix("go to US for study", "go to the US to study"), _fix("study my master", "study for my master's"),
+        _fix("he have", "he has")]}
+    out = sanitize(raw, None, text)
+    assert [c["original"] for c in out["corrections"]] == ["go to US for study my master", "he have"]
+    assert out["priority_index"] == 0
+    raw["priority_index"] = 2
+    assert sanitize(raw, None, text)["priority_index"] == 1
