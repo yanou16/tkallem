@@ -8,15 +8,17 @@ import asyncio
 import io
 import logging
 import struct
-import time
 import uuid
 import wave
+from datetime import datetime, timezone
 from typing import AsyncGenerator
 from uuid import UUID
 
 from pipecat.audio.vad.silero import SileroVADAnalyzer
 from pipecat.audio.vad.vad_analyzer import VADParams
 from pipecat.frames.frames import (
+    BotStartedSpeakingFrame,
+    BotStoppedSpeakingFrame,
     Frame,
     InterruptionFrame,
     TextFrame,
@@ -25,14 +27,17 @@ from pipecat.frames.frames import (
     TTSStartedFrame,
     TTSStoppedFrame,
     UserStartedSpeakingFrame,
+    UserStoppedSpeakingFrame,
     VADUserStartedSpeakingFrame,
     VADUserStoppedSpeakingFrame,
 )
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
+from pipecat.processors.audio.vad_processor import VADProcessor
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
-from pipecat.processors.frameworks.rtvi import RTVIObserver, RTVIProcessor
+from pipecat.processors.frameworks.rtvi import RTVIProcessor
+from pipecat.services.settings import STTSettings
 from pipecat.services.stt_service import SegmentedSTTService
 from pipecat.transports.base_transport import TransportParams
 from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
@@ -100,7 +105,17 @@ class TkallemSTTService(SegmentedSTTService):
     """Segmented STT service leveraging the existing Tkallem transcribe() function."""
 
     def __init__(self, **kwargs):
-        super().__init__(sample_rate=16000, trailing_silence_secs=0.4, **kwargs)
+        super().__init__(
+            sample_rate=16000,
+            trailing_silence_secs=0.4,
+            settings=STTSettings(model=settings.stt_model, language="en"),
+            **kwargs,
+        )
+
+    async def cleanup(self):
+        """Stop the segment worker even when the transport closes abruptly."""
+        await self._cancel_segment_task()
+        await super().cleanup()
 
     async def run_stt(self, audio: bytes) -> AsyncGenerator[Frame, None]:
         if not audio or len(audio) < 1600:
@@ -117,7 +132,7 @@ class TkallemSTTService(SegmentedSTTService):
             yield TranscriptionFrame(
                 text=transcription.text.strip(),
                 user_id=getattr(self, "_user_id", "") or "student",
-                timestamp=time.time(),
+                timestamp=datetime.now(timezone.utc).isoformat(),
             )
         except Exception:
             logger.exception("TkallemSTTService transcription error")
@@ -150,11 +165,13 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
             return
         try:
             self._is_speaking = True
+            await self.push_frame(BotStartedSpeakingFrame())
             await self.push_frame(TTSStartedFrame())
             speech: Speech = await asyncio.to_thread(synthesize, text)
             audio_bytes = getattr(speech, "audio", None) or getattr(speech, "audio_bytes", None)
             if not speech or not audio_bytes:
                 await self.push_frame(TTSStoppedFrame())
+                await self.push_frame(BotStoppedSpeakingFrame())
                 self._is_speaking = False
                 return
 
@@ -181,9 +198,16 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
             logger.info("Speech playback cancelled (barge-in)")
         except Exception as exc:
             logger.error("Error during speech synthesis or streaming: %s", exc)
+            try:
+                await self.rtvi.send_server_message(
+                    {"type": "error", "code": "tts_error", "detail": f"Text-to-speech error: {exc}"}
+                )
+            except Exception:
+                pass
         finally:
             self._is_speaking = False
             await self.push_frame(TTSStoppedFrame())
+            await self.push_frame(BotStoppedSpeakingFrame())
 
     def interrupt_speech(self):
         """Cancels current speech streaming upon user barge-in."""
@@ -228,7 +252,7 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
                 "sentence_status": sentence_status,
                 "level": self.coach.level,
                 "explain_lang": self.coach.explain_lang,
-                "timestamp": time.time(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
             await self.rtvi.send_server_message(correction_payload)
         except Exception as exc:
@@ -242,12 +266,21 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
             if self._is_speaking:
                 self.interrupt_speech()
                 await self.push_frame(InterruptionFrame())
+            if isinstance(frame, VADUserStartedSpeakingFrame):
+                await self.push_frame(UserStartedSpeakingFrame())
+
+        elif isinstance(frame, VADUserStoppedSpeakingFrame):
+            await self.push_frame(UserStoppedSpeakingFrame())
 
         # Handle finalized speech-to-text
         elif isinstance(frame, TranscriptionFrame):
             text = frame.text.strip()
             if not text:
                 return
+
+            await self.rtvi.send_server_message(
+                {"type": "user_transcript", "text": text}
+            )
 
             # Check credits before generating turn
             try:
@@ -337,9 +370,8 @@ def build_voice_pipeline(
 ) -> tuple["PipelineRunner", "PipelineTask", "TkallemVoiceTurnProcessor"]:
     """Constructs the full Pipecat pipeline with SmallWebRTC, Silero VAD, STT, and RTVI.
 
-    The VAD analyzer is attached to the transport via ``audio_in_filter`` so that
-    SmallWebRTC emits ``VADUserStartedSpeakingFrame`` / ``VADUserStoppedSpeakingFrame``
-    frames into the pipeline automatically.
+    The Silero VAD analyzer is wrapped in ``VADProcessor`` inline in the pipeline
+    so that user speech start and stop events trigger ``SegmentedSTTService`` automatically.
     """
     vad = SileroVADAnalyzer(
         params=VADParams(
@@ -357,13 +389,12 @@ def build_voice_pipeline(
             audio_in_enabled=True,
             audio_in_sample_rate=16000,
             audio_out_sample_rate=16000,
-            audio_in_filter=vad,  # VAD runs inside the transport, not inline
         ),
     )
 
-    rtvi = RTVIProcessor(transport=transport)
-    rtvi_observer = RTVIObserver(rtvi=rtvi)
+    rtvi = RTVIProcessor()
 
+    vad_processor = VADProcessor(vad_analyzer=vad)
     stt = TkallemSTTService()
 
     processor = TkallemVoiceTurnProcessor(
@@ -374,11 +405,17 @@ def build_voice_pipeline(
         rtvi=rtvi,
     )
 
-    @rtvi.event_handler("on_client_ready")
-    async def on_client_ready(rtvi_proc):
-        logger.info("RTVI client is ready for session %s, sending bot-ready", session_id)
-        await rtvi_proc.set_bot_ready()
-        # Once client is ready, greet with opening question or continuation
+    greeted = False
+
+    async def greet(rtvi_proc):
+        nonlocal greeted
+        if greeted:
+            return
+        greeted = True
+        try:
+            await rtvi_proc.set_bot_ready()
+        except Exception as e:
+            logger.debug("set_bot_ready: %s", e)
         if not coach.turns and coach.opening:
             await rtvi_proc.send_server_message(
                 {"type": "bot_transcript", "text": coach.opening, "utterance_id": uuid.uuid4().hex}
@@ -391,10 +428,24 @@ def build_voice_pipeline(
             )
             asyncio.create_task(processor.speak_text(last_line))
 
+    @rtvi.event_handler("on_client_ready")
+    async def on_client_ready(rtvi_proc):
+        logger.info("RTVI client is ready for session %s, sending bot-ready", session_id)
+        await greet(rtvi_proc)
+
+    @transport.event_handler("on_client_connected")
+    async def on_client_connected(transport_obj, client_conn):
+        logger.info("WebRTC client connected for session %s", session_id)
+        async def fallback_ready():
+            await asyncio.sleep(0.5)
+            await greet(rtvi)
+        asyncio.create_task(fallback_ready())
+
     pipeline = Pipeline(
         [
             transport.input(),
             rtvi,
+            vad_processor,
             stt,
             processor,
             transport.output(),
@@ -405,9 +456,13 @@ def build_voice_pipeline(
         pipeline,
         params=PipelineParams(
             allow_interruptions=True,
-            observers=[rtvi_observer],
         ),
+        rtvi_processor=rtvi,
     )
 
-    runner = PipelineRunner()
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+    runner = PipelineRunner(loop=loop)
     return runner, task, processor

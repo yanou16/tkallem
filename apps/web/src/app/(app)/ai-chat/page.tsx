@@ -3,9 +3,10 @@ import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowDown, ChartNoAxesColumn, ChevronDown, ChevronRight, CircleAlert, Lightbulb, MessageCircle, Mic, MicOff, PhoneCall, PhoneOff, Send, Square, Volume2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
-import { useAiSession, useAnswer, useEndSession, useSpeakLastLine, useStartSession } from "@/features/ai-chat/hooks/useAiChat";
+import { aiSessionKey, useAiSession, useAnswer, useEndSession, useSpeakLastLine, useStartSession } from "@/features/ai-chat/hooks/useAiChat";
 import { CoachAvatar } from "@/components/CoachAvatar";
 import VoiceState, { formatTime, type CoachState } from "@/features/ai-chat/components/VoiceState";
 import { MAX_RECORDING_S, useVoiceRecorder, type Recording } from "@/features/ai-chat/hooks/useVoiceRecorder";
@@ -13,7 +14,7 @@ import { useCoachVoice } from "@/features/ai-chat/hooks/useCoachVoice";
 import { useRealtimeVoice } from "@/features/ai-chat/hooks/useRealtimeVoice";
 import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOfCredits";
 import { markSentence } from "@/features/ai-chat/lib/marks";
-import type { ChatMessage, Correction, SentenceStatus, SessionReport } from "@/features/ai-chat/types/ai";
+import type { AiSession, ChatMessage, Correction, SentenceStatus, SessionReport } from "@/features/ai-chat/types/ai";
 import { Avatar, Button, Card, EmptyState, PageHeader, Skeleton } from "@/components/ui";
 import { startHref } from "@/components/cards";
 import { ApiError } from "@/lib/api/client";
@@ -102,6 +103,7 @@ function Chat() {
   const params = useSearchParams();
   const sessionId = params.get("sessionId") ?? undefined;
   const urlScenarioId = params.get("scenarioId") ?? undefined;
+  const qc = useQueryClient();
   const { user, isGuest } = useCurrentUser();
   const scenarios = useScenarios();
   const start = useStartSession();
@@ -126,6 +128,12 @@ function Chat() {
   const send = useAnswer(sessionId, (url, reply) => coach.play(url, reply));
   const [text, setText] = useState("");
   const [pending, setPending] = useState<Pending | null>(null);
+  const [rtLive, setRtLive] = useState<{
+    transcript?: string;
+    reply?: string;
+    corrections?: Correction[];
+    status?: SentenceStatus;
+  } | null>(null);
   const [menu, setMenu] = useState(false);
   const started = useRef<string | null>(null);
   const lastRecording = useRef<Recording | null>(null);
@@ -135,13 +143,41 @@ function Chat() {
   const rtVoice = useRealtimeVoice({
     sessionId,
     onUserTranscript: (userText) => {
-      // live transcript event
+      setRtLive({ transcript: userText });
     },
-    onBotTranscript: () => {
-      session.refetch();
+    onBotTranscript: (botText) => {
+      setRtLive((prev) => ({ ...(prev ?? {}), reply: botText }));
     },
-    onCorrection: () => {
-      session.refetch();
+    onCorrection: (data) => {
+      setRtLive(null);
+      if (sessionId) {
+        qc.setQueryData<AiSession>(aiSessionKey(sessionId), (prev) => {
+          if (!prev) return prev;
+          const n = prev.messages.length;
+          const at = new Date().toISOString();
+          return {
+            ...prev,
+            messages: [
+              ...prev.messages,
+              {
+                id: `${prev.id}-${n}`,
+                role: "user",
+                content: data.original,
+                createdAt: at,
+                status: data.sentence_status,
+                corrections: data.corrections,
+              },
+              {
+                id: `${prev.id}-${n + 1}`,
+                role: "assistant",
+                content: data.reply,
+                createdAt: at,
+              },
+            ],
+          };
+        });
+        session.refetch();
+      }
     },
     onError: (err) => {
       setVoiceError(err.message);
@@ -151,6 +187,7 @@ function Chat() {
   const startCall = () => {
     setVoiceError(null);
     coach.stop();
+    setRtLive(null);
     void rtVoice.start().catch(() => undefined);
   };
 
@@ -173,11 +210,14 @@ function Chat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlScenarioId, sessionId]);
 
-  useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [s?.messages.length, pending, send.live?.reply]);
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ behavior: "smooth" });
+  }, [s?.messages.length, pending, send.live?.reply, rtLive?.transcript, rtLive?.reply]);
 
   /** A new session for this scenario, or for another one. */
   const restart = (id = scenarioId) => {
     setText("");
+    setRtLive(null);
     coach.stop();
     rtVoice.stop();
     send.reset();
@@ -306,7 +346,6 @@ function Chat() {
 
         {mode === "voice" && (
           <div className="mb-4">
-<<<<<<< HEAD
             <div className="mb-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <button
@@ -335,15 +374,12 @@ function Chat() {
                 </button>
                 {rtVoice.isConnected && (
                   <span className="flex items-center gap-1.5 rounded-full bg-mint-deep/20 px-2.5 py-1 text-[11px] font-medium text-ink">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-success" /> Connected · {formatTime(rtVoice.duration)}
+                    <span className="h-2 w-2 rounded-full animate-pulse bg-success" />
+                    Connected · {formatTime(rtVoice.duration)}
                   </span>
                 )}
               </div>
-              <button onClick={() => { coach.stop(); setAvatarOn((v) => !v); }} className="rounded-full border border-line px-3 py-1 text-xs font-semibold">{avatarOn ? "Hide 3D coach" : "Show 3D coach"}</button>
-=======
-            <div className="mb-2 flex justify-end">
               <button onClick={toggleAvatar} className="rounded-full border border-line px-3 py-1 text-xs font-semibold">{avatarOn ? "Hide 3D coach" : "Show 3D coach"}</button>
->>>>>>> a92f0ef010bfc701b4342f556c51a17e7f0e8a9e
             </div>
             <div className="rounded-card border border-line bg-white p-4">
               <div className="flex items-center gap-4">
@@ -351,7 +387,11 @@ function Chat() {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">Your AI tutor</p>
                   <p className="text-sm text-muted">
-                    {rtVoice.isConnecting ? "Requesting microphone and connecting…" : rtVoice.isConnected ? "Connected — speak naturally" : "Start a call to practice hands-free"}
+                    {rtVoice.isConnecting
+                      ? "Requesting microphone and connecting…"
+                      : rtVoice.isConnected
+                      ? "Connected — speak naturally"
+                      : "Start a call to practice hands-free"}
                   </p>
                   <div className="mt-3 flex h-8 items-center gap-1" aria-label="Microphone activity">
                     {Array.from({ length: 24 }).map((_, i) => {
@@ -397,6 +437,44 @@ function Chat() {
                   <div className="flex items-center gap-3">
                     <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-mint"><Icon name={icon ?? "briefcase"} /></span>
                     <VoiceState state="thinking" className="rounded-3xl bg-black/[0.05] px-5 py-4" />
+                  </div>
+                )}
+              </>
+            )}
+            {rtLive && (
+              <>
+                {rtLive.transcript && (
+                  <Bubble
+                    m={{
+                      id: "rt-pending-user",
+                      role: "user",
+                      content: rtLive.transcript,
+                      corrections: rtLive.corrections,
+                      status: rtLive.status,
+                    }}
+                    icon={icon}
+                    user={user}
+                  />
+                )}
+                {rtLive.reply ? (
+                  <Bubble
+                    m={{
+                      id: "rt-pending-reply",
+                      role: "assistant",
+                      content: rtLive.reply,
+                    }}
+                    icon={icon}
+                    user={user}
+                  />
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-mint">
+                      <Icon name={icon ?? "briefcase"} />
+                    </span>
+                    <VoiceState
+                      state={rtVoice.state === "speaking" ? "speaking" : "thinking"}
+                      className="rounded-3xl bg-black/[0.05] px-5 py-4"
+                    />
                   </div>
                 )}
               </>

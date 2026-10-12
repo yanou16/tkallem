@@ -7,7 +7,8 @@ import { MY_SESSIONS_KEY } from "@/features/practice/hooks/usePractice";
 import { ACHIEVEMENTS_KEY } from "@/features/profile/hooks/useProfile";
 import type { AiSession, Turn } from "../types/ai";
 
-const key = (id?: string) => ["ai-session", id] as const;
+export const aiSessionKey = (id?: string) => ["ai-session", id] as const;
+const key = aiSessionKey;
 
 /** Adds one turn: the student's answer (with its status and corrections), then the coach reply. */
 export function addTurn(session: AiSession, turn: Turn, at = new Date().toISOString()): AiSession {

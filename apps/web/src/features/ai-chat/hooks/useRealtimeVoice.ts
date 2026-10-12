@@ -31,13 +31,22 @@ export function useRealtimeVoice({
   const [state, setState] = useState<CoachState>("idle");
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isWebRTCConnected, setIsWebRTCConnected] = useState(false);
+  const [isAgentReady, setIsAgentReady] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
   const [duration, setDuration] = useState(0);
   const clientRef = useRef<PipecatClient | null>(null);
   const connectedAt = useRef<number | null>(null);
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
 
   const stop = useCallback(async () => {
+    if (audioElementRef.current) {
+      audioElementRef.current.pause();
+      audioElementRef.current.srcObject = null;
+      audioElementRef.current.remove();
+      audioElementRef.current = null;
+    }
     if (clientRef.current) {
       try {
         await clientRef.current.disconnect();
@@ -48,6 +57,8 @@ export function useRealtimeVoice({
     }
     setIsConnected(false);
     setIsConnecting(false);
+    setIsWebRTCConnected(false);
+    setIsAgentReady(false);
     setIsMuted(false);
     setAudioLevel(0);
     connectedAt.current = null;
@@ -63,6 +74,20 @@ export function useRealtimeVoice({
 
     try {
       setIsConnecting(true);
+      setIsWebRTCConnected(false);
+      setIsAgentReady(false);
+
+      // Initialize audio element during user gesture
+      if (typeof document !== "undefined") {
+        if (!audioElementRef.current) {
+          const el = document.createElement("audio");
+          el.autoplay = true;
+          (el as any).playsInline = true;
+          document.body.appendChild(el);
+          audioElementRef.current = el;
+        }
+      }
+
       const authHeader = await getAuthHeaderValue();
 
       const headers = new Headers();
@@ -83,17 +108,69 @@ export function useRealtimeVoice({
         enableCam: false,
       });
 
+      const playTrack = (track: MediaStreamTrack) => {
+        try {
+          if (!audioElementRef.current && typeof document !== "undefined") {
+            const el = document.createElement("audio");
+            el.autoplay = true;
+            (el as any).playsInline = true;
+            document.body.appendChild(el);
+            audioElementRef.current = el;
+          }
+          if (audioElementRef.current) {
+            audioElementRef.current.srcObject = new MediaStream([track]);
+            audioElementRef.current.play().catch((err) => {
+              console.warn("[RealtimeVoice] Audio playback error:", err);
+            });
+          }
+        } catch (e) {
+          console.warn("[RealtimeVoice] Failed to attach audio track:", e);
+        }
+      };
+
+      const checkBotTracks = () => {
+        try {
+          const botAudioTrack = client.tracks()?.bot?.audio;
+          if (botAudioTrack) {
+            playTrack(botAudioTrack);
+          }
+        } catch {}
+      };
+
       client.on(RTVIEvent.Connected, () => {
         setIsConnected(true);
         setIsConnecting(false);
+        setIsWebRTCConnected(true);
+        setIsAgentReady(true);
         connectedAt.current = performance.now();
         setDuration(0);
         setState("idle");
+        checkBotTracks();
+      });
+
+      client.on(RTVIEvent.BotReady, () => {
+        setIsAgentReady(true);
+        setIsConnected(true);
+        setIsConnecting(false);
+        checkBotTracks();
+      });
+
+      client.on(RTVIEvent.TrackStarted, (track: MediaStreamTrack, participant?: any) => {
+        if (participant?.local || track.kind !== "audio") return;
+        playTrack(track);
+      });
+
+      client.on(RTVIEvent.TrackStopped, (track: MediaStreamTrack, participant?: any) => {
+        if (!participant?.local && track.kind === "audio" && audioElementRef.current) {
+          audioElementRef.current.srcObject = null;
+        }
       });
 
       client.on(RTVIEvent.Disconnected, () => {
         setIsConnected(false);
         setIsConnecting(false);
+        setIsWebRTCConnected(false);
+        setIsAgentReady(false);
         setIsMuted(false);
         setAudioLevel(0);
         connectedAt.current = null;
@@ -136,7 +213,9 @@ export function useRealtimeVoice({
       });
 
       client.on(RTVIEvent.ServerMessage, (data: any) => {
-        if (data?.type === "correction" && onCorrection) {
+        if (data?.type === "user_transcript" && onUserTranscript) {
+          onUserTranscript(data.text);
+        } else if (data?.type === "correction" && onCorrection) {
           onCorrection(data);
         } else if (data?.type === "error") {
           const detail = data.detail ?? data.message ?? data.code ?? "The live voice session failed.";
@@ -163,6 +242,8 @@ export function useRealtimeVoice({
       }
       setIsConnecting(false);
       setIsConnected(false);
+      setIsWebRTCConnected(false);
+      setIsAgentReady(false);
       setState("idle");
       const error = err instanceof Error ? err : new Error(String(err));
       onError?.(error);
@@ -200,6 +281,8 @@ export function useRealtimeVoice({
     state,
     isConnected,
     isConnecting,
+    isWebRTCConnected,
+    isAgentReady,
     isMuted,
     audioLevel,
     duration,

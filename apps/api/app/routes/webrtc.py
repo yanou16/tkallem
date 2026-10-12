@@ -50,13 +50,33 @@ async def handle_webrtc_offer(
 
     async def on_connection(webrtc_connection: SmallWebRTCConnection):
         logger.info(f"Establishing WebRTC voice session {session_id} for user {user['id']}")
-        runner, task, processor = build_voice_pipeline(
-            webrtc_connection=webrtc_connection,
-            session_id=session_id,
-            user=user,
-            coach=coach,
-            connect=connect,
-        )
+
+        # Cancel any stale pipeline task from a previous connection attempt for this session.
+        # Without this, the old pipeline may send peerLeft to the new WebRTC connection.
+        existing_task = _active_sessions.pop(session_id, None)
+        if existing_task and not existing_task.done():
+            logger.info(f"Cancelling stale pipeline task for session {session_id}")
+            existing_task.cancel()
+            try:
+                await asyncio.wait_for(asyncio.shield(existing_task), timeout=2.0)
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                pass
+
+        try:
+            runner, task, processor = build_voice_pipeline(
+                webrtc_connection=webrtc_connection,
+                session_id=session_id,
+                user=user,
+                coach=coach,
+                connect=connect,
+            )
+        except Exception as e:
+            logger.exception(f"Failed to build voice pipeline for session {session_id}: {e}")
+            webrtc_connection.send_app_message(
+                {"type": "error", "code": "pipeline_init_error", "detail": f"Voice pipeline initialization failed: {e}"}
+            )
+            asyncio.create_task(webrtc_connection.disconnect())
+            raise
 
         async def run_session():
             try:
@@ -65,6 +85,9 @@ async def handle_webrtc_offer(
                 logger.info(f"Voice session {session_id} cancelled")
             except Exception as e:
                 logger.exception(f"Error running voice session {session_id}: {e}")
+                webrtc_connection.send_app_message(
+                    {"type": "error", "code": "session_error", "detail": f"Voice session error: {e}"}
+                )
             finally:
                 _active_sessions.pop(session_id, None)
 
