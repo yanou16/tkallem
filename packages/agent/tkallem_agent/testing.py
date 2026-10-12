@@ -4,7 +4,8 @@
     llm = FakeChat(found=[{"corrections": []}], replies=[{"reaction": "Good.", "goal_covered": None}], text=["note"])
     session = CoachSession("visa-us", "B1", llm=llm)
 
-Structured calls are answered from one queue per schema (`found` for the corrector, `replies` for the coach), so the
+Structured calls are answered from one queue per schema (`found` for the corrector, `replies` for the coach,
+`starters` and `english` for "Help me start"), so the
 parallel corrector and coach calls get the right answer in any order. An `Exception` in a queue is raised instead of
 returned. `text` answers plain calls (the report note), `delay` slows every structured call, `calls` and `seen` record
 what the agent did."""
@@ -15,8 +16,9 @@ from types import SimpleNamespace
 
 
 class FakeChat:
-    def __init__(self, found=None, replies=None, text=None, delay=0.0):
-        self.queues = {"Found": list(found or []), "Reply": list(replies or [])}
+    def __init__(self, found=None, replies=None, text=None, delay=0.0, starters=None, english=None):
+        self.queues = {"Found": list(found or []), "Reply": list(replies or []),
+                       "Starters": list(starters or []), "English": list(english or [])}
         self.text = list(text or [])
         self.delay = delay
         self.calls: Counter = Counter()

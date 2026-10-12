@@ -24,6 +24,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 
 from .graph import CLOSING, build_graph, compose_reply, final_corrections
+from .hints import Hint, HintError, starter_hint, translation_hint
 from .levels import MAX_WORDS
 from .llm import default_llm
 from .report import Report, TurnRecord, build_report
@@ -191,6 +192,35 @@ class CoachSession:
         )
         self.last_timings = timings
         yield {"type": "done", "turn": turn, "timings": timings}
+
+    def current_question(self) -> tuple[int | None, str] | None:
+        """The question the student is answering now, as (its index in the scenario, its text); None once the
+        interview is over. Free talk: the coach's last line, with no index."""
+        last = str(self.history()[-1].content)
+        if self.scenario.mode == "free":
+            return None, last
+        if self.finished:
+            return None
+        asked = [(i, q) for i, q in enumerate(self.scenario.questions) if q in last]
+        return asked[-1] if asked else None
+
+    def hint(self, kind: str, text: str | None = None) -> Hint:
+        """"Help me start" on the current question (docs/JURY_BRIEF.md, improvement 1): kind "starter" gives the
+        first words of an answer, kind "translate" turns the student's idea (French or Darija) into English. The code
+        checks what the model proposes and falls back to the scenario's starter (see hints.py)."""
+        current = self.current_question()
+        if current is None:
+            raise HintError("the interview is over: no question to help with")
+        index, question = current
+        config = self._tracing("hint")
+        if kind == "starter":
+            sc = self.scenario
+            context = " ".join([sc.title, sc.description, sc.coach_role, *sc.questions])
+            return starter_hint(self.llm, question, self.level, sc.starters, index, config, context)
+        if kind == "translate":
+            idea = self._clean_input(text or "", None)  # same limits as an answer
+            return translation_hint(self.llm, idea, question, self.level, self.scenario.starters, index, config)
+        raise HintError(f"unknown hint type {kind!r}: expected 'starter' or 'translate'")
 
     def turn(self, student_text: str, audio_seconds: float | None = None, pauses: int = 0) -> AgentTurn:
         """One student answer in, the full coach turn out (reply + corrections + status), as in the contract."""
