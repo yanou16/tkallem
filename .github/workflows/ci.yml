@@ -125,7 +125,7 @@ jobs:
           LLM_FALLBACKS: ""
         run: |
           if [ -z "$OPENROUTER_API_KEY" ]; then echo "::error::The agent changed but the OPENROUTER_API_KEY secret is missing: evals cannot run."; exit 1; fi
-          pip install -r apps/api/requirements.txt
+          (cd apps/api && pip install -r requirements.txt)   # requirements.txt points to ../../packages/agent
           cd packages/agent && python evals/gate.py
 
   ok:
