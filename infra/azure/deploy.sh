@@ -10,13 +10,20 @@
 set -euo pipefail
 
 RG="${RG:-tkallem}"
-LOCATION="${LOCATION:-eastus2}"          # next to Neon (AWS us-east-2, Ohio); any US East region is fine
+# Our Azure for Students subscription only allows Sweden, Germany West Central, Belgium, Spain and Norway.
+# Frankfurt: next to the Neon database (AWS eu-central-1, Frankfurt), about 40 ms from Algiers.
+LOCATION="${LOCATION:-germanywestcentral}"
 PLAN="${PLAN:-tkallem-plan}"
 APP="${APP:?set APP to a globally unique name, e.g. APP=tkallem-api-rayane}"
 IMAGE="${IMAGE:-ghcr.io/yanou16/tkallem-api:latest}"
 ENV_FILE="${ENV_FILE:-$(dirname "$0")/api.env}"
 
 [ -f "$ENV_FILE" ] || { echo "Missing $ENV_FILE: copy api.env.example and fill it in." >&2; exit 1; }
+
+echo "== App Service provider (registered once per subscription)"
+if [ "$(az provider show -n Microsoft.Web --query registrationState -o tsv)" != "Registered" ]; then
+  az provider register -n Microsoft.Web --wait
+fi
 
 echo "== Resource group and plan"
 az group create -n "$RG" -l "$LOCATION" -o none

@@ -2,9 +2,9 @@
 
 | Part | Where | Cost |
 |---|---|---|
-| API (FastAPI, `apps/api`) | Azure App Service, Linux container, plan **B1**, region East US 2 | about 13 $/month, from the Azure for Students credit |
+| API (FastAPI, `apps/api`) | Azure App Service, Linux container, plan **B1**, region Germany West Central (Frankfurt) | about 13 $/month, from the Azure for Students credit |
 | Front (Next.js, `apps/web`) | Vercel, Hobby plan | free |
-| Database | Neon (Ohio), a production branch | free plan |
+| Database | Neon, project in AWS eu-central-1 (Frankfurt), next to the API | free plan |
 | Sign-in | Clerk | free plan |
 | Language models, voice | OpenRouter, Groq, DeepInfra (pay as you go) | a few dollars, capped by `DAILY_SPEND_CAP` |
 
@@ -24,7 +24,9 @@ The API is shipped as a Docker image (`apps/api/Dockerfile`, built from the repo
 
 ## 2. The production database
 
-In Neon, create a branch `production` (or a new project in AWS US East 2). Copy its **direct** connection string
+Our Azure for Students subscription only allows European regions (Sweden, Germany West Central, Belgium, Spain,
+Norway), so the API runs in Frankfurt and the production database must be there too: every answer makes several
+database round trips. In Neon, create a project in **AWS Europe Central 1 (Frankfurt)**. Copy its **direct** connection string
 (not the `-pooler` one), ending with `?sslmode=require`. Tables are created by the container at start
 (`RUN_MIGRATIONS=1` runs `alembic upgrade head`).
 
@@ -42,7 +44,7 @@ check, copies `api.env` into the app settings (with `WEBSITES_PORT=8000`, `FORWA
 profile. It can be run again after any change to `api.env`.
 
 Without the command line, the same in the portal: Create a resource > Web App > Publish **Container**, Linux,
-East US 2, plan Basic B1 > Container: image source "Other container registries", `ghcr.io/yanou16/tkallem-api:latest`.
+Germany West Central, plan Basic B1 > Container: image source "Other container registries", `ghcr.io/yanou16/tkallem-api:latest`.
 Then Settings > Environment variables: everything in `api.env` plus `WEBSITES_PORT=8000` and `FORWARDED_HOPS=1`;
 Configuration > General settings: Always On on, HTTPS only; Monitoring > Health check: `/health`.
 
