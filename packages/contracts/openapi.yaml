@@ -169,6 +169,45 @@ paths:
         "404": { description: Session not found (or not this student's) }
         "409": { description: Session already ended }
         "429": { description: The coach already repeated this many times in this session }
+  /sessions/{id}/hint:
+    post:
+      summary: '"Help me start" on the current question: the first words of an answer, or the student''s idea in English'
+      description: |
+        Free (no credit), at most 2 per question and 30 per hour per student. `starter` gives 1 or 2 openings that stop
+        before the content; `translate` turns `text` (French or Darija) into English to read aloud. Both are checked by
+        code; when the model's proposal is refused or the provider fails, the scenario's own starter comes back with
+        `fallback: true` (and `kind: starter`, even for a translation).
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [type]
+              properties:
+                type: { type: string, enum: [starter, translate] }
+                text: { type: [string, "null"], maxLength: 2000, description: "translate only: the idea in French or Darija" }
+      responses:
+        "200":
+          description: The hint
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [kind, lines, fallback, remaining]
+                properties:
+                  kind: { type: string, enum: [starter, translation] }
+                  lines: { type: array, minItems: 1, maxItems: 2, items: { type: string }, description: "starters are shown followed by …" }
+                  fallback: { type: boolean }
+                  remaining: { type: integer, description: Hints left for this question }
+        "401": { description: Missing or invalid token }
+        "404": { description: Session not found (or not this student's) }
+        "409": { description: Session already ended, or the interview is over }
+        "422": { description: Unknown type, or `translate` without text }
+        "429": { description: 2 hints already for this question, or too many in the last hour }
   /sessions/{id}/turn:
     post:
       summary: Send one student turn (audio file or text)

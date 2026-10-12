@@ -1,12 +1,14 @@
 import json
 import logging
+import time
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import StreamingResponse
 from psycopg import Connection
-from tkallem_agent import AgentError, CoachSession, ScenarioNotFound
+from tkallem_agent import AgentError, CoachSession, HintError, ScenarioNotFound
 
 from app import credits
 from app.config import settings
@@ -21,7 +23,9 @@ from app.db.sessions import (
     set_session_mode,
 )
 from app.dependencies import get_current_user, user_for_claims
-from app.schemas.sessions import SessionCreate, SessionDetail, SessionReport, SessionStarted, Spoken, TurnResult
+from app.schemas.sessions import (
+    HintRequest, HintResult, SessionCreate, SessionDetail, SessionReport, SessionStarted, Spoken, TurnResult,
+)
 from app.security import ClerkClaims, get_clerk_claims
 from app.voice import SttError, TtsError, run_turn, stream_turn, synthesize, transcribe
 
@@ -29,6 +33,10 @@ logger = logging.getLogger(__name__)
 _PRE = ThreadPoolExecutor(max_workers=32, thread_name_prefix="tkallem-turn")  # credit + transcription in parallel
 SPEAK_LIMIT = 6  # voice replays per session and per process: each one is a paid TTS request with a daily quota
 _speak_calls: dict[UUID, int] = {}
+HINT_LIMIT = 2  # hints per question (docs/JURY_BRIEF.md): help to start, not to answer
+HINTS_PER_HOUR = 30  # per student and per process: hints are free for the student but each is a paid model call
+_hint_calls: dict[tuple[UUID, int], int] = {}
+_hint_times: dict[str, deque] = {}
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -266,6 +274,55 @@ def speak_last_line(
         logger.warning("Speak without audio on session %s: %s", session_id, exc)
         audio_url = None
     return {"text": text, "audio_url": audio_url}
+
+
+def _hint_rate_ok(user_key: str, now: float) -> bool:
+    times = _hint_times.setdefault(user_key, deque())
+    while times and now - times[0] > 3600:
+        times.popleft()
+    if len(times) >= HINTS_PER_HOUR:
+        return False
+    times.append(now)
+    return True
+
+
+@router.post("/{session_id}/hint", response_model=HintResult)
+def ask_hint(
+    session_id: UUID,
+    body: HintRequest,
+    user: dict = Depends(get_current_user),
+    connect: ConnFactory = Depends(get_conn_factory),
+    llm=Depends(get_llm),
+) -> dict:
+    """"Help me start" on the question the student is answering: the first words of an answer (`starter`), or their
+    idea in French or Darija turned into English (`translate`). Free (no credit), at most HINT_LIMIT per question."""
+    with connect() as conn:
+        session = get_session_for_user(conn, session_id, user["id"])
+    if session is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    if session["ended_at"] is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
+    if body.type == "translate" and not (body.text or "").strip():
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Write your idea in French or Darija first")
+    coach = CoachSession.from_state(session["state"], llm=llm, max_text_chars=settings.max_text_chars)
+    if coach.current_question() is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "The interview is over: no question to help with")
+    key = (session_id, len(coach.turns))  # a new question (or the same one asked again) after each answer
+    used = _hint_calls.get(key, 0)
+    if used >= HINT_LIMIT:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "You had 2 hints for this question: try to answer, even with a short sentence")
+    if not _hint_rate_ok(str(user["id"]), time.monotonic()):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many hints in the last hour: try to answer on your own")
+    _hint_calls[key] = used + 1
+    try:
+        hint = coach.hint(body.type, body.text)  # never fails on a provider error: the scenario's starter instead
+    except HintError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc))
+    except ValueError as exc:  # translate: text too long for an answer
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc))
+    except AgentError:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Hints are unavailable right now")
+    return {**hint.model_dump(), "remaining": HINT_LIMIT - used - 1}
 
 
 @router.post("/{session_id}/turn", response_model=TurnResult)
