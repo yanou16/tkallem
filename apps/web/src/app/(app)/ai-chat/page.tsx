@@ -10,6 +10,7 @@ import { CoachAvatar } from "@/components/CoachAvatar";
 import InstallButton from "@/components/InstallButton";
 import VoiceState, { formatTime, type CoachState } from "@/features/ai-chat/components/VoiceState";
 import HelpMeStart from "@/features/ai-chat/components/HelpMeStart";
+import SayItAgain from "@/features/ai-chat/components/SayItAgain";
 import { MAX_RECORDING_S, useVoiceRecorder, type Recording } from "@/features/ai-chat/hooks/useVoiceRecorder";
 import { useCoachVoice } from "@/features/ai-chat/hooks/useCoachVoice";
 import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOfCredits";
@@ -132,6 +133,7 @@ function Chat() {
   const lastRecording = useRef<Recording | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
   const answerField = useRef<HTMLInputElement>(null);
+  const [nailed, setNailed] = useState<Set<string>>(() => new Set()); // answers said again correctly
   const rec = useVoiceRecorder({ onAutoStop: (r) => r && sendRecording(r) });
 
   const begin = (id: string) => {
@@ -236,8 +238,14 @@ function Chat() {
   } else if (!s) {
     body = <div className="space-y-4"><Skeleton className="h-20 w-2/3" /><Skeleton className="ml-auto h-20 w-2/3" /></div>;
   } else {
+    const answerIndex = new Map(s.messages.filter((m) => m.role === "user").map((m, i) => [m.id, i]));
     body = s.messages.map((m) => (
-      <Bubble key={m.id} m={m} icon={icon} tint={tint} user={user} onListen={m.role === "assistant" ? () => coach.play(m.audioUrl, m.content) : undefined} />
+      <Bubble key={m.id} m={m} icon={icon} tint={tint} user={user} nailed={nailed.has(m.id)}
+        onListen={m.role === "assistant" ? () => coach.play(m.audioUrl, m.content) : undefined}
+        sayItAgain={m.role === "user" && sessionId && m.corrections?.length ? (
+          <SayItAgain sessionId={sessionId} turn={answerIndex.get(m.id) ?? 0} disabled={rec.isRecording || send.isPending}
+            onStart={() => coach.stop()} onNailed={() => setNailed((prev) => new Set(prev).add(m.id))} />
+        ) : undefined} />
     ));
   }
 
@@ -417,7 +425,10 @@ function StatusPill({ status, label }: { status: SentenceStatus; label: string }
   return <span className={cn("inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-semibold", STATUS_STYLE[status])}>{label}</span>;
 }
 
-function Bubble({ m, icon, tint, user, onListen }: { m: ChatMessage; icon?: string; tint?: string; user?: ReturnType<typeof useCurrentUser>["user"]; onListen?: () => void }) {
+function Bubble({ m, icon, tint, user, onListen, sayItAgain, nailed }: {
+  m: ChatMessage; icon?: string; tint?: string; user?: ReturnType<typeof useCurrentUser>["user"]; onListen?: () => void;
+  sayItAgain?: ReactNode; nailed?: boolean;
+}) {
   const mine = m.role === "user";
   const time = m.createdAt && new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   return (
@@ -428,8 +439,11 @@ function Bubble({ m, icon, tint, user, onListen }: { m: ChatMessage; icon?: stri
           {m.pending && <Mic size={16} aria-hidden />}{m.content}
         </p>
         {mine && !m.pending && m.corrections && m.corrections.length > 0 && <InlineCorrection text={m.content} corrections={m.corrections} />}
+        {mine && !m.pending && sayItAgain}
         <div className={cn("mt-1 flex items-center gap-2", mine && "justify-end")}>
-          {m.status && <StatusPill status={m.status} label={answerLabel(m.status, m.corrections?.length ?? 0)} />}
+          {m.status && (nailed
+            ? <StatusPill status="green" label="Nailed it" />
+            : <StatusPill status={m.status} label={answerLabel(m.status, m.corrections?.length ?? 0)} />)}
           {time && <span className="text-xs text-muted">{time}</span>}
           {onListen && (
             <button onClick={onListen} className="relative inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs text-muted hover:bg-black/5 after:absolute after:-inset-3 after:content-['']" aria-label="Listen to this line">
