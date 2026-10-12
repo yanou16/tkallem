@@ -39,7 +39,7 @@ export default function ContinueSignUpPage() {
         {error ? (
           <div className="space-y-3">
             <FormError message={error} />
-            <Link href="/sign-up" className="text-[13px] font-medium text-[#5b3fd6] hover:underline">Back to sign up</Link>
+            <Link href="/sign-up" className="text-[13px] font-medium text-ink underline underline-offset-2">Back to sign up</Link>
           </div>
         ) : (
           <p className="text-sm text-[#6b6b75]">Signing you in…</p>

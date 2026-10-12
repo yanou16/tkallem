@@ -13,7 +13,7 @@ export default function CreditsPill() {
   const pill = (
     <span
       className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold",
-        low ? "border-amber-300 bg-amber-50 text-amber-800" : "border-line bg-white text-ink")}
+        low ? "border-[color:var(--warn)] bg-[color:var(--warn-bg)] text-[color:var(--warn)]" : "border-line bg-white text-ink")}
       title={isGuest ? "Sign up to get 60 more credits and new ones every day" : "1 credit = 1 answer. New credits arrive every day."}
     >
       <Zap size={15} strokeWidth={2} aria-hidden /> {data.balance} <span className="font-normal text-muted">credits</span>

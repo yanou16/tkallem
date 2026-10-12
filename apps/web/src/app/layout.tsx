@@ -1,18 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Figtree } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 import PwaRegister from "@/components/PwaRegister";
 import InstallPrompt from "@/components/InstallPrompt";
 
-const font = Plus_Jakarta_Sans({
+const font = Figtree({ // DESIGN.md: one family everywhere
   subsets: ["latin"],
   variable: "--font-sans",
 });
 
 export const metadata: Metadata = {
   title: "Tkallem",
-  description: "Learn a language through real conversations.",
+  description: "Rehearse your interview in English: an AI coach that corrects every sentence and explains it in French.",
   applicationName: "Tkallem",
   appleWebApp: { capable: true, title: "Tkallem", statusBarStyle: "default" },
   icons: {
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#FFC93C",
+  themeColor: "#FFD02F",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover", // the app draws under the iPhone notch: safe areas are handled in CSS
