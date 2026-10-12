@@ -260,7 +260,8 @@ def build_graph(llm: BaseChatModel):
             except Exception as e:  # invalid JSON, runaway output, provider error: same as an unusable reply
                 raw = None
                 problem = f"no usable output ({type(e).__name__}). {RETRY_COMPACT}"
-            hard = reply_problem(raw) if raw is not None else problem
+            # raw is None without an error when the provider answers without the structured output: unusable too
+            hard = problem if raw is None and problem else reply_problem(raw)
             soft = None if hard else reaction_problem(raw["reaction"], level)
             if not hard and (not soft or attempt == MAX_RETRIES):
                 timings = {"coach": time.perf_counter() - t0, "coach_attempts": attempt + 1}
