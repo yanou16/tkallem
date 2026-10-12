@@ -1,11 +1,11 @@
 "use client";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { endSession, getSession, sendAnswer, speakLastLine, startSession, streamAnswer, type AnswerInput, type LiveTurn } from "../api/ai";
+import { askHint, endSession, getSession, sendAnswer, speakLastLine, startSession, streamAnswer, type AnswerInput, type LiveTurn } from "../api/ai";
 import { CREDITS_KEY } from "@/features/credits/hooks/useCredits";
 import { MY_SESSIONS_KEY } from "@/features/practice/hooks/usePractice";
 import { ACHIEVEMENTS_KEY } from "@/features/profile/hooks/useProfile";
-import type { AiSession, Turn } from "../types/ai";
+import type { AiSession, HintRequestDto, Turn } from "../types/ai";
 
 const key = (id?: string) => ["ai-session", id] as const;
 
@@ -112,3 +112,7 @@ export const useSpeakLastLine = (sessionId?: string) => {
       }),
   });
 };
+
+/** "Help me start" on the current question: free, at most 2 per question (the API answers 429 after that). */
+export const useHint = (sessionId?: string) =>
+  useMutation({ mutationFn: (body: HintRequestDto) => askHint(sessionId!, body) });

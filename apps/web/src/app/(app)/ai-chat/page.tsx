@@ -9,6 +9,7 @@ import { useAiSession, useAnswer, useEndSession, useSpeakLastLine, useStartSessi
 import { CoachAvatar } from "@/components/CoachAvatar";
 import InstallButton from "@/components/InstallButton";
 import VoiceState, { formatTime, type CoachState } from "@/features/ai-chat/components/VoiceState";
+import HelpMeStart from "@/features/ai-chat/components/HelpMeStart";
 import { MAX_RECORDING_S, useVoiceRecorder, type Recording } from "@/features/ai-chat/hooks/useVoiceRecorder";
 import { useCoachVoice } from "@/features/ai-chat/hooks/useCoachVoice";
 import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOfCredits";
@@ -130,6 +131,7 @@ function Chat() {
   const started = useRef<string | null>(null);
   const lastRecording = useRef<Recording | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
+  const answerField = useRef<HTMLInputElement>(null);
   const rec = useVoiceRecorder({ onAutoStop: (r) => r && sendRecording(r) });
 
   const begin = (id: string) => {
@@ -219,6 +221,7 @@ function Chat() {
   const barState: CoachState = coachState === "thinking" && pending ? "idle" : coachState; // "Thinking…" already shows in the chat
 
   const answers = s?.messages.filter((m) => m.role === "user") ?? [];
+  const lastCoachLine = [...(s?.messages ?? [])].reverse().find((m) => m.role === "assistant");
   const last = answers[answers.length - 1];
   const creditProblem = send.error && isCreditError(send.error) ? (send.error as ApiError) : null;
   const problem = send.error && !creditProblem ? answerHelp(send.error) : end.error ? endHelp(end.error) : null;
@@ -348,6 +351,11 @@ function Chat() {
                   )}
                 </div>
               )}
+              {sessionId && s && (
+                <HelpMeStart sessionId={sessionId} questionKey={lastCoachLine?.id ?? "start"} typing={text.trim().length > 0}
+                  recording={rec.isRecording} busy={coachState === "thinking" || coachState === "speaking" || !!pending}
+                  onUse={(t) => { setText(t); answerField.current?.focus(); }} />
+              )}
               <div className="flex items-center gap-3 p-3 sm:p-4">
                 <div className="flex flex-col items-center">
                   <button onClick={toggleMic} disabled={!s || send.isPending} aria-label={rec.isRecording ? "Stop and send" : "Answer by voice"}
@@ -360,7 +368,7 @@ function Chat() {
                   <VoiceState state="listening" seconds={rec.seconds} className="flex-1" />
                 ) : (
                   <div className="flex-1">
-                    <input value={text} maxLength={MAX} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()}
+                    <input ref={answerField} value={text} maxLength={MAX} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()}
                       disabled={!s || send.isPending} aria-label="Your answer" placeholder="Type here"
                       className="w-full rounded-full border border-line px-3.5 py-3.5 outline-none focus:border-ink disabled:bg-black/[0.03]" />
                     <p className="mt-1 text-right text-xs text-muted">{text.length} / {MAX}</p>

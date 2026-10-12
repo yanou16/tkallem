@@ -2,7 +2,7 @@ import { ApiError, api, apiStream } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
 import { mapMetrics } from "@/features/progress/api/progress";
 import type {
-  AiSession, ChatMessage, ReportLine, ReportLineDto, SessionDetailDto, SessionReport, SessionReportDto, SessionStarted,
+  AiSession, ChatMessage, HintDto, HintRequestDto, ReportLine, ReportLineDto, SessionDetailDto, SessionReport, SessionReportDto, SessionStarted,
   SessionStartedDto, SpokenDto, StartSessionDto, Turn, TurnDto,
 } from "../types/ai";
 
@@ -122,3 +122,5 @@ export async function streamAnswer(
 }
 
 export const speakLastLine = (sessionId: string) => api.post<SpokenDto>(endpoints.ai.speak(sessionId));
+
+export const askHint = (sessionId: string, body: HintRequestDto) => api.post<HintDto>(endpoints.ai.hint(sessionId), body);
