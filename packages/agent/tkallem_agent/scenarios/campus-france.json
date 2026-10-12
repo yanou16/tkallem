@@ -33,5 +33,13 @@
     "tuition fees",
     "accommodation",
     "sponsor"
+  ],
+  "starters": [
+    "My name is",
+    "I applied to a master's programme in",
+    "This programme builds on my previous studies in",
+    "I chose France because",
+    "My stay in France will be financed by",
+    "After this master's, I would like to"
   ]
 }

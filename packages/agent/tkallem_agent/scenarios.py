@@ -35,6 +35,9 @@ class Scenario(BaseModel):
     goals: list[str] = []
     useful_words: list[str] = []
     skippable: list[str] = []  # goal ids the coach may skip when the student's answer makes them meaningless
+    # "Help me start" fallback, written by the team: one starter per question (guided), or general ones (free talk).
+    # Each must pass the same code check as the model's starters (hints.starter_problem).
+    starters: list[str] = []
 
     @model_validator(mode="after")
     def coherent(self):
@@ -49,6 +52,8 @@ class Scenario(BaseModel):
                 raise ValueError("the first question cannot be skipped")
             if not set(self.skippable) <= set(self.goals):
                 raise ValueError("skippable ids must be goal ids")
+            if self.starters and len(self.starters) != len(self.questions):
+                raise ValueError("one starter per question")
         else:
             if self.skippable:
                 raise ValueError("a free scenario has nothing to skip")
@@ -56,6 +61,13 @@ class Scenario(BaseModel):
                 raise ValueError("a free scenario has no fixed questions or goals")
             if not self.opening:
                 raise ValueError("a free scenario needs an opening line")
+        from .hints import starter_problem  # here: hints imports the graph, which scenarios must not need to load
+
+        lines = self.questions if self.mode == "guided" else [self.opening or ""] * len(self.starters)
+        for starter, line in zip(self.starters, lines):
+            problem = starter_problem(starter, line)
+            if problem:
+                raise ValueError(f"starter {starter!r}: {problem}")
         return self
 
     @property

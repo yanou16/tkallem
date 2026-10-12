@@ -1,10 +1,15 @@
 """A provider outage is not an answer from the model. An eval case that hits one (5xx, 429, timeout, connection lost)
 runs again after a pause, at most 3 times in all; if the provider is still down, the case fails as before.
 A wrong or unparseable answer is never retried here: it counts against the model."""
+import re
 import time
 
 WAITS = (15, 45)  # seconds before the 2nd and the 3rd try
 _NETWORK = {"APITimeoutError", "APIConnectionError", "ConnectTimeout", "ReadTimeout", "ConnectError", "RemoteProtocolError"}
+# The coach node turns a provider error into "no usable output (OpenAIAPIError)" and the turn fails without the error
+# attached: the class name in the message is all that is left of it.
+_SWALLOWED = re.compile(r"no usable output \((OpenAIAPIError|InternalServerError|APIStatusError|RateLimitError|"
+                        r"APITimeoutError|APIConnectionError)\)")
 
 
 def provider_down(e: BaseException | None) -> bool:
@@ -16,6 +21,8 @@ def provider_down(e: BaseException | None) -> bool:
         if isinstance(status, int) and (status >= 500 or status == 429):
             return True
         if isinstance(e, (TimeoutError, ConnectionError)) or type(e).__name__ in _NETWORK:
+            return True
+        if _SWALLOWED.search(str(e)):
             return True
         e = e.__cause__ or e.__context__
     return False

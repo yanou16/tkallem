@@ -11,5 +11,9 @@
   "opening": "Hi! How was your day?",
   "questions": [],
   "goals": [],
-  "useful_words": []
+  "useful_words": [],
+  "starters": [
+    "My day was",
+    "The best part of my day was"
+  ]
 }

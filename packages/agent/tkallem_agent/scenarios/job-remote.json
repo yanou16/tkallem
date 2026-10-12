@@ -33,5 +33,13 @@
     "team",
     "feedback",
     "skills"
+  ],
+  "starters": [
+    "I am a",
+    "I am interested in this position because",
+    "One project I am proud of is",
+    "When I work remotely, I start my day by",
+    "In one of my teams, we had a problem with",
+    "Yes, I would like to ask about"
   ]
 }
