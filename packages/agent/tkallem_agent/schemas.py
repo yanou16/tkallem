@@ -81,6 +81,61 @@ def _only_study_number(original: str, fixed: str) -> bool:
     return len(a) == len(b) and a != b and all(x == y or swap.get(x) == y for x, y in zip(a, b))
 
 
+_WORD = r"[A-Za-z0-9']+"
+
+
+def _span(text: str, fragment: str) -> tuple[int, int] | None:
+    """Where the fragment's words are in the text, ignoring case and the punctuation between words."""
+    words = re.findall(_WORD, fragment)
+    if not words:
+        return None
+    pattern = r"(?<![A-Za-z0-9'])" + r"[^A-Za-z0-9']+".join(map(re.escape, words)) + r"(?![A-Za-z0-9'])"
+    m = re.search(pattern, text, re.I)
+    return (m.start(), m.end()) if m else None
+
+
+def _apply(text: str, c: dict) -> str | None:
+    """The text with this correction applied, or None when its words are not there."""
+    span = _span(text, c["original"])
+    if span is None:
+        return None
+    fixed = c["fixed"].strip()
+    if c["original"].strip()[-1:] in ".!?":  # the span stops at the last word: the sentence end stays in the text
+        fixed = fixed.rstrip(".!?")
+    return text[: span[0]] + fixed + text[span[1]:]
+
+
+def _merge_overlaps(items: list[tuple[frozenset[int], dict]], text: str) -> list[tuple[frozenset[int], dict]]:
+    """Corrections that share words become one, so the corrected sentence the student reads is right as a whole.
+    "go to US for study" -> "go to the US to study" and "study my master" -> "study for my master's" give one fix of
+    "go to US for study my master". When neither order applies both, the first alone is kept.
+    Each item carries the model's positions it comes from (a merged one has both), so priority_index can follow it.
+    Corrections come back in the order of the sentence."""
+    placed, unplaced = [], []
+    for tags, c in items:
+        span = _span(text, c["original"])
+        (placed if span else unplaced).append((span, tags, c))
+    placed.sort(key=lambda item: item[0])
+    out: list[tuple[tuple[int, int], frozenset[int], dict]] = []
+    for span, tags, c in placed:
+        if not out or span[0] >= out[-1][0][1]:
+            out.append((span, tags, c))
+            continue
+        (start, end), prev_tags, prev = out[-1]
+        union = text[start:max(end, span[1])]
+        fixed = None
+        for first, second in ((prev, c), (c, prev)):  # "pay" -> "pays" first would hide "pay my studies": try both
+            step = _apply(union, first)
+            fixed = step and _apply(step, second)
+            if fixed:
+                break
+        if not fixed or len(fixed.split()) > len(union.split()) + 3 or fixed.lower() == union.lower():
+            continue
+        merged = {**prev, "original": union, "fixed": fixed, "why": f"{prev['why'].strip()} {c['why'].strip()}"}
+        out[-1] = ((start, max(end, span[1])), prev_tags | tags, merged)
+    return [(tags, c) for _, tags, c in out] + [(tags, c) for _, tags, c in unplaced]
+
+
 PRAISE_MAX_WORDS = 12
 # Words a praise uses about anything: they do not show it is about THIS answer.
 _PRAISE_WORDS = frozenset("""
@@ -145,10 +200,10 @@ def sanitize(raw: dict, goals: list[str] | None = None, student_text: str | None
 
     Drops a correction when it: is malformed; changes nothing; quotes a fragment that is not in the student's text;
     removes a number or proper noun (meaning change, e.g. Germany -> USA); or rewrites far more words than it replaces.
-    Keeps at most 3, derives the status from the corrections so the model cannot contradict itself
-    (a model-declared "red" is kept when corrections remain), and only accepts goal ids from the scenario.
-    Keeps the praise only when praise_problem() finds nothing, and follows priority_index to the kept corrections
-    (the first one when it points at a dropped or unknown correction).
+    Merges corrections that touch the same words. Keeps at most 3, derives the status from the corrections so the
+    model cannot contradict itself (a model-declared "red" is kept when corrections remain), and only accepts goal
+    ids from the scenario. Keeps the praise only when praise_problem() finds nothing, and follows priority_index to
+    the kept corrections, merged ones included (the first one when it points at a dropped or unknown correction).
     """
     out = dict(raw)
     kept = []
@@ -175,10 +230,14 @@ def sanitize(raw: dict, goals: list[str] | None = None, student_text: str | None
             continue
         kept.append(c)
         positions.append(i)
-    kept = kept[:3]
+    tagged = [(frozenset({p}), c) for p, c in zip(positions, kept)]
+    if student_text is not None:
+        tagged = _merge_overlaps(tagged, student_text)
+    tagged = tagged[:3]
+    kept = [c for _, c in tagged]
     out["corrections"] = kept
     wanted = raw.get("priority_index")
-    out["priority_index"] = positions.index(wanted) if isinstance(wanted, int) and wanted in positions[:3] else 0
+    out["priority_index"] = next((j for j, (tags, _) in enumerate(tagged) if wanted in tags), 0) if isinstance(wanted, int) else 0
     praise = raw.get("praise")
     praise = " ".join(praise.split()) if isinstance(praise, str) else ""
     # A praise that quotes the wrong words ("Clear purpose: 'for study'") would praise the mistake itself.
