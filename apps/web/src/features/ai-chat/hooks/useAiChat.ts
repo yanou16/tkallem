@@ -95,13 +95,14 @@ export function useAnswer(sessionId: string | undefined, onAudio: (url: string |
   return { ...mutation, live };
 }
 
-/** Switch to voice mid-session: the coach repeats its last line aloud (and the next replies are spoken). */
+/** The coach says its last line aloud (first question of a voice session, or switching to voice mid-session); the
+ * session becomes a voice session. `id` overrides the hook's session (a session just created, URL not updated yet). */
 export const useSpeakLastLine = (sessionId?: string) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => speakLastLine(sessionId!),
-    onSuccess: (r) =>
-      qc.setQueryData<AiSession>(key(sessionId), (prev) => {
+    mutationFn: (id?: string) => speakLastLine((id ?? sessionId)!),
+    onSuccess: (r, id) =>
+      qc.setQueryData<AiSession>(key(id ?? sessionId), (prev) => {
         if (!prev) return prev;
         const messages = [...prev.messages];
         for (let i = messages.length - 1; i >= 0; i--) {

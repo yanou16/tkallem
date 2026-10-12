@@ -100,3 +100,7 @@ body { -webkit-font-smoothing: antialiased; }
 .tk-bar { animation: tk-bar 900ms ease-out infinite; transform-origin: center; }
 .tk-dot { animation: tk-dot 1200ms ease-out infinite; }
 .tk-breathe { animation: tk-breathe 800ms ease-out infinite; }
+
+/* Correction under the student's answer (DESIGN.md "Correction"): fade + 8px upward slide, 200ms. */
+@keyframes tk-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.tk-in { animation: tk-in 200ms ease-out both; }
