@@ -18,6 +18,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     outputs:
       image: ${{ steps.tag.outputs.image }}
     steps:
@@ -29,6 +30,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3   # the GitHub Actions build cache needs Buildx, not the plain docker driver
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -44,6 +46,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     # Skipped until the App Service exists and its publish profile is stored as a repository secret.
     if: ${{ vars.AZURE_WEBAPP_NAME != '' }}
     environment: production
