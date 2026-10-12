@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { ArrowRight, Clock } from "lucide-react";
 import { Icon } from "@/lib/icons";
+import { scenarioTint } from "@/lib/tint";
 import { AvatarStack, Pill, Skeleton, toneBg, toneDeep, type Tone } from "@/components/ui";
 import { cn, plural, timeAgo } from "@/lib/utils";
 import type { Scenario, SessionSummary } from "@/features/practice/types/practice";
@@ -26,22 +27,25 @@ export function StartButton({ href, label = "Start" }: { href: string; label?: s
   );
 }
 
-export function ScenarioCard({ s, tone }: { s: Scenario; tone: Tone }) {
+/** DESIGN.md "Scenario card": background = the scenario's tint (one meaning per pastel), text in charcoal. */
+export function ScenarioCard({ s }: { s: Scenario }) {
   return (
-    <article className={cn("flex flex-col justify-between gap-4 rounded-card p-5", toneBg[tone])}>
+    <article className={cn("flex flex-col justify-between gap-4 rounded-card p-5", scenarioTint(s.category))}>
       <div className="flex gap-4">
         {/* The API sends no icon yet: lib/icons.tsx maps the scenario id instead. */}
-        <IconBadge name={s.icon ?? s.id} tone={tone} />
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/70">
+          <Icon name={s.icon ?? s.id} size={22} />
+        </span>
         <div className="min-w-0">
           <h3 className="font-semibold leading-tight">{s.title}</h3>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-charcoal">
             {s.mode === "free" ? "Free conversation" : s.totalQuestions ? plural(s.totalQuestions, "question") : "Guided questions"}
           </p>
         </div>
       </div>
-      {s.description && <p className="text-sm text-muted">{s.description}</p>}
+      {s.description && <p className="text-sm text-charcoal">{s.description}</p>}
       <div className="flex items-center justify-between">
-        <span className="flex items-center gap-2 text-sm text-muted">
+        <span className="flex items-center gap-2 text-sm text-charcoal">
           {s.minutes !== null && <><Clock size={14} /> {s.minutes} min</>}
           {s.level && <Pill>{s.level}</Pill>}
         </span>
