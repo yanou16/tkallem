@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.concurrency import run_in_threadpool
 from psycopg import Connection
 
-from app import guests, rate_limit
+from app import guests, rate_limit, realtime
 from app.db.connection import ConnFactory, get_conn, get_conn_factory
 from app.db.groups import (
     get_group,
@@ -130,6 +130,16 @@ def _message(row: dict) -> dict:
     }
 
 
+def _member(student: dict) -> dict:
+    return {"id": student["id"], "first_name": student["first_name"]}
+
+
+# ---------- live events (WebSocket), always sent after the commit ----------
+
+async def _publish(group_id: int, event: dict) -> None:
+    await realtime.manager.broadcast(group_id, event)
+
+
 # ---------- routes (static paths before /groups/{group_id}) ----------
 
 @router.get("/groups/recommended", response_model=list[GroupSummary])
@@ -146,7 +156,7 @@ async def join_a_group(
     connect: ConnFactory = Depends(get_conn_factory),
 ) -> dict:
     """Joins the most active group of the student's level with room left, or a new "English B1 Club #N"."""
-    def join() -> dict:
+    def join() -> tuple[dict, dict]:
         with connect() as conn:
             student = user_for_claims(conn, claims)
             level = _require_level(student)
@@ -155,9 +165,11 @@ async def join_a_group(
             group = join_best_group(conn, student["id"], level)
             if group is None:  # joined another group in the meantime
                 raise _already_in_a_group()
-            return _summary(group, algiers_today(conn))
+            return _summary(group, algiers_today(conn)), _member(student)
 
-    return await run_in_threadpool(join)
+    summary, member = await run_in_threadpool(join)  # committed when `with connect()` ended
+    await _publish(summary["id"], {"type": "member.joined", "member": member})
+    return summary
 
 
 @router.post("/groups/{group_id}/join", response_model=GroupSummary)
@@ -166,7 +178,7 @@ async def join_this_group(
     claims: ClerkClaims = Depends(student_claims),
     connect: ConnFactory = Depends(get_conn_factory),
 ) -> dict:
-    def join() -> dict:
+    def join() -> tuple[dict, dict]:
         with connect() as conn:
             student = user_for_claims(conn, claims)
             level = _require_level(student)
@@ -184,9 +196,11 @@ async def join_this_group(
                 raise _already_in_a_group()
             if result == "not_found":
                 raise HTTPException(status.HTTP_404_NOT_FOUND, "Group not found")
-            return _summary(get_group(conn, group_id), algiers_today(conn))
+            return _summary(get_group(conn, group_id), algiers_today(conn)), _member(student)
 
-    return await run_in_threadpool(join)
+    summary, member = await run_in_threadpool(join)
+    await _publish(group_id, {"type": "member.joined", "member": member})
+    return summary
 
 
 @router.get("/me/group", response_model=GroupSummary | None)
@@ -246,6 +260,8 @@ async def send_message(
             return _message(row)
 
     message = await run_in_threadpool(save)  # committed when `with connect()` ended
+    # Same shape as GET /messages; mode="json" turns the datetime into text. The sender receives it too.
+    await _publish(group_id, {"type": "message.created", "message": GroupMessage(**message).model_dump(mode="json")})
     return message
 
 
@@ -255,15 +271,19 @@ async def leave_this_group(
     claims: ClerkClaims = Depends(student_claims),
     connect: ConnFactory = Depends(get_conn_factory),
 ) -> Response:
-    def leave() -> None:
+    def leave() -> dict:
         with connect() as conn:
             student = user_for_claims(conn, claims)
             if get_group(conn, group_id) is None:
                 raise HTTPException(status.HTTP_404_NOT_FOUND, "Group not found")
             if not leave_group(conn, group_id, student["id"]):
                 raise HTTPException(status.HTTP_403_FORBIDDEN, "You are not a member of this group")
+            return _member(student)
 
-    await run_in_threadpool(leave)
+    member = await run_in_threadpool(leave)
+    # Her open connections to this group (every tab) are closed first, then the others are told.
+    await realtime.manager.close_member(group_id, member["id"], realtime.CLOSE_NOT_A_MEMBER)
+    await _publish(group_id, {"type": "member.left", "member": member})
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -289,4 +309,6 @@ async def report_a_message(
         raise HTTPException(status.HTTP_403_FORBIDDEN, "You cannot report your own message")
     if result == "already_reported":
         raise HTTPException(status.HTTP_409_CONFLICT, "You already reported this message")
+    if result == "hidden":
+        await _publish(group_id, {"type": "message.hidden", "message_id": message_id})
     return {"hidden": result == "hidden"}

@@ -9,6 +9,7 @@ from app.config import settings
 from app.db.connection import close_pool, open_pool
 
 from app.routes.credits import router as credits_router
+from app.routes.group_ws import router as group_ws_router
 from app.routes.groups import router as groups_router
 from app.routes.me import router as me_router
 from app.routes.scenarios import router as scenarios_router
@@ -41,6 +42,7 @@ app.add_middleware(
 app.include_router(credits_router)
 app.include_router(me_router)
 app.include_router(groups_router)
+app.include_router(group_ws_router)
 app.include_router(scenarios_router)
 app.include_router(sessions_router)
 
