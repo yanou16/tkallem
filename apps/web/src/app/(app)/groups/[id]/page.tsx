@@ -1,4 +1,5 @@
 "use client";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
@@ -6,7 +7,6 @@ import { useState } from "react";
 import { ArrowLeft, ArrowRight, Calendar, Check, Crown, Heart, Lightbulb, MessageCircle, Mic, Plus, Share2, MoreHorizontal, Users, Globe, Tag, Signal } from "lucide-react";
 import { useCreatePost, useGroup, useGroupPosts, useLikePost, useSetReminder, useToggleMembership } from "@/features/groups/hooks/useGroups";
 import { Async, Avatar, AvatarStack, Button, Card, Dialog, EmptyState, ErrorState, Pill, Skeleton } from "@/components/ui";
-import ComingSoon from "@/components/ComingSoon";
 import { FEATURES } from "@/lib/features";
 import { cn, timeAgo } from "@/lib/utils";
 
@@ -155,6 +155,6 @@ function GroupPageContent() {
 }
 
 export default function GroupPage() {
-  if (!FEATURES.groups) return <ComingSoon title="Study groups are coming soon" text="Practise with the AI coach in the meantime: groups of learners will open after the first release." />;
+  if (!FEATURES.groups) redirect("/practice"); // no API yet: the screen is not reachable (docs/JURY_BRIEF.md F-4)
   return <GroupPageContent />;
 }

@@ -1,4 +1,5 @@
 "use client";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ArrowRight, Globe, GraduationCap, Mic, Search, Signal, Tag } from "lucide-react";
@@ -7,7 +8,6 @@ import type { GroupFilters } from "@/features/groups/types/groups";
 import { Async, Card, EmptyState, PageHeader, SectionTitle, Skeleton, toneAt, toneBg, toneDeep } from "@/components/ui";
 import { CardsSkeleton, GroupCard } from "@/components/cards";
 import { Icon } from "@/lib/icons";
-import ComingSoon from "@/components/ComingSoon";
 import { FEATURES } from "@/lib/features";
 import { cn } from "@/lib/utils";
 
@@ -121,6 +121,6 @@ function Select({ icon, label, value, options, onChange }: { icon: React.ReactNo
 }
 
 export default function GroupsPage() {
-  if (!FEATURES.groups) return <ComingSoon title="Study groups are coming soon" text="Practise with the AI coach in the meantime: groups of learners will open after the first release." />;
+  if (!FEATURES.groups) redirect("/practice"); // no API yet: the screen is not reachable (docs/JURY_BRIEF.md F-4)
   return <GroupsPageContent />;
 }

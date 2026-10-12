@@ -1,5 +1,5 @@
 /**
- * Screens whose backend does not exist yet. They are hidden for the October delivery (a judge must never open a panel
+ * Screens whose backend does not exist yet: out of every menu, and their routes redirect to /practice (a judge must never open a panel
  * that cannot load); the code stays, switch a flag on when its API is built.
  */
 export const FEATURES = {
