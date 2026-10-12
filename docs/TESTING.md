@@ -32,7 +32,7 @@ green (`.github/workflows/ci.yml`). After a merge, the API image is built, deplo
 | Voice providers backing each other up, retry on connection failure | API `test_voice_failover.py` |
 | Recording too short or silent, which voice speaks the coach | front `features/ai-chat/lib/voice.test.ts` |
 | Correction shown under the answer (wrong and fixed words) | front `features/ai-chat/lib/marks.test.ts` |
-| Help me start: starters stop before the content (12 words max, no invented name or number), translations keep names and numbers and are finished sentences, fallback to the scenario's starter, current question | `test_hints.py` (and every scenario starter in it); eval `evals/hints.py` (10 starters, 10 French and Darija ideas) |
+| Help me start: starters stop before the content (12 words max, no invented name or number), translations keep names and numbers and are finished sentences, fallback to the scenario's starter, current question | `test_hints.py` (and every scenario starter in it); eval `evals/hints.py` (10 starters, 10 French and Darija ideas); API `test_hint_routes.py` (free, 2 per question, hourly cap, owner only) |
 | Credits: grants, daily refill, atomic debit (10 concurrent answers), refunds, budget cap and alert | API `test_credits.py` |
 | Guest mode: token, address limits, claim at sign-in, unknown guest refused | API `test_credits_routes.py`; front `features/credits/lib/guestStep.test.ts` |
 | Sign-in: Clerk tokens, allowed origins | API `test_security.py`; front `features/auth/lib/username.test.ts` |

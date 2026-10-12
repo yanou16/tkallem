@@ -24,6 +24,22 @@ class Spoken(BaseModel):
     audio_url: str | None = None  # None when every voice provider failed: the app uses the browser's voice
 
 
+class HintRequest(BaseModel):
+    """"Help me start" (docs/JURY_BRIEF.md, improvement 1). `text`: the student's idea in French or Darija, for
+    `translate` only."""
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["starter", "translate"]
+    text: str | None = Field(None, max_length=2000)
+
+
+class HintResult(BaseModel):
+    kind: Literal["starter", "translation"]  # a translation refused by the code comes back as the scenario's starter
+    lines: list[str] = Field(min_length=1, max_length=2)  # starters are shown followed by "…"
+    fallback: bool  # the scenario's own starter, because the model's suggestion was refused or failed
+    remaining: int  # hints left for this question
+
+
 class SessionStarted(BaseModel):
     session_id: str
     first_question: FirstQuestion
