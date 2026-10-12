@@ -20,7 +20,7 @@ export default function ChooseLevel() {
 
   return (
     <Card className="mx-auto mt-8 max-w-xl">
-      <h1 className="text-2xl font-bold">Welcome to Tkallem</h1>
+      <h1 className="text-2xl font-semibold">Welcome to Tkallem</h1>
       <p className="mt-1 text-muted">Two quick choices so your coach speaks at the right level. You can change them later in your profile.</p>
 
       <fieldset className="mt-6">

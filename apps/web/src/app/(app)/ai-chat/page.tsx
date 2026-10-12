@@ -18,6 +18,7 @@ import { Avatar, Button, Card, EmptyState, PageHeader, Skeleton } from "@/compon
 import { startHref } from "@/components/cards";
 import { ApiError } from "@/lib/api/client";
 import { Icon } from "@/lib/icons";
+import { scenarioTint } from "@/lib/tint";
 import { cn, formatMinutes, formatNumber, plural } from "@/lib/utils";
 
 const MAX = 500;
@@ -169,8 +170,9 @@ function Chat() {
     if (!answer || !sessionId || !s || s.finished || send.isPending) return;
     coach.stop();
     setPending({ kind: "text", text: answer });
-    // The text stays in the input until the API saved it, so a failed answer can be sent again.
-    send.mutate({ text: answer }, { onSuccess: () => setText(""), onSettled: () => setPending(null) });
+    // The answer shows in the chat at once, so the field empties; if it fails, it comes back to be sent again.
+    setText("");
+    send.mutate({ text: answer }, { onError: () => setText((t) => t || answer), onSettled: () => setPending(null) });
   };
 
   function sendRecording(r: Recording) {
@@ -209,6 +211,7 @@ function Chat() {
   const scenario = scenarios.data?.find((x) => x.id === scenarioId);
   const title = s?.title ?? scenario?.title ?? scenarioId;
   const icon = scenario?.icon ?? scenarioId;
+  const tint = scenarioTint(scenario?.category);
   if (s?.report) return <Report report={s.report} title={title} onRestart={() => restart()} />;
 
   const live = send.live;
@@ -222,7 +225,7 @@ function Chat() {
 
   let body: ReactNode;
   if (!sessionId && !scenarioId) {
-    body = <EmptyState title="Start your first conversation" text="Pick a scenario above and your tutor will ask the first question." />;
+    body = <EmptyState title="Start your first conversation" text="Pick a scenario above and your coach will ask the first question." />;
   } else if (start.error) {
     body = <Problem help={startHelp(start.error)} onRetry={() => scenarioId && begin(scenarioId)} />;
   } else if (session.error) {
@@ -231,20 +234,20 @@ function Chat() {
     body = <div className="space-y-4"><Skeleton className="h-20 w-2/3" /><Skeleton className="ml-auto h-20 w-2/3" /></div>;
   } else {
     body = s.messages.map((m) => (
-      <Bubble key={m.id} m={m} icon={icon} user={user} onListen={m.role === "assistant" ? () => coach.play(m.audioUrl, m.content) : undefined} />
+      <Bubble key={m.id} m={m} icon={icon} tint={tint} user={user} onListen={m.role === "assistant" ? () => coach.play(m.audioUrl, m.content) : undefined} />
     ));
   }
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
       <div className="flex min-h-[calc(100vh-110px)] flex-col">
-        <PageHeader title="AI Chat" subtitle="Have a realistic conversation with your AI tutor. Get instant feedback and improve naturally." />
+        <PageHeader title="AI Chat" subtitle="Answer by voice or by typing. Your coach corrects each answer and explains why." />
 
         <div className="mb-4 grid gap-3 md:grid-cols-[1.3fr_0.8fr_1fr]">
           <div className="relative">
-            <button onClick={() => setMenu((m) => !m)} className="flex w-full items-center gap-3 rounded-2xl bg-peach p-3 text-left">
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-peach-deep"><Icon name={icon ?? "briefcase"} /></span>
-              <span className="flex-1"><span className="block text-xs text-muted">Scenario</span><span className="font-semibold">{title ?? "Choose a scenario"}</span></span>
+            <button onClick={() => setMenu((m) => !m)} className={cn("flex w-full items-center gap-3 rounded-2xl p-3 text-left", tint)}>
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/70"><Icon name={icon ?? "briefcase"} /></span>
+              <span className="flex-1"><span className="block text-xs text-charcoal">Scenario</span><span className="font-semibold">{title ?? "Choose a scenario"}</span></span>
               <ChevronDown size={18} />
             </button>
             {scenario?.description && <p className="mt-2 px-1 text-xs text-muted">{scenario.description}</p>}
@@ -257,8 +260,8 @@ function Chat() {
               </ul>
             )}
           </div>
-          <div className="flex items-center gap-3 rounded-2xl bg-mint p-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-mint-deep"><ChartNoAxesColumn size={20} /></span>
+          <div className="flex items-center gap-3 rounded-2xl bg-surface p-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white"><ChartNoAxesColumn size={20} /></span>
             <span><span className="block text-xs text-muted">Level</span><span className="font-semibold">{user?.level ?? "—"}</span></span>
           </div>
           <div className="flex items-center gap-2 rounded-2xl bg-black/[0.03] p-2" role="radiogroup" aria-label="Answer mode">
@@ -273,7 +276,7 @@ function Chat() {
         {mode === "voice" && (
           <div className="mb-4">
             <div className="mb-2 flex justify-end">
-              <button onClick={toggleAvatar} className="rounded-full border border-line px-3 py-1 text-xs font-semibold">{avatarOn ? "Hide 3D coach" : "Show 3D coach"}</button>
+              <button onClick={toggleAvatar} className="relative rounded-full border border-line px-3 py-1 text-xs font-semibold after:absolute after:-inset-y-2.5 after:inset-x-0 after:content-['']">{avatarOn ? "Hide 3D coach" : "Show 3D coach"}</button>
             </div>
             {avatarOn && <CoachAvatar {...coach.avatarProps} />}
           </div>
@@ -291,18 +294,18 @@ function Chat() {
             </div>
           )}
 
-          <div className="flex-1 space-y-5 overflow-y-auto p-6">
+          <div role="log" aria-label="Conversation" className="flex-1 space-y-5 overflow-y-auto p-6">
             {body}
             {pending && (
               <>
                 {live?.transcript || pending.kind === "text"
-                  ? <Bubble m={{ id: "pending", role: "user", content: live?.transcript ?? (pending.kind === "text" ? pending.text : ""), corrections: live?.corrections, status: live?.status }} icon={icon} user={user} />
-                  : <Bubble m={{ id: "pending", role: "user", content: `Voice answer (${formatTime(pending.seconds)})`, pending: true }} icon={icon} user={user} />}
+                  ? <Bubble m={{ id: "pending", role: "user", content: live?.transcript ?? (pending.kind === "text" ? pending.text : ""), corrections: live?.corrections, status: live?.status }} icon={icon} tint={tint} user={user} />
+                  : <Bubble m={{ id: "pending", role: "user", content: `Voice answer (${formatTime(pending.seconds)})`, pending: true }} icon={icon} tint={tint} user={user} />}
                 {live?.reply ? (
-                  <Bubble m={{ id: "pending-reply", role: "assistant", content: live.reply }} icon={icon} user={user} />
+                  <Bubble m={{ id: "pending-reply", role: "assistant", content: live.reply }} icon={icon} tint={tint} user={user} />
                 ) : (
                   <div className="flex items-center gap-3">
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-mint"><Icon name={icon ?? "briefcase"} /></span>
+                    <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full", tint)}><Icon name={icon ?? "briefcase"} /></span>
                     <VoiceState state="thinking" className="rounded-3xl bg-black/[0.05] px-5 py-4" />
                   </div>
                 )}
@@ -318,7 +321,7 @@ function Chat() {
                   <Volume2 size={16} /> Tap to hear the coach
                 </button>
               )}
-              {rec.error && <p role="alert" className="rounded-2xl bg-rose/60 px-4 py-3 text-sm">{rec.error}</p>}
+              {rec.error && <p role="alert" className="rounded-2xl bg-bad-bg px-4 py-3 text-sm">{rec.error}</p>}
               {creditProblem && <OutOfCredits error={creditProblem} isGuest={isGuest} />}
               {problem && (
                 <Problem help={problem} onRestart={() => restart()}
@@ -339,7 +342,7 @@ function Chat() {
                 <div className="flex items-center justify-between gap-3 px-4 pt-3">
                   <VoiceState state={barState} />
                   {barState === "speaking" && (
-                    <button onClick={() => coach.stop()} className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-xs font-semibold">
+                    <button onClick={() => coach.stop()} className="relative inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-xs font-semibold after:absolute after:-inset-y-2.5 after:inset-x-0 after:content-['']">
                       <Square size={12} /> Stop
                     </button>
                   )}
@@ -358,8 +361,8 @@ function Chat() {
                 ) : (
                   <div className="flex-1">
                     <input value={text} maxLength={MAX} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()}
-                      disabled={!s || send.isPending} placeholder={mode === "voice" ? "Or type your answer…" : "Type your response here…"}
-                      className="w-full rounded-full border border-line px-5 py-3.5 outline-none focus:border-ink disabled:bg-black/[0.03]" />
+                      disabled={!s || send.isPending} aria-label="Your answer" placeholder="Type your answer"
+                      className="w-full rounded-full border border-line px-4 py-3.5 outline-none focus:border-ink disabled:bg-black/[0.03]" />
                     <p className="mt-1 text-right text-xs text-muted">{text.length} / {MAX}</p>
                   </div>
                 )}
@@ -373,16 +376,16 @@ function Chat() {
 
       <aside className="hidden space-y-4 xl:block">
         <Card className="space-y-3">
-          <div className="flex items-center justify-between"><h2 className="text-xl font-bold">Live corrections</h2>
+          <div className="flex items-center justify-between"><h2 className="text-xl font-semibold">Live corrections</h2>
             {s && !s.finished && <span className="flex items-center gap-2 text-sm"><span className="h-2.5 w-2.5 rounded-full bg-success" /> Active</span>}</div>
           {!last ? (
-            <EmptyState title="No corrections yet" text="Send an answer and your tutor will suggest improvements here." />
+            <EmptyState title="No corrections yet" text="Send an answer and your coach will suggest improvements here." />
           ) : last.corrections?.length ? (
             last.corrections.map((c, i) => <CorrectionCard key={i} c={c} />)
           ) : (
             <EmptyState title="Clean answer" text="No correction on your last answer." />
           )}
-          {last && <SummaryRow icon={<CircleAlert size={18} />} tone="bg-rose" title="Corrections this turn" sub={plural(last.corrections?.length ?? 0, "suggestion")} />}
+          {last && <SummaryRow icon={<CircleAlert size={18} />} tone="bg-warn-bg" title="Corrections this turn" sub={plural(last.corrections?.length ?? 0, "suggestion")} />}
         </Card>
       </aside>
     </div>
@@ -392,8 +395,8 @@ function Chat() {
 function Problem({ help, onRetry, onRestart }: { help: Help; onRetry?: () => void; onRestart?: () => void }) {
   const small = "!px-3 !py-1.5 text-xs";
   return (
-    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-2xl border border-rose-deep bg-rose/50 p-4 text-sm">
-      <CircleAlert className="shrink-0" size={18} />
+    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-2xl bg-bad-bg p-4 text-sm">
+      <CircleAlert className="shrink-0 text-bad" size={18} />
       <p className="flex-1">{help.text}</p>
       {help.chooseLevel && <Link href="/profile" className="font-semibold underline">Choose my level</Link>}
       {help.retry && onRetry && <Button dark={false} onClick={onRetry} className={small}>Try again</Button>}
@@ -406,14 +409,14 @@ function StatusPill({ status, label }: { status: SentenceStatus; label: string }
   return <span className={cn("inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-semibold", STATUS_STYLE[status])}>{label}</span>;
 }
 
-function Bubble({ m, icon, user, onListen }: { m: ChatMessage; icon?: string; user?: ReturnType<typeof useCurrentUser>["user"]; onListen?: () => void }) {
+function Bubble({ m, icon, tint, user, onListen }: { m: ChatMessage; icon?: string; tint?: string; user?: ReturnType<typeof useCurrentUser>["user"]; onListen?: () => void }) {
   const mine = m.role === "user";
   const time = m.createdAt && new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   return (
     <div className={cn("flex items-start gap-3", mine && "justify-end")}>
-      {!mine && <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-mint"><Icon name={icon ?? "briefcase"} /></span>}
+      {!mine && <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full", tint ?? "bg-surface")}><Icon name={icon ?? "briefcase"} /></span>}
       <div className={cn("max-w-[75%]", mine && "text-right")}>
-        <p className={cn("whitespace-pre-wrap rounded-3xl px-5 py-4 text-left", mine ? "bg-mint" : "bg-black/[0.05]", m.pending && "flex items-center gap-2 italic text-muted")}>
+        <p className={cn("whitespace-pre-wrap rounded-3xl px-5 py-4 text-left", mine ? "bg-ink text-white" : "bg-black/[0.05]", m.pending && "flex items-center gap-2 italic text-white/70")}>
           {m.pending && <Mic size={16} aria-hidden />}{m.content}
         </p>
         {mine && !m.pending && m.corrections && m.corrections.length > 0 && <InlineCorrection text={m.content} corrections={m.corrections} />}
@@ -421,7 +424,7 @@ function Bubble({ m, icon, user, onListen }: { m: ChatMessage; icon?: string; us
           {m.status && <StatusPill status={m.status} label={answerLabel(m.status, m.corrections?.length ?? 0)} />}
           {time && <span className="text-xs text-muted">{time}</span>}
           {onListen && (
-            <button onClick={onListen} className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs text-muted hover:bg-black/5" aria-label="Listen to this line">
+            <button onClick={onListen} className="relative inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs text-muted hover:bg-black/5 after:absolute after:-inset-3 after:content-['']" aria-label="Listen to this line">
               <Volume2 size={13} /> Listen
             </button>
           )}
@@ -457,19 +460,19 @@ function InlineCorrection({ text, corrections }: { text: string; corrections: Co
 function CorrectionCard({ c }: { c: Correction }) {
   const grammar = c.type === "grammar";
   return (
-    <div className={cn("rounded-2xl p-4", grammar ? "bg-rose" : "bg-butter")}>
+    <div className={cn("rounded-2xl p-4", grammar ? "bg-warn-bg" : "bg-surface")}>
       <p className="mb-3 flex items-center gap-2 font-semibold">
-        <span className={cn("flex h-8 w-8 items-center justify-center rounded-lg", grammar ? "bg-rose-deep" : "bg-butter-deep")}>
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white">
           {grammar ? <CircleAlert size={18} /> : <Lightbulb size={18} />}
         </span>
         {grammar ? "Grammar correction" : "Better phrasing"}
       </p>
       <p className="text-xs font-medium">Your sentence</p>
-      <p className="mb-1 rounded-lg bg-rose-deep/60 px-3 py-1.5 text-sm">{c.original}</p>
+      <p className="mb-1 rounded-lg bg-white px-3 py-1.5 text-sm">{c.original}</p>
       <ArrowDown size={14} className="mx-auto my-1" />
       <p className="text-xs font-medium">{grammar ? "Better version" : "More natural"}</p>
-      <p className="mb-2 rounded-lg bg-mint-deep/70 px-3 py-1.5 text-sm">{c.fixed}</p>
-      <p className="rounded-lg bg-white/60 px-3 py-2 text-xs text-muted">{c.why}</p>
+      <p className="mb-2 rounded-lg bg-good-bg px-3 py-1.5 text-sm">{c.fixed}</p>
+      <p className="rounded-lg bg-white px-3 py-2 text-xs text-muted">{c.why}</p>
     </div>
   );
 }
@@ -496,7 +499,7 @@ function Report({ report, title, onRestart }: { report: SessionReport; title?: s
     <div className="mx-auto max-w-3xl">
       <PageHeader eyebrow={title} title="Your session report" />
       <Card>
-        <h2 className="text-lg font-semibold">Your tutor's note</h2>
+        <h2 className="text-lg font-semibold">Your coach's note</h2>
         <p className="mt-2 whitespace-pre-wrap">{report.note}</p>
       </Card>
 
