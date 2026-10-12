@@ -242,8 +242,11 @@ def test_streamed_spoken_answer_sends_each_part_then_done(client, db):
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/event-stream")
     events = sse(r)
     names = [e for e, _ in events]
-    assert names[0] == "transcript" and names[1] == "reply" and names[-1] == "done"
-    assert {"corrections", "audio"} <= set(names)
+    # guaranteed: transcript first, done last, the voice after the text it speaks; coach text and corrections come
+    # from two parallel calls, so their order is free
+    assert names[0] == "transcript" and names[-1] == "done"
+    assert {"reply", "corrections", "audio"} <= set(names)
+    assert names.index("reply") < names.index("audio")
     data = dict(events)
     assert data["transcript"]["text"] == "I go to the US for study."
     assert data["audio"]["audio_url"].startswith("data:audio/wav;base64,")

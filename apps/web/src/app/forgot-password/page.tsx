@@ -70,7 +70,7 @@ export default function ForgotPasswordPage() {
             <FormError message={error} />
             <PrimaryButton type="submit" loading={loading}>Send the code</PrimaryButton>
             <p className="text-center text-[13px] text-[#6b6b75]">
-              Signed up with Google? <Link href="/sign-in" className="font-medium text-[#5b3fd6] hover:underline">Use Continue with Google</Link>
+              Signed up with Google? <Link href="/sign-in" className="font-medium text-ink underline underline-offset-2">Use Continue with Google</Link>
             </p>
           </form>
         </AuthCard>

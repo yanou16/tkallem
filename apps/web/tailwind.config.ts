@@ -9,7 +9,7 @@ const config: Config = {
         ink: "#111111",
         muted: "#6b6b76",
         line: "#ececf0",
-        brand: "#FFC93C",
+        brand: "#FFD02F",
         mint: { DEFAULT: "#D3F6F0", deep: "#A8EADF" },
         butter: { DEFAULT: "#FFF0BF", deep: "#FFE08A" },
         peach: { DEFAULT: "#FFE5CF", deep: "#FFCDA3" },

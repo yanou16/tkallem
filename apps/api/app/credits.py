@@ -7,6 +7,8 @@ at the same moment cannot spend the same credit. Grants carry a `ref` (unique pe
 The functions take an open connection and never commit: the caller decides the transaction. `now` is a parameter so
 the day boundaries can be tested.
 """
+import logging
+import threading
 import time
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
@@ -14,6 +16,7 @@ from uuid import UUID
 
 import psycopg
 from psycopg import Connection
+import httpx
 
 from app import guests
 from app.config import settings
@@ -148,7 +151,27 @@ def spent_today(conn: Connection, now: datetime | None = None) -> int:
     ).fetchone()["n"]
 
 
+logger = logging.getLogger(__name__)
 _budget = {"day": None, "value": 0, "at": 0.0}  # today's global spending, re-read at most every budget_cache_s
+_alerted: dict[str, date | None] = {"near": None, "reached": None}  # day of the last warning of each kind
+
+
+def _post_alert(text: str) -> None:
+    try:  # Slack reads "text", Discord reads "content"
+        httpx.post(settings.alert_webhook_url, json={"text": text, "content": text}, timeout=5)
+    except httpx.HTTPError:
+        logger.exception("Budget alert could not be sent")
+
+
+def _alert(kind: str, day: date, text: str) -> None:
+    """Once a day per kind and per process: a log line, and the webhook if one is configured (in the background, so
+    the student's answer never waits for it)."""
+    if _alerted[kind] == day:
+        return
+    _alerted[kind] = day
+    logger.warning(text)
+    if settings.alert_webhook_url:
+        threading.Thread(target=_post_alert, args=(text,), daemon=True).start()
 
 
 def _spent_today_cached(conn: Connection, now: datetime | None) -> int:
@@ -163,7 +186,10 @@ def spend(conn: Connection, user: dict, session_id: UUID | None = None, now: dat
     Two or three round trips: it runs before every answer."""
     ensure_wallet(conn, user, now)
     refill(conn, user, now)
+    day = _utc(now).date()
     if _spent_today_cached(conn, now) >= settings.daily_spend_cap:  # a safety switch: a few seconds late is fine
+        _alert("reached", day, f"Tkallem: today's free practice budget is used up ({settings.daily_spend_cap} credits). "
+               "Students get 'come back tomorrow' until midnight UTC. Raise DAILY_SPEND_CAP to reopen.")
         raise DailyBudgetReached()
     guest = is_guest(user)
     next_refill_at = None if guest else _midnight_after(_utc(now).date())
@@ -171,6 +197,9 @@ def spend(conn: Connection, user: dict, session_id: UUID | None = None, now: dat
     if balance is None:
         raise NoCredits(next_refill_at)
     _budget["value"] += 1
+    if _budget["value"] >= settings.budget_alert_ratio * settings.daily_spend_cap:
+        _alert("near", day, f"Tkallem: {_budget['value']} of {settings.daily_spend_cap} credits spent today "
+               f"({_budget['value'] * 100 // max(1, settings.daily_spend_cap)}%). Raise DAILY_SPEND_CAP if this is expected.")
     return CreditStatus(balance, guest, next_refill_at)
 
 

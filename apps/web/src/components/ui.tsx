@@ -22,7 +22,7 @@ export function Avatar({ src, first, last, size = 40, className }: { src?: strin
   if (src)
     return <Image src={src} alt="" width={size} height={size} unoptimized style={style} className={cn("rounded-full object-cover", className)} />;
   return (
-    <span style={{ ...style, fontSize: size * 0.38 }} className={cn("inline-flex items-center justify-center rounded-full bg-lilac-deep font-semibold text-ink", className)} aria-hidden>
+    <span style={{ ...style, fontSize: size * 0.38 }} className={cn("inline-flex items-center justify-center rounded-full bg-black/[0.06] font-semibold text-ink", className)} aria-hidden>
       {initials(first, last)}
     </span>
   );

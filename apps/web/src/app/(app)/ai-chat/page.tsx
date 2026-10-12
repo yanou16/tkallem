@@ -12,6 +12,7 @@ import { MAX_RECORDING_S, useVoiceRecorder, type Recording } from "@/features/ai
 import { useCoachVoice } from "@/features/ai-chat/hooks/useCoachVoice";
 import { useRealtimeVoice } from "@/features/ai-chat/hooks/useRealtimeVoice";
 import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOfCredits";
+import { markSentence } from "@/features/ai-chat/lib/marks";
 import type { ChatMessage, Correction, SentenceStatus, SessionReport } from "@/features/ai-chat/types/ai";
 import { Avatar, Button, Card, EmptyState, PageHeader, Skeleton } from "@/components/ui";
 import { startHref } from "@/components/cards";
@@ -21,6 +22,16 @@ import { cn, formatMinutes, formatNumber, plural } from "@/lib/utils";
 
 const MAX = 500;
 const MODE_KEY = "tkallem.mode";
+const AVATAR_KEY = "tkallem.avatar";
+
+/** The 3D coach is off by default (heavy on phones, approximate lip sync): only for students who turn it on. */
+function readAvatar(): boolean {
+  try {
+    return localStorage.getItem(AVATAR_KEY) === "on";
+  } catch {
+    return false;
+  }
+}
 
 /** Voice first (it is a speaking coach); the student's last choice is remembered on this device. */
 function readMode(): "text" | "voice" {
@@ -101,7 +112,14 @@ function Chat() {
   const scenarioId = s?.scenarioId ?? urlScenarioId;
 
   const [mode, setMode] = useState<"text" | "voice">(readMode);
-  const [avatarOn, setAvatarOn] = useState(true);
+  const [avatarOn, setAvatarOn] = useState(readAvatar);
+  const toggleAvatar = () => {
+    coach.stop();
+    setAvatarOn((on) => {
+      try { localStorage.setItem(AVATAR_KEY, on ? "off" : "on"); } catch { /* private mode */ }
+      return !on;
+    });
+  };
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const coach = useCoachVoice(mode === "voice" && avatarOn);
   // The coach's voice is played as soon as it arrives, while the corrections are still being written.
@@ -138,10 +156,12 @@ function Chat() {
 
   const begin = (id: string) => {
     started.current = id;
-    start.mutate({ scenarioId: id, mode }, {
+    // The session starts as text so the first question shows at once; in voice mode its audio is asked right after
+    // (POST /speak, which also makes the session a voice session): the student reads it while the voice is made.
+    start.mutate({ scenarioId: id, mode: "text" }, {
       onSuccess: (s) => {
-        if (mode === "voice") coach.play(s.firstQuestionAudio, s.firstQuestion); // the coach asks out loud
         router.replace(`/ai-chat?sessionId=${encodeURIComponent(s.sessionId)}&scenarioId=${encodeURIComponent(id)}`);
+        if (mode === "voice") speakLast.mutate(s.sessionId, { onSuccess: (r) => coach.play(r.audio_url, r.text) });
       },
     });
   };
@@ -205,7 +225,7 @@ function Chat() {
       return;
     }
     // Switching to voice in the middle: the coach repeats its last line aloud, and its next replies are spoken.
-    if (sessionId && s && !s.finished && !send.isPending) speakLast.mutate(undefined, { onSuccess: (r) => coach.play(r.audio_url, r.text) });
+    if (sessionId && s && !s.finished && !send.isPending) speakLast.mutate(sessionId, { onSuccess: (r) => coach.play(r.audio_url, r.text) });
   }
   const finish = () => {
     rtVoice.stop();
@@ -286,6 +306,7 @@ function Chat() {
 
         {mode === "voice" && (
           <div className="mb-4">
+<<<<<<< HEAD
             <div className="mb-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <button
@@ -319,6 +340,10 @@ function Chat() {
                 )}
               </div>
               <button onClick={() => { coach.stop(); setAvatarOn((v) => !v); }} className="rounded-full border border-line px-3 py-1 text-xs font-semibold">{avatarOn ? "Hide 3D coach" : "Show 3D coach"}</button>
+=======
+            <div className="mb-2 flex justify-end">
+              <button onClick={toggleAvatar} className="rounded-full border border-line px-3 py-1 text-xs font-semibold">{avatarOn ? "Hide 3D coach" : "Show 3D coach"}</button>
+>>>>>>> a92f0ef010bfc701b4342f556c51a17e7f0e8a9e
             </div>
             <div className="rounded-card border border-line bg-white p-4">
               <div className="flex items-center gap-4">
@@ -364,7 +389,7 @@ function Chat() {
             {pending && (
               <>
                 {live?.transcript || pending.kind === "text"
-                  ? <Bubble m={{ id: "pending", role: "user", content: live?.transcript ?? (pending.kind === "text" ? pending.text : "") }} icon={icon} user={user} />
+                  ? <Bubble m={{ id: "pending", role: "user", content: live?.transcript ?? (pending.kind === "text" ? pending.text : ""), corrections: live?.corrections, status: live?.status }} icon={icon} user={user} />
                   : <Bubble m={{ id: "pending", role: "user", content: `Voice answer (${formatTime(pending.seconds)})`, pending: true }} icon={icon} user={user} />}
                 {live?.reply ? (
                   <Bubble m={{ id: "pending-reply", role: "assistant", content: live.reply }} icon={icon} user={user} />
@@ -401,50 +426,59 @@ function Chat() {
               <Button onClick={finish} disabled={end.isPending}>{end.isPending ? "Preparing your report…" : "See my report"}</Button>
             </div>
           ) : rtVoice.isConnected || rtVoice.isConnecting ? (
-              <div className="flex items-center justify-between gap-4 border-t border-line p-4">
-                <div className="flex items-center gap-3 text-sm text-muted">
-                  <span className={cn("h-3 w-3 rounded-full", rtVoice.isConnected ? "bg-success animate-pulse" : "bg-butter-deep animate-pulse")} />
-                  {rtVoice.isConnecting ? "Connecting to your tutor…" : rtVoice.isMuted ? "Microphone muted" : "Call in progress — no button needed"}
-                </div>
-                {rtVoice.isConnected && <button type="button" onClick={rtVoice.toggleMute} className="rounded-full border border-line px-4 py-2 text-sm font-semibold">{rtVoice.isMuted ? "Unmute" : "Mute"}</button>}
+            <div className="flex items-center justify-between gap-4 border-t border-line p-4">
+              <div className="flex items-center gap-3 text-sm text-muted">
+                <span className={cn("h-3 w-3 rounded-full", rtVoice.isConnected ? "bg-success animate-pulse" : "bg-butter-deep animate-pulse")} />
+                {rtVoice.isConnecting ? "Connecting to your tutor…" : rtVoice.isMuted ? "Microphone muted" : "Call in progress — no button needed"}
               </div>
-            ) : mode === "voice" ? (
-              <div className="flex items-center justify-between gap-4 border-t border-line p-4">
-                <p className="text-sm text-muted">Voice call is ready. Start the call above and speak naturally.</p>
-                <button type="button" onClick={startCall} disabled={!s || !sessionId} className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
-                  Start call
-                </button>
-              </div>
-            ) : <div className="flex items-center gap-4 border-t border-line p-4">
-              <div className="flex flex-col items-center">
-                <button onClick={toggleMic} disabled={!s || send.isPending} aria-label={rec.isRecording ? "Stop and send" : "Answer by voice"}
-                  className={cn("flex h-14 w-14 items-center justify-center rounded-full bg-ink text-white disabled:opacity-50", rec.isRecording && "ring-[6px] ring-brand")}>
-                  {rec.isRecording ? <Square size={18} /> : <Mic size={22} />}
-                </button>
-                <span className="mt-1 text-[11px] text-muted">{rec.isRecording ? `Tap to send · max ${MAX_RECORDING_S}s` : "Tap to speak"}</span>
-              </div>
-              {barState !== "idle" ? (
-                <VoiceState state={barState} seconds={rec.seconds} className="flex-1" />
-              ) : (
-                <div className="flex-1">
-                  <input value={text} maxLength={MAX} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()}
-                    disabled={!s || send.isPending} placeholder="Type your response here…"
-                    className="w-full rounded-full border border-line px-5 py-3.5 outline-none focus:border-ink disabled:bg-black/[0.03]" />
-                  <p className="mt-1 text-right text-xs text-muted">{text.length} / {MAX}</p>
-                </div>
-              )}
-              {coachState === "speaking" ? (
-                <button onClick={() => coach.stop()} aria-label="Stop the coach" className="flex h-14 w-14 items-center justify-center rounded-full border border-line"><Square size={18} /></button>
-              ) : (
-                <button onClick={submit} disabled={!text.trim() || !s || send.isPending || coachState !== "idle"} aria-label="Send"
-                  className="flex h-14 w-14 items-center justify-center rounded-full bg-ink text-white disabled:opacity-40"><Send size={20} /></button>
-              )}
+              {rtVoice.isConnected && <button type="button" onClick={rtVoice.toggleMute} className="rounded-full border border-line px-4 py-2 text-sm font-semibold">{rtVoice.isMuted ? "Unmute" : "Mute"}</button>}
             </div>
-          }
+          ) : mode === "voice" ? (
+            <div className="flex items-center justify-between gap-4 border-t border-line p-4">
+              <p className="text-sm text-muted">Voice call is ready. Start the call above and speak naturally.</p>
+              <button type="button" onClick={startCall} disabled={!s || !sessionId} className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
+                Start call
+              </button>
+            </div>
+          ) : (
+            <div className="border-t border-line">
+              {(barState === "thinking" || barState === "speaking") && (
+                <div className="flex items-center justify-between gap-3 px-4 pt-3">
+                  <VoiceState state={barState} />
+                  {barState === "speaking" && (
+                    <button onClick={() => coach.stop()} className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-xs font-semibold">
+                      <Square size={12} /> Stop
+                    </button>
+                  )}
+                </div>
+              )}
+              <div className="flex items-center gap-4 p-4">
+                <div className="flex flex-col items-center">
+                  <button onClick={toggleMic} disabled={!s || send.isPending} aria-label={rec.isRecording ? "Stop and send" : "Answer by voice"}
+                    className={cn("flex h-14 w-14 items-center justify-center rounded-full bg-ink text-white disabled:opacity-50", rec.isRecording && "ring-[6px] ring-brand")}>
+                    {rec.isRecording ? <Square size={18} /> : <Mic size={22} />}
+                  </button>
+                  <span className="mt-1 text-[11px] text-muted">{rec.isRecording ? `Tap to send · max ${MAX_RECORDING_S}s` : "Tap to speak"}</span>
+                </div>
+                {rec.isRecording ? (
+                  <VoiceState state="listening" seconds={rec.seconds} className="flex-1" />
+                ) : (
+                  <div className="flex-1">
+                    <input value={text} maxLength={MAX} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()}
+                      disabled={!s || send.isPending} placeholder="Type your response here…"
+                      className="w-full rounded-full border border-line px-5 py-3.5 outline-none focus:border-ink disabled:bg-black/[0.03]" />
+                    <p className="mt-1 text-right text-xs text-muted">{text.length} / {MAX}</p>
+                  </div>
+                )}
+                <button onClick={submit} disabled={!text.trim() || !s || send.isPending || rec.isRecording} aria-label="Send"
+                  className="flex h-14 w-14 items-center justify-center rounded-full bg-ink text-white disabled:opacity-40"><Send size={20} /></button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      <aside className="space-y-4">
+      <aside className="hidden space-y-4 xl:block">
         <Card className="space-y-3">
           <div className="flex items-center justify-between"><h2 className="text-xl font-bold">Live corrections</h2>
             {s && !s.finished && <span className="flex items-center gap-2 text-sm"><span className="h-2.5 w-2.5 rounded-full bg-success" /> Active</span>}</div>
@@ -489,6 +523,7 @@ function Bubble({ m, icon, user, onListen }: { m: ChatMessage; icon?: string; us
         <p className={cn("whitespace-pre-wrap rounded-3xl px-5 py-4 text-left", mine ? "bg-mint" : "bg-black/[0.05]", m.pending && "flex items-center gap-2 italic text-muted")}>
           {m.pending && <Mic size={16} aria-hidden />}{m.content}
         </p>
+        {mine && !m.pending && m.corrections && m.corrections.length > 0 && <InlineCorrection text={m.content} corrections={m.corrections} />}
         <div className={cn("mt-1 flex items-center gap-2", mine && "justify-end")}>
           {m.status && <StatusPill status={m.status} label={answerLabel(m.status, m.corrections?.length ?? 0)} />}
           {time && <span className="text-xs text-muted">{time}</span>}
@@ -500,6 +535,28 @@ function Bubble({ m, icon, user, onListen }: { m: ChatMessage; icon?: string; us
         </div>
       </div>
       {mine && <Avatar src={user?.avatarUrl} first={user?.firstName} last={user?.lastName} size={44} />}
+    </div>
+  );
+}
+
+/** DESIGN.md "Correction": right under the student's answer. Line 1 the sentence with each wrong part struck, line 2
+ *  the corrected sentence with each fix in bold, then one short explanation per fix (in French by default). */
+function InlineCorrection({ text, corrections }: { text: string; corrections: Correction[] }) {
+  const { before, after, unplaced } = markSentence(text, corrections);
+  return (
+    <div className="tk-in ml-auto mt-2 rounded-2xl border border-[color:var(--hairline-soft)] bg-[color:var(--surface)] p-3 text-left text-sm">
+      <p className="text-muted">
+        {before.map((p, i) => (p.kind === "wrong" ? <s key={i} className="text-[color:var(--bad)]">{p.text}</s> : <span key={i}>{p.text}</span>))}
+      </p>
+      <p className="mt-0.5 font-medium text-ink">
+        {after.map((p, i) => (p.kind === "fixed" ? <span key={i} className="font-semibold text-[color:var(--good)]">{p.text}</span> : <span key={i}>{p.text}</span>))}
+      </p>
+      {unplaced.map((c, i) => (
+        <p key={`u${i}`} className="mt-0.5"><s className="text-[color:var(--bad)]">{c.original}</s> → <span className="font-semibold text-[color:var(--good)]">{c.fixed}</span></p>
+      ))}
+      <ul className="mt-1.5 space-y-0.5 text-xs text-muted">
+        {corrections.map((c, i) => <li key={i}>{c.why}</li>)}
+      </ul>
     </div>
   );
 }

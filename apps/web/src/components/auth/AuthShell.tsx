@@ -236,26 +236,11 @@ export function AuthShell({ mode, children }: { mode: "sign-in" | "sign-up"; chi
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f1f1ef] p-3 sm:p-6">
       <div className="relative w-full max-w-[1180px] overflow-hidden rounded-[28px] border border-black/10 bg-[#fafaf8] shadow-[0_1px_0_rgba(255,255,255,0.8)_inset]">
-        {/* blobs d'ambiance */}
-        {isSignUp ? (
-          <>
-            <div className="pointer-events-none absolute -right-10 top-24 h-52 w-52 rounded-full bg-[#c9f2e6]/70 blur-[2px]" />
-            <div className="pointer-events-none absolute -top-16 right-1/3 h-48 w-48 rounded-full bg-[#fbe7e9]/70 blur-2xl" />
-          </>
-        ) : (
-          <>
-            <div className="pointer-events-none absolute -right-16 -top-10 h-56 w-56 rounded-full bg-[#fbe8a6]/70" />
-            <div className="pointer-events-none absolute -bottom-24 right-[14%] h-80 w-[520px] rounded-full bg-[#f9e3a0]/80" />
-            <div className="pointer-events-none absolute left-[-60px] top-[38%] h-72 w-72 rounded-full bg-[#dcefe3]/80" />
-            <div className="pointer-events-none absolute left-[30%] top-[45%] h-56 w-56 rounded-full bg-[#e6efe0]/70" />
-          </>
-        )}
-
         <div className="relative grid min-h-[680px] grid-cols-1 gap-10 px-6 py-8 sm:px-10 lg:grid-cols-2 lg:gap-6 lg:px-12 lg:py-10">
           {/* Colonne gauche */}
           <section className="flex flex-col">
             <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#fbc928] text-[18px] font-bold text-[#16161a]">T</span>
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand text-[18px] font-bold text-[#16161a]">T</span>
               <span className="text-[18px] font-semibold text-[#16161a]">Tkallem</span>
             </div>
 
