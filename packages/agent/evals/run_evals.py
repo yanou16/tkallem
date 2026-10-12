@@ -15,6 +15,9 @@ from tkallem_agent.graph import build_graph
 from tkallem_agent.llm import get_llm
 from tkallem_agent.scenarios import load_scenario
 
+sys.path.insert(0, str(Path(__file__).parent))
+from outage import retry_outage  # noqa: E402
+
 ROOT = Path(__file__).parent
 SCENARIO = load_scenario("visa-us").model_dump()
 STOP = {"the", "a", "an", "to", "i", "my"}
@@ -52,10 +55,11 @@ def evaluate() -> dict:
     total = found = exact = harmful = false_alarms = invalid = reds = 0
     rule_ok = rule_checked = rule_missing = 0
     for r in rows:
+        state = {"level": r["level"], "scenario": SCENARIO, "student_text": r["sentence"], "history": [],
+                 "explain_lang": os.getenv("EXPLAIN_LANG", "fr")}
         try:
-            out = graph.invoke({"level": r["level"], "scenario": SCENARIO, "student_text": r["sentence"], "history": [],
-                                "explain_lang": os.getenv("EXPLAIN_LANG", "fr")})
-        except Exception as e:  # network or provider error: count the row as invalid, keep going
+            out = retry_outage(r["id"], lambda: graph.invoke(state))
+        except Exception as e:  # provider still down after the retries, or another error: the row is invalid
             out = {"error": f"{type(e).__name__}: {e}"}
         turn = out.get("turn")
         if turn is None:

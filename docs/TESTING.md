@@ -39,6 +39,7 @@ green (`.github/workflows/ci.yml`). After a merge, the API image is built, deplo
 | API client: tokens, guest token, error messages | front `lib/api/client.test.ts` |
 | Installing the app (PWA): which help each phone gets, when the banner shows | front `lib/install.test.ts` |
 | Health and deployed version | API `test_health.py` |
+| Eval gate: a provider outage (5xx, 429, timeout) is tried again, up to 3 times; a wrong answer never is | `test_eval_outage.py` |
 
 ## Not covered by automatic tests (checked by hand before a release)
 

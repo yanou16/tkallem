@@ -1,0 +1,78 @@
+import sys
+from pathlib import Path
+
+import httpx
+import openai
+import pytest
+
+sys.path.insert(0, str(Path(__file__).parents[1] / "evals"))
+from outage import provider_down, retry_outage  # noqa: E402
+
+REQUEST = httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions")
+
+
+def status_error(code: int) -> openai.APIStatusError:
+    return openai.APIStatusError("error", response=httpx.Response(code, request=REQUEST), body=None)
+
+
+def test_provider_outages_are_recognised():
+    assert provider_down(status_error(504))
+    assert provider_down(status_error(429))
+    assert provider_down(openai.APITimeoutError(request=REQUEST))
+    assert provider_down(TimeoutError())
+
+
+def test_answers_and_client_errors_are_not_outages():
+    assert not provider_down(status_error(400))
+    assert not provider_down(status_error(401))
+    assert not provider_down(ValueError("invalid JSON from the model"))
+
+
+def test_an_outage_wrapped_by_the_agent_is_recognised():
+    class AgentError(RuntimeError):
+        pass
+
+    try:
+        try:
+            raise status_error(504)
+        except openai.APIStatusError as e:
+            raise AgentError("agent call failed") from e
+    except AgentError as wrapped:
+        assert provider_down(wrapped)
+
+
+def test_retries_an_outage_then_returns_the_answer():
+    calls, waits = [], []
+
+    def fn():
+        calls.append(1)
+        if len(calls) < 3:
+            raise status_error(504)
+        return "turn"
+
+    assert retry_outage("s01", fn, waits=(1, 2), sleep=waits.append) == "turn"
+    assert waits == [1, 2]
+
+
+def test_gives_up_after_the_last_try():
+    calls = []
+
+    def fn():
+        calls.append(1)
+        raise status_error(503)
+
+    with pytest.raises(openai.APIStatusError):
+        retry_outage("s01", fn, waits=(1, 2), sleep=lambda _: None)
+    assert len(calls) == 3
+
+
+def test_never_retries_a_bad_answer():
+    calls = []
+
+    def fn():
+        calls.append(1)
+        raise ValueError("unparseable output")
+
+    with pytest.raises(ValueError):
+        retry_outage("s01", fn, waits=(1, 2), sleep=lambda _: None)
+    assert len(calls) == 1

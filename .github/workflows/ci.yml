@@ -15,6 +15,7 @@ jobs:
   agent:
     name: Agent tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -32,6 +33,7 @@ jobs:
   api:
     name: API tests (with Postgres)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:16
@@ -63,6 +65,7 @@ jobs:
   web:
     name: Front typecheck, tests and build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: apps/web
@@ -85,6 +88,7 @@ jobs:
   docker:
     name: API image builds
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -99,6 +103,7 @@ jobs:
   evals:
     name: AI evals (agent changes)
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with:
@@ -123,6 +128,7 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           LLM_FALLBACKS: ""
+          PYTHONUNBUFFERED: "1"   # each case shows in the log as it runs, not all at the end
         run: |
           if [ -z "$OPENROUTER_API_KEY" ]; then echo "::error::The agent changed but the OPENROUTER_API_KEY secret is missing: evals cannot run."; exit 1; fi
           (cd apps/api && pip install -r requirements.txt)   # requirements.txt points to ../../packages/agent
@@ -133,6 +139,7 @@ jobs:
     if: always()
     needs: [agent, api, web, docker, evals]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Every job passed
         run: |
