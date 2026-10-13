@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANSWERS, CALLOUTS, INITIAL_CHAT, REGIONS, REPORTS, TABS, chatReducer, feedbackFor, nextVoiceState } from "./demo";
+import { ANSWERS, CALLOUTS, INITIAL_CHAT, REGIONS, REPORTS, TABS, chatReducer, feedbackFor, nextVoiceState, numbers, stepView } from "./demo";
 
 describe("tabs and captions", () => {
   it("has the four tabs, each with captions on both sides", () => {
@@ -64,5 +64,32 @@ describe("voice and report previews", () => {
     expect(REPORTS[1].freeze).toBe("9.3 s");
     expect(REPORTS[1].freezeNote).not.toMatch(/average/); // the card already says "average"
     expect(REPORTS[3].freezeNote).toBe("Down from 9.3 s last time.");
+  });
+});
+
+
+describe("the guided tour", () => {
+  it("shows each part of the web preview already in action", () => {
+    const at = (i: number) => stepView("web", i).chat;
+    expect(at(0).step).toBe("asking");
+    expect(at(2).step).toBe("helped");                       // Help me start
+    expect(at(4).step).toBe("answered");                     // the feedback is on screen
+    expect(feedbackFor(at(4)).kind).toBe("shown");
+    expect(at(5).step).toBe("nailed");                       // Say it again
+  });
+
+  it("walks the voice preview through listening, thinking and speaking", () => {
+    expect([0, 1, 2, 3].map((i) => stepView("voice", i).voice)).toEqual(["idle", "listening", "thinking", "speaking"]);
+  });
+
+  it("stays inside the captions of the tab", () => {
+    expect(stepView("web", 99).chat).toEqual(stepView("web", 5).chat);
+    expect(stepView("report", -3).report).toBe(3);
+  });
+
+  it("numbers the parts in reading order, a shared part keeping its first number", () => {
+    expect(numbers("web")).toEqual({ mode: 1, question: 2, help: 3, answer: 4, feedback: 5, again: 6 });
+    expect(numbers("phone")).toEqual({ screen: 1, thumb: 3 });
+    expect(numbers("voice")).toEqual({ mic: 1, state: 2, transcript: 3 });
   });
 });

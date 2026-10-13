@@ -138,3 +138,30 @@ export const REPORTS: Record<ReportSession, { progress: string; freeze: string; 
     redo: "Redo: “I will stay two years…”",
   },
 };
+
+
+/* ---------- the guided tour: each step shows its part in action ---------- */
+
+export type StepView = { chat: ChatState; voice: VoiceState; report: ReportSession };
+
+const apply = (...actions: ChatAction[]) => actions.reduce(chatReducer, INITIAL_CHAT);
+
+/** What the preview shows at step `index` of a tab (0-based): the part the caption explains already happening. */
+export function stepView(tab: DemoTab, index: number): StepView {
+  const base: StepView = { chat: INITIAL_CHAT, voice: "idle", report: 3 };
+  const i = Math.max(0, Math.min(index, CALLOUTS[tab].length - 1));
+  if (tab === "web") {
+    // mode, question, help, answer, feedback, again
+    const chats = [INITIAL_CHAT, INITIAL_CHAT, apply({ type: "help" }), apply({ type: "help" }), apply({ type: "pick", index: 1 }), apply({ type: "pick", index: 1 }, { type: "nail" })];
+    return { ...base, chat: chats[i] };
+  }
+  if (tab === "voice") return { ...base, voice: (["idle", "listening", "thinking", "speaking"] as const)[i] };
+  return base;
+}
+
+/** The number written on a caption and on the part of the preview it points at: the order to read them in. */
+export function numbers(tab: DemoTab): Record<string, number> {
+  const out: Record<string, number> = {};
+  CALLOUTS[tab].forEach((c, i) => { out[c.region] ??= i + 1; });
+  return out;
+}
