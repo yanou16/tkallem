@@ -21,13 +21,14 @@ from app.db.sessions import (
     get_session_for_user,
     list_turns,
     previous_finished,
+    set_confidence,
     save_turn,
     set_session_mode,
 )
 from app.dependencies import get_current_user, user_for_claims
 from app.progress_line import progress_line
 from app.schemas.sessions import (
-    HintRequest, HintResult, RepeatResult, SessionCreate, SessionDetail, SessionReport, SessionStarted, Spoken,
+    ConfidenceAnswer, HintRequest, HintResult, RepeatResult, SessionCreate, SessionDetail, SessionReport, SessionStarted, Spoken,
     TurnResult,
 )
 from app.security import ClerkClaims, get_clerk_claims
@@ -71,6 +72,7 @@ def start_session(
             level=user["level"],
             explain_lang=explain_lang,
             max_text_chars=settings.max_text_chars,
+            feedback_mode=body.feedback_mode,
         )
     except ScenarioNotFound:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown scenario")
@@ -93,6 +95,7 @@ def start_session(
     return {
         "session_id": coach.session_id,
         "first_question": {"text": coach.opening, "audio_url": audio_url},
+        "feedback_mode": coach.feedback_mode,
     }
 
 
@@ -151,7 +154,9 @@ def read_session(
         "started_at": session["started_at"],
         "ended_at": session["ended_at"],
         **_scenario_view(session),
-        "turns": _with_praise(list_turns(conn, session_id, user["id"]), session["state"]),
+        "feedback_mode": session["state"].get("feedback_mode", "practice"),
+        "confidence": _confidence(session),
+        "turns": _with_praise(list_turns(conn, session_id, user["id"]), session["state"], hide=_interview_running(session)),
         "note": session["note"],
         "metrics": {key: session[key] for key in METRIC_KEYS} if session["ended_at"] else None,
         "progress": _progress(conn, user["id"], session),
@@ -182,12 +187,24 @@ def _progress(conn: Connection, user_id: int, session: dict) -> str | None:
     return progress_line({key: session[key] for key in METRIC_KEYS}, before, count)
 
 
-def _with_praise(turns: list[dict], state: dict) -> list[dict]:
+def _confidence(session: dict) -> dict:
+    return {"before": session.get("confidence_before"), "after": session.get("confidence_after")}
+
+
+def _interview_running(session: dict) -> bool:
+    """A real interview shows nothing (no correction, no colour) until its report."""
+    return session["state"].get("feedback_mode") == "interview" and session["ended_at"] is None
+
+
+def _with_praise(turns: list[dict], state: dict, hide: bool = False) -> list[dict]:
     """Praise and priority correction of each answer (improvement 4), from the session state the agent keeps: the
     turns table does not store them. Position 1 is the first answer."""
     logged = state.get("turns", [])
     out = []
     for t in turns:
+        if hide:
+            out.append({**t, "corrections": [], "sentence_status": None, "praise": None, "priority_index": 0})
+            continue
         log = logged[t["position"] - 1] if 0 < t["position"] <= len(logged) else {}
         n = len(t.get("corrections") or [])
         priority = log.get("priority_index", 0)
@@ -227,13 +244,14 @@ def _save(connect: ConnFactory, session_id: UUID, coach: CoachSession, turn, exp
         )
     if saved is None:
         return None
+    interview = coach.feedback_mode == "interview"  # computed and stored, but shown only in the report
     return {
         "transcript": coach.turns[-1].student_text,
         "reply": turn.reply,
-        "corrections": corrections,
-        "sentence_status": turn.sentence_status,
-        "praise": turn.praise,
-        "priority_index": turn.priority_index,
+        "corrections": [] if interview else corrections,
+        "sentence_status": None if interview else turn.sentence_status,
+        "praise": None if interview else turn.praise,
+        "priority_index": 0 if interview else turn.priority_index,
         "finished": coach.finished,
     }
 
@@ -281,6 +299,8 @@ def _stream_answer(session_id: UUID, session: dict, user: dict, wallet, text: st
             for ev in stream_turn(coach, text, audio_seconds=audio_seconds, pauses=pauses, think_seconds=think, want_audio=want_audio):
                 if ev["type"] == "reply":
                     yield _sse("reply", {"text": ev["reply"]})
+                elif ev["type"] == "corrections" and coach.feedback_mode == "interview":
+                    pass  # a real interview: the corrections wait for the report
                 elif ev["type"] == "corrections":
                     yield _sse("corrections", {"corrections": ev["corrections"], "sentence_status": ev["sentence_status"],
                                                "praise": ev.get("praise"), "priority_index": ev.get("priority_index", 0)})
@@ -347,6 +367,26 @@ def _hint_rate_ok(user_key: str, now: float) -> bool:
     return _hourly_ok(_hint_times, user_key, HINTS_PER_HOUR, now)
 
 
+@router.post("/{session_id}/confidence", status_code=status.HTTP_204_NO_CONTENT)
+def answer_confidence(
+    session_id: UUID,
+    body: ConfidenceAnswer,
+    user: dict = Depends(get_current_user),
+    connect: ConnFactory = Depends(get_conn_factory),
+) -> None:
+    """The student's own 1-to-5 answer, free and repeatable. `before` is taken until the first answer is sent; `after`
+    only once the report exists (the question comes with it)."""
+    with connect() as conn:
+        session = get_session_for_user(conn, session_id, user["id"])
+        if session is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+        if body.when == "before" and session["state"].get("turns"):
+            raise HTTPException(status.HTTP_409_CONFLICT, "Too late: the first answer was already sent")
+        if body.when == "after" and session["ended_at"] is None:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Ask again once the report is ready")
+        set_confidence(conn, session_id, user["id"], body.when, body.value)
+
+
 @router.post("/{session_id}/hint", response_model=HintResult)
 def ask_hint(
     session_id: UUID,
@@ -366,6 +406,8 @@ def ask_hint(
     if body.type == "translate" and not (body.text or "").strip():
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Write your idea in French or Darija first")
     coach = CoachSession.from_state(session["state"], llm=llm, max_text_chars=settings.max_text_chars)
+    if coach.feedback_mode == "interview":
+        raise HTTPException(status.HTTP_409_CONFLICT, "No hints in a real interview: answer as you would in the real one")
     if coach.current_question() is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "The interview is over: no question to help with")
     key = (session_id, len(coach.turns))  # a new question (or the same one asked again) after each answer
@@ -402,6 +444,8 @@ def say_it_again(
     if session is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
     coach = CoachSession.from_state(session["state"], max_text_chars=settings.max_text_chars)
+    if coach.feedback_mode == "interview" and session["ended_at"] is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Say it again opens with the report of a real interview")
     if turn >= len(coach.turns):
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Answer not found")
     answer = coach.turns[turn]
@@ -510,5 +554,5 @@ def end_practice_session(
             raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
         before, count = previous_finished(conn, user["id"], session_id, datetime.now(timezone.utc))
 
-    return {**report.model_dump(), "progress": progress_line(report.metrics, before, count),
+    return {**report.model_dump(), "feedback_mode": coach.feedback_mode, "confidence": _confidence(session), "progress": progress_line(report.metrics, before, count),
             "freeze": _freeze(session["state"], before)}
