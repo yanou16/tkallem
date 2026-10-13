@@ -56,9 +56,9 @@ export default function ProductDemo() {
   const right = callouts.map((c, i) => ({ c, i })).filter(({ c }) => c.side === "right");
 
   return (
-    <section aria-labelledby="demo-title" className="mt-16 xl:-mx-16">
+    <section aria-labelledby="demo-title">
       <h2 id="demo-title" className="text-2xl font-semibold sm:text-3xl">See how it works</h2>
-      <p className="mt-1 max-w-2xl text-muted">A 30-second tour of an interview. Press play, or click anything: it is a live preview with example data and spends nothing.</p>
+      <p className="mt-1 max-w-2xl text-muted">Press play for a 30-second tour, or click anything. Example data: it spends nothing.</p>
 
       <div role="tablist" aria-label="Product preview" className="mt-5 flex max-w-full gap-1 overflow-x-auto rounded-full bg-surface p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map((t) => {

@@ -4,10 +4,10 @@
 export type DemoTab = "web" | "phone" | "voice" | "report";
 
 export const TABS: { id: DemoTab; label: string; title: string; text: string }[] = [
-  { id: "web", label: "On the web", title: "A real interview, corrected as you go", text: "The coach asks the real questions. Answer by typing or speaking; each answer comes back with what was good and the one fix that matters." },
-  { id: "phone", label: "On your phone", title: "Installs like an app, no store", text: "Open the link on your phone and add it to your home screen. Same coach, same corrections, thumb-sized buttons." },
-  { id: "voice", label: "Voice coach", title: "Say it out loud, hear the coach answer", text: "Tap the microphone and answer. The coach hears you, replies in a natural voice, and shows the corrections while it speaks." },
-  { id: "report", label: "Your report", title: "See the freeze go down", text: "After each interview: your progress, how long you waited before starting, and how confident you feel. Compare your first session and your third." },
+  { id: "web", label: "On the web", title: "A real interview, corrected as you go", text: "Each answer comes back with what was good and the one fix that matters." },
+  { id: "phone", label: "On your phone", title: "Installs like an app, no store", text: "Add it to your home screen. Same coach, thumb-sized buttons." },
+  { id: "voice", label: "Voice coach", title: "Say it out loud, hear the coach answer", text: "Tap the microphone and answer. The coach replies in a natural voice." },
+  { id: "report", label: "Your report", title: "See the freeze go down", text: "Your progress, the wait before you speak, and how confident you feel." },
 ];
 
 /** A caption around the preview. `region` is the part of the preview it points at. */
