@@ -68,8 +68,8 @@ describe("session calls", () => {
 
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toMatch(/\/sessions$/);
-    expect(JSON.parse(String(init.body))).toEqual({ scenario_id: "visa-us", mode: "text" });
-    expect(started).toEqual({ sessionId: "s1", firstQuestion: "What is the purpose of your trip?", firstQuestionAudio: null });
+    expect(JSON.parse(String(init.body))).toEqual({ scenario_id: "visa-us", mode: "text", feedback_mode: "practice" });
+    expect(started).toEqual({ sessionId: "s1", firstQuestion: "What is the purpose of your trip?", firstQuestionAudio: null, feedbackMode: "practice" });
   });
 
   it("starts a voice session: the first question comes spoken", async () => {
@@ -77,8 +77,17 @@ describe("session calls", () => {
 
     const started = await startSession("visa-us", "voice");
 
-    expect(JSON.parse(String(fetchMock.mock.calls[0][1].body))).toEqual({ scenario_id: "visa-us", mode: "voice" });
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1].body))).toEqual({ scenario_id: "visa-us", mode: "voice", feedback_mode: "practice" });
     expect(started.firstQuestionAudio).toBe("data:audio/wav;base64,AAA");
+  });
+
+  it("starts a real interview when asked, and reads the mode the API confirms", async () => {
+    const fetchMock = serverReplies({ session_id: "s3", first_question: { text: "Hello?", audio_url: null }, feedback_mode: "interview" });
+
+    const started = await startSession("visa-us", "text", "interview");
+
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1].body))).toEqual({ scenario_id: "visa-us", mode: "text", feedback_mode: "interview" });
+    expect(started.feedbackMode).toBe("interview");
   });
 
   it("sends an answer as the form field `text`", async () => {
@@ -138,6 +147,7 @@ describe("mapSessionDetail", () => {
       ...OPEN_SESSION,
       ended_at: "2026-10-10T10:08:00Z",
       note: "Honest note.",
+      feedback_mode: "interview",
       progress: "First interview done: this is your starting point.",
       freeze: { seconds: 3.4, answers: 4, kind: "voice", previous: 9 },
       metrics: { mistakes_per_100: 14.3, words_per_answer: 7, hesitations_per_min: null, speaking_seconds: null },
@@ -150,6 +160,7 @@ describe("mapSessionDetail", () => {
         { role: "coach", text: "Good. Which university?", status: null, corrections: [] },
       ],
       note: "Honest note.",
+      feedbackMode: "interview",
       progress: "First interview done: this is your starting point.",
       freeze: { seconds: 3.4, answers: 4, kind: "voice", previous: 9 },
       metrics: { mistakesPer100: 14.3, wordsPerAnswer: 7, hesitationsPerMin: null, speakingSeconds: null },

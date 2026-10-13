@@ -6,6 +6,7 @@ const AT = "2026-10-10T10:00:00.000Z";
 
 const STARTED: AiSession = {
   id: "s1",
+  feedbackMode: "practice",
   scenarioId: "visa-us",
   finished: false,
   messages: [{ id: "s1-0", role: "assistant", content: "What is the purpose of your trip?", createdAt: AT }],
