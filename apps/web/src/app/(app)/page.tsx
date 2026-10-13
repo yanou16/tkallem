@@ -7,6 +7,8 @@ import { mistakeLabel, type Progress } from "@/features/progress/types/progress"
 import { useMySessions, useScenarios } from "@/features/practice/hooks/usePractice";
 import { Async, Card, EmptyState, GoalHint, PageHeader, ProgressRing, SectionTitle, Skeleton } from "@/components/ui";
 import { CardsSkeleton, ScenarioCard, SessionList } from "@/components/cards";
+import { usePlanOrder } from "@/features/plan/usePlanOrder";
+import type { Scenario } from "@/features/practice/types/practice";
 import { Icon } from "@/lib/icons";
 import { cn, formatMinutes, formatNumber, plural } from "@/lib/utils";
 
@@ -36,12 +38,7 @@ export default function HomePage() {
             isEmpty={(d) => d.length === 0}
             empty={<EmptyState title="No scenarios available" text="Practice scenarios for your language will appear here." />}
           >
-            {(list) => (
-              <div className="grid gap-4 md:grid-cols-2">
-                {/* Real situations only: free talk is on the practice page. */}
-                {list.filter((s) => s.mode === "guided").slice(0, 4).map((s) => <ScenarioCard key={s.id} s={s} />)}
-              </div>
-            )}
+            {(list) => <HomeScenarios list={list} />}
           </Async>
         </div>
 
@@ -53,6 +50,16 @@ export default function HomePage() {
         <DailyGoalCard />
         <RecentSessionsCard />
       </aside>
+    </div>
+  );
+}
+
+function HomeScenarios({ list }: { list: Scenario[] }) {
+  const { list: ordered } = usePlanOrder(list);
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {/* Real situations only (free talk is on the practice page), in the order of the student's plan. */}
+      {ordered.filter((s) => s.mode === "guided").slice(0, 4).map((s) => <ScenarioCard key={s.id} s={s} />)}
     </div>
   );
 }

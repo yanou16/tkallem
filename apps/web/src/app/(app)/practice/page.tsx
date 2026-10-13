@@ -1,8 +1,11 @@
 "use client";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useMySessions, useScenarios } from "@/features/practice/hooks/usePractice";
+import type { Scenario } from "@/features/practice/types/practice";
 import { Async, Card, EmptyState, PageHeader, SectionTitle, Skeleton } from "@/components/ui";
+import Link from "next/link";
 import { CardsSkeleton, ScenarioCard, SessionList } from "@/components/cards";
+import { usePlanOrder } from "@/features/plan/usePlanOrder";
 
 export default function PracticePage() {
   const { user } = useCurrentUser();
@@ -18,15 +21,11 @@ export default function PracticePage() {
           subtitle="Real-life conversations, structured exercises, and exam preparation — all in one place."
         />
 
-        <SectionTitle title="All practice scenarios" />
+        <SectionTitle title="All practice scenarios" action={<Link href="/plan" className="inline-flex min-h-11 items-center underline underline-offset-4">Your plan</Link>} />
         <Async query={all} skeleton={<CardsSkeleton n={4} h="h-48" cols="md:grid-cols-2 2xl:grid-cols-4" />}
           isEmpty={(d) => d.length === 0}
           empty={<EmptyState title="No scenarios yet" text="Scenarios for your learning language will appear here." />}>
-          {(list) => (
-            <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
-              {list.map((s) => <ScenarioCard key={s.id} s={s} />)}
-            </div>
-          )}
+          {(list) => <ScenarioGrid list={list} />}
         </Async>
       </div>
 
@@ -41,6 +40,16 @@ export default function PracticePage() {
         </Card>
         {/* TODO: "Recommended for you" and "Today's focus" need API routes (recommendations, weak points). */}
       </aside>
+    </div>
+  );
+}
+
+/** In the order of the student's plan when there is one; the same situations for everyone. */
+function ScenarioGrid({ list }: { list: Scenario[] }) {
+  const { list: ordered } = usePlanOrder(list);
+  return (
+    <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+      {ordered.map((s) => <ScenarioCard key={s.id} s={s} />)}
     </div>
   );
 }
