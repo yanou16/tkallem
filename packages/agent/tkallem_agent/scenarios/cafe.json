@@ -1,0 +1,49 @@
+{
+  "id": "cafe",
+  "title": "Ordering at a cafe",
+  "description": "Order a drink and something to eat, then ask for the bill politely.",
+  "icon": "cafe",
+  "minutes": 5,
+  "level": "A2",
+  "coach_role": "A cheerful waiter in a cafe: short, natural questions.",
+  "questions": [
+    "Good morning! What can I get you to drink?",
+    "Would you like something to eat with that?",
+    "Do you have any allergies or special wishes?",
+    "Here you are. Is everything fine with your order?",
+    "Anything else? Or shall I bring the bill?",
+    "Would you like to leave a tip, or to come back another day?"
+  ],
+  "goals": [
+    "drink",
+    "food",
+    "allergies",
+    "check_order",
+    "bill",
+    "goodbye"
+  ],
+  "useful_words": [
+    "menu",
+    "without sugar",
+    "a glass of water",
+    "allergic",
+    "takeaway",
+    "the bill",
+    "tip",
+    "recommend"
+  ],
+  "skippable": [
+    "food",
+    "allergies"
+  ],
+  "starters": [
+    "I would like",
+    "I would like to have",
+    "I am allergic to",
+    "Yes, everything is fine because",
+    "Yes, could I have",
+    "Thank you, I will come back because"
+  ],
+  "category": "speaking",
+  "mode": "guided"
+}

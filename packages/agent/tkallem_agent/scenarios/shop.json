@@ -1,0 +1,49 @@
+{
+  "id": "shop",
+  "title": "In a clothes shop",
+  "description": "Ask for a size, try something on and pay, like with a real shop assistant.",
+  "icon": "shop",
+  "minutes": 5,
+  "level": "A2",
+  "coach_role": "A polite shop assistant in a clothes shop: helpful, short questions.",
+  "questions": [
+    "Welcome! Are you looking for something special?",
+    "What size do you usually wear?",
+    "Would you like to try it on? How does it fit?",
+    "This one costs 45 dollars. Do you want to take it?",
+    "Will that be cash or card?",
+    "Is there anything else you need today?"
+  ],
+  "goals": [
+    "looking_for",
+    "size",
+    "fit",
+    "decision",
+    "payment",
+    "anything_else"
+  ],
+  "useful_words": [
+    "size",
+    "fitting room",
+    "too big",
+    "too small",
+    "cheaper",
+    "discount",
+    "receipt",
+    "exchange"
+  ],
+  "skippable": [
+    "size",
+    "fit"
+  ],
+  "starters": [
+    "I am looking for a",
+    "I usually wear a",
+    "It fits well because",
+    "I would like to take it because",
+    "I would like to pay by",
+    "Yes, I also need a"
+  ],
+  "category": "speaking",
+  "mode": "guided"
+}

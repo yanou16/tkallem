@@ -138,7 +138,7 @@ Large parts of the code were written with Claude Code (an AI coding assistant), 
   regressions; they do not prove the coach is right about every sentence. A correction can still be wrong or miss something.
 - **Darija translation depends on the model** and on how the student writes it; a translation the code refuses falls back to a generic starter.
 - **Confidence and its change are self-reported**, from few sessions, with no control group (see [`docs/IMPACT.md`](docs/IMPACT.md)).
-- **Scenarios are fixed and few** (six). A real Campus France interview is in French; ours trains the English version of it.
+- **Scenarios are fixed and few** (ten: six interviews and exams, four everyday ones). A real Campus France interview is in French; ours trains the English version of it.
 - **Rate limits for hints and repeats are kept in memory**, per server process: fine for one instance, not for several.
 - **Sign-in uses a Clerk development instance** and one language for the interface (English).
 - **The sample 3D avatar is optional and off by default**: it comes from the TalkingHead project, whose sample avatars are for non-commercial use.
