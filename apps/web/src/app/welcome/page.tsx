@@ -5,6 +5,7 @@ import { ArrowRight, Clock, MessageCircle, Mic, FileText } from "lucide-react";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
 import { startHref } from "@/components/cards";
 import InstallButton from "@/components/InstallButton";
+import ProductDemo from "@/features/landing/ProductDemo";
 import { Icon } from "@/lib/icons";
 import { scenarioTint } from "@/lib/tint";
 import { cn } from "@/lib/utils";
@@ -67,7 +68,9 @@ export default function WelcomePage() {
           </figure>
         </section>
 
-        <section className="mt-6">
+        <ProductDemo />
+
+        <section className="mt-16">
           <h2 className="text-2xl font-semibold">Pick a real situation</h2>
           <p className="mt-1 text-muted">Each one takes 5 to 10 minutes and ends with a report on your answers.</p>
           <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
