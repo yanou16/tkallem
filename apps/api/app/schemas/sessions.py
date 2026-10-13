@@ -60,6 +60,8 @@ class TurnResult(BaseModel):
     reply_audio_url: str | None = None
     corrections: list[Correction] = Field(max_length=3)
     sentence_status: Status
+    praise: str | None = None  # improvement 4: one short true positive, checked by the agent's code
+    priority_index: int = 0  # the correction shown in full; the others are folded
     finished: bool
     credits: Credits | None = None  # balance after this answer
 
@@ -108,6 +110,8 @@ class TurnDetail(BaseModel):
     reply: str
     sentence_status: Status
     corrections: list[Correction]
+    praise: str | None = None  # improvement 4: shown before the corrections
+    priority_index: int = 0  # the correction shown in full; the others are folded
 
 
 class SessionDetail(BaseModel):
