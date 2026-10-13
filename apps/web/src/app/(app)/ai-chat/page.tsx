@@ -11,7 +11,8 @@ import InstallButton from "@/components/InstallButton";
 import VoiceState, { formatTime, type CoachState } from "@/features/ai-chat/components/VoiceState";
 import HelpMeStart from "@/features/ai-chat/components/HelpMeStart";
 import SayItAgain from "@/features/ai-chat/components/SayItAgain";
-import { MAX_RECORDING_S, useVoiceRecorder, type Recording } from "@/features/ai-chat/hooks/useVoiceRecorder";
+import { useVoiceRecorder, type Recording } from "@/features/ai-chat/hooks/useVoiceRecorder";
+import { maxRecordingSeconds } from "@/features/ai-chat/lib/voice";
 import { useCoachVoice } from "@/features/ai-chat/hooks/useCoachVoice";
 import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOfCredits";
 import { markSentence } from "@/features/ai-chat/lib/marks";
@@ -134,7 +135,8 @@ function Chat() {
   const bottom = useRef<HTMLDivElement>(null);
   const answerField = useRef<HTMLInputElement>(null);
   const [nailed, setNailed] = useState<Set<string>>(() => new Set()); // answers said again correctly
-  const rec = useVoiceRecorder({ onAutoStop: (r) => r && sendRecording(r) });
+  const maxSeconds = maxRecordingSeconds(scenarioId);
+  const rec = useVoiceRecorder({ onAutoStop: (r) => r && sendRecording(r), maxSeconds });
 
   const begin = (id: string) => {
     started.current = id;
@@ -413,7 +415,7 @@ function Chat() {
                     className={cn("flex h-14 w-14 items-center justify-center rounded-full bg-ink text-white disabled:opacity-50", rec.isRecording && "ring-[6px] ring-brand")}>
                     {rec.isRecording ? <Square size={18} /> : <Mic size={22} />}
                   </button>
-                  <span className="mt-1 text-[11px] text-muted">{rec.isRecording ? `Tap to send · max ${MAX_RECORDING_S}s` : "Tap to speak"}</span>
+                  <span className="mt-1 text-[11px] text-muted">{rec.isRecording ? `Tap to send · max ${maxSeconds}s` : "Tap to speak"}</span>
                 </div>
                 {rec.isRecording ? (
                   <VoiceState state="listening" seconds={rec.seconds} className="flex-1" />
