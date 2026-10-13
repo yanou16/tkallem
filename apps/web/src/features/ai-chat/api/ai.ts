@@ -33,6 +33,7 @@ export const mapReport = (r: SessionReportDto): SessionReport => ({
   progress: r.progress ?? null,
   freeze: r.freeze ?? null,
   feedbackMode: r.feedback_mode ?? "practice",
+  confidence: r.confidence ?? { before: null, after: null },
   metrics: mapMetrics(r.metrics),
   levels: {
     mistakesPer100: r.levels.mistakes_per_100,
@@ -67,13 +68,14 @@ export function mapSessionDetail(s: SessionDetailDto): AiSession {
           progress: s.progress ?? null,
           freeze: s.freeze ?? null,
           feedbackMode: s.feedback_mode ?? "practice",
+          confidence: s.confidence ?? { before: null, after: null },
           metrics: mapMetrics(s.metrics),
           levels: { mistakesPer100: null, wordsPerAnswer: null, hesitationsPerMin: null },
           redoIndex: null,
         }
       : undefined;
 
-  return { id: s.session_id, scenarioId: s.scenario_id, feedbackMode: s.feedback_mode ?? "practice", title: s.title, messages, finished: s.finished, report };
+  return { id: s.session_id, scenarioId: s.scenario_id, feedbackMode: s.feedback_mode ?? "practice", confidence: s.confidence ?? { before: null, after: null }, title: s.title, messages, finished: s.finished, report };
 }
 
 export const getSession = (sessionId: string) =>
@@ -146,3 +148,7 @@ export const repeatAnswer = (sessionId: string, turn: number, audio: Blob) => {
   form.append("audio", audio, audio.type.includes("mp4") ? "repeat.mp4" : "repeat.webm");
   return api.post<RepeatDto>(endpoints.ai.repeat(sessionId), form);
 };
+
+/** "How confident do you feel?", 1 to 5, before the first answer or after the report. */
+export const answerConfidence = (sessionId: string, when: "before" | "after", value: number) =>
+  api.post<void>(endpoints.ai.confidence(sessionId), { when, value });
