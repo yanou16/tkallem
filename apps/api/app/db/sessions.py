@@ -168,3 +168,18 @@ def list_sessions_for_user(conn: Connection, user_id: int, limit: int) -> list[d
         """,
         (user_id, limit),
     ).fetchall()
+
+def previous_finished(conn: Connection, user_id: int, session_id: UUID, before) -> tuple[dict | None, int]:
+    """The student's last finished session before `before` (its metrics, None if there is none) and how many they
+    finished before it: the report opens with the progress since then (app/progress_line.py)."""
+    rows = conn.execute(
+        """
+        SELECT m.mistakes_per_100, m.words_per_answer, m.hesitations_per_min, m.speaking_seconds
+        FROM practice_sessions s
+        JOIN session_metrics m ON m.session_id = s.id
+        WHERE s.user_id = %s AND s.id <> %s AND s.ended_at IS NOT NULL AND s.ended_at < %s
+        ORDER BY s.ended_at DESC
+        """,
+        (user_id, session_id, before),
+    ).fetchall()
+    return (dict(rows[0]) if rows else None), len(rows)
