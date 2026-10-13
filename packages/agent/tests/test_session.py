@@ -297,3 +297,31 @@ def test_one_answer_can_cover_two_questions_and_both_are_remembered():
     again = CoachSession.from_state(s.to_state(), llm=FakeChat([NONE], [reply(goal="occupation")]))
     assert again.turns[0].also_covered == ["length_of_stay"]  # unknown ids dropped, kept across requests
     assert again.turn("I am a nurse.").reply.endswith(qs[3])
+
+
+def test_an_empty_structured_answer_from_the_coach_is_retried_not_a_crash():
+    # Seen in CI: the provider answered without the structured output (None, no error) and the turn crashed with
+    # "TypeError: 'NoneType' object is not subscriptable" instead of asking again.
+    llm = FakeChat(found=[{"corrections": []}], replies=[None, {"reaction": "Good.", "goal_covered": "purpose_of_trip"}])
+    turn = CoachSession("visa-us", "B1", llm=llm).turn("I want to study in the US.")
+    assert turn.reply.startswith("Good.")
+    assert llm.calls["Reply"] == 2
+
+
+def test_the_streamed_corrections_carry_the_checked_praise_and_priority():
+    found = {"corrections": [{"original": "for study", "fixed": "to study", "type": "grammar", "why": "x"}],
+             "praise": "Clear goal: you go to the US.", "priority_index": 0}
+    llm = FakeChat(found=[found], replies=[{"reaction": "Good.", "goal_covered": "purpose_of_trip"}])
+    events = list(CoachSession("visa-us", "B1", llm=llm).turn_events("I go to the US for study."))
+    corrections = next(e for e in events if e["type"] == "corrections")
+    assert corrections["praise"] == "Clear goal: you go to the US." and corrections["priority_index"] == 0
+    done = events[-1]["turn"]
+    assert done.praise == "Clear goal: you go to the US."
+
+
+def test_an_invented_praise_never_reaches_the_student():
+    found = {"corrections": [], "praise": "Great detail about your scholarship in Paris."}
+    llm = FakeChat(found=[found], replies=[{"reaction": "Good.", "goal_covered": "purpose_of_trip"}])
+    s = CoachSession("visa-us", "B1", llm=llm)
+    assert s.turn("I want to study computer science.").praise is None
+    assert s.turns[0].praise is None

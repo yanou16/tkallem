@@ -58,14 +58,14 @@ export function AuthField({ label, hint, password, id, className = "", ...props 
     <div className={className}>
       <label htmlFor={fieldId} className="mb-1.5 block text-[13px] font-medium text-[#16161a]">
         {label}
-        {hint && <span className="ml-1 text-[11px] font-normal text-[#8a8a93]">({hint})</span>}
+        {hint && <span className="ml-1 text-[11px] font-normal text-slate">({hint})</span>}
       </label>
       <div className="relative">
         <input
           id={fieldId}
           {...props}
           type={password ? (shown ? "text" : "password") : props.type}
-          className={`h-11 w-full rounded-lg border border-[#e4e4e7] bg-white px-3.5 text-[14px] text-[#16161a] outline-none transition placeholder:text-[#a1a1aa] focus:border-[#16161a] focus:ring-2 focus:ring-[#16161a]/10 ${
+          className={`h-11 w-full rounded-lg border border-hairline-strong bg-white px-3.5 text-base text-[#16161a] sm:text-[14px] outline-none transition placeholder:text-[#a1a1aa] focus:border-[#16161a] focus:ring-2 focus:ring-[#16161a]/10 ${
             password ? "pr-11" : ""
           }`}
         />
@@ -117,7 +117,7 @@ export function GoogleButton({ onClick, loading, label = "Continue with Google" 
 
 export function OrDivider() {
   return (
-    <div className="flex items-center gap-3 py-1 text-[12px] text-[#8a8a93]">
+    <div className="flex items-center gap-3 py-1 text-[12px] text-slate">
       <span className="h-px flex-1 bg-[#ececef]" />
       or
       <span className="h-px flex-1 bg-[#ececef]" />

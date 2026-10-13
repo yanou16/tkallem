@@ -23,6 +23,7 @@ from dataclasses import asdict, dataclass, field
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 
+from .freeze import clean_think
 from .graph import CLOSING, build_graph, compose_reply, final_corrections
 from .hints import Hint, HintError, starter_hint, translation_hint
 from .levels import MAX_WORDS
@@ -34,6 +35,7 @@ from .tracing import run_config
 
 MAX_TEXT_CHARS = int(os.getenv("TKALLEM_MAX_TEXT_CHARS", "1000"))
 STATE_VERSION = 1
+FEEDBACK_MODES = ("practice", "interview")
 _graphs: dict[int, tuple[BaseChatModel, object]] = {}  # one compiled graph per LLM client
 
 
@@ -54,6 +56,9 @@ class TurnLog:
     audio_seconds: float | None = None
     pauses: int = 0  # long silences counted on the audio by the voice pipeline
     timings: dict = field(default_factory=dict)
+    think_seconds: float | None = None  # freeze meter: seconds before starting to answer (clean_think), None if not measured
+    praise: str | None = None  # improvement 4: shown before the corrections (None when the code refused it)
+    priority_index: int = 0  # the correction shown in full; the others are folded
 
 
 def _graph_for(llm: BaseChatModel):
@@ -73,7 +78,10 @@ class CoachSession:
         llm: BaseChatModel | None = None,
         session_id: str | None = None,
         max_text_chars: int = MAX_TEXT_CHARS,
+        feedback_mode: str = "practice",
     ):
+        if feedback_mode not in FEEDBACK_MODES:
+            raise ValueError(f"unknown feedback mode {feedback_mode!r}: expected one of {list(FEEDBACK_MODES)}")
         if level not in MAX_WORDS:
             raise ValueError(f"unknown level {level!r}: expected one of {list(MAX_WORDS)}")
         if explain_lang not in ("en", "fr"):
@@ -81,6 +89,7 @@ class CoachSession:
         self.scenario = load_scenario(scenario) if isinstance(scenario, str) else scenario
         self.level: Level = level
         self.explain_lang: ExplainLang = explain_lang
+        self.feedback_mode = feedback_mode  # "interview": the coach stays neutral and the app shows the feedback at the end
         self.session_id = session_id or uuid.uuid4().hex
         self.turns: list[TurnLog] = []
         self.last_timings: dict[str, float] = {}
@@ -126,13 +135,15 @@ class CoachSession:
             raise ValueError("pauses must be positive")
         return text
 
-    def turn_events(self, student_text: str, audio_seconds: float | None = None, pauses: int = 0) -> Iterator[dict]:
+    def turn_events(self, student_text: str, audio_seconds: float | None = None, pauses: int = 0,
+                    think_seconds: float | None = None) -> Iterator[dict]:
         """Same as turn(), but yields each part as soon as it is ready, so the app can start the coach's voice
         before the corrections are done (DESIGN.md: corrections animate in after the coach reply starts).
 
         Events, "reply" and "corrections" in either order, "done" always last:
             {"type": "reply", "reply": str}
-            {"type": "corrections", "corrections": [Correction as dict], "sentence_status": "green|orange|red"}
+            {"type": "corrections", "corrections": [Correction as dict], "sentence_status": "green|orange|red",
+             "praise": str | None, "priority_index": int}
             {"type": "done", "turn": AgentTurn, "timings": {seconds}}
         Raises AgentError, possibly AFTER a "reply" or "corrections" event (for example the corrector failed twice
         while the reply was already sent). The turn is then not recorded: tell the student to repeat the answer;
@@ -144,6 +155,7 @@ class CoachSession:
         state = {
             "level": self.level,
             "explain_lang": self.explain_lang,
+            "feedback_mode": self.feedback_mode,
             "scenario": scenario,
             "history": history,
             "covered_goals": covered,
@@ -169,8 +181,9 @@ class CoachSession:
                     also = [g for g in data["reply"].get("also_covered") or [] if g in self.scenario.goals]
                     yield {"type": "reply", "reply": compose_reply(data["reply"], scenario, history, covered)}
                 elif node == "correct":
-                    corrections, status = final_corrections(data.get("found", []), scenario, text, data.get("changes_meaning", False))
-                    yield {"type": "corrections", "corrections": corrections, "sentence_status": status}
+                    kept = final_corrections(data.get("found", []), scenario, text, data.get("changes_meaning", False),
+                                             data.get("praise"), data.get("priority_index", 0))
+                    yield {"type": "corrections", **kept}
                 elif node == "assemble":
                     turn, error = data.get("turn"), data.get("error")
         if turn is None:
@@ -185,8 +198,11 @@ class CoachSession:
                 status=turn.sentence_status,
                 goal_covered=turn.goal_covered,
                 also_covered=also,
+                praise=turn.praise,
+                priority_index=turn.priority_index,
                 audio_seconds=audio_seconds,
                 pauses=pauses,
+                think_seconds=clean_think(think_seconds),
                 timings=timings,
             )
         )
@@ -222,9 +238,10 @@ class CoachSession:
             return translation_hint(self.llm, idea, question, self.level, self.scenario.starters, index, config)
         raise HintError(f"unknown hint type {kind!r}: expected 'starter' or 'translate'")
 
-    def turn(self, student_text: str, audio_seconds: float | None = None, pauses: int = 0) -> AgentTurn:
+    def turn(self, student_text: str, audio_seconds: float | None = None, pauses: int = 0,
+             think_seconds: float | None = None) -> AgentTurn:
         """One student answer in, the full coach turn out (reply + corrections + status), as in the contract."""
-        for event in self.turn_events(student_text, audio_seconds, pauses):
+        for event in self.turn_events(student_text, audio_seconds, pauses, think_seconds):
             if event["type"] == "done":
                 return event["turn"]
         raise AgentError("no turn produced")  # unreachable: turn_events ends with "done" or raises
@@ -265,6 +282,7 @@ class CoachSession:
             "scenario_id": self.scenario.id,
             "level": self.level,
             "explain_lang": self.explain_lang,
+            "feedback_mode": self.feedback_mode,
             "turns": [asdict(t) for t in self.turns],
         }
 
@@ -275,6 +293,7 @@ class CoachSession:
         session = cls(
             state["scenario_id"], state["level"], state["explain_lang"],
             llm=llm, session_id=state["session_id"], max_text_chars=max_text_chars,
+            feedback_mode=state.get("feedback_mode", "practice"),  # sessions from before the modes are practice
         )
         session.turns = [TurnLog(**t) for t in state["turns"]]
         return session

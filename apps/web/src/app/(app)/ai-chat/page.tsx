@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowDown, ChartNoAxesColumn, ChevronDown, ChevronRight, CircleAlert, Lightbulb, MessageCircle, Mic, Send, Square, Volume2 } from "lucide-react";
+import { ArrowDown, ChartNoAxesColumn, Check, ChevronDown, ChevronRight, CircleAlert, Lightbulb, MessageCircle, Mic, Send, Square, TrendingUp, UserRound, Volume2 } from "lucide-react";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
 import { useAiSession, useAnswer, useEndSession, useSpeakLastLine, useStartSession } from "@/features/ai-chat/hooks/useAiChat";
@@ -10,10 +10,17 @@ import { CoachAvatar } from "@/components/CoachAvatar";
 import InstallButton from "@/components/InstallButton";
 import VoiceState, { formatTime, type CoachState } from "@/features/ai-chat/components/VoiceState";
 import HelpMeStart from "@/features/ai-chat/components/HelpMeStart";
-import { MAX_RECORDING_S, useVoiceRecorder, type Recording } from "@/features/ai-chat/hooks/useVoiceRecorder";
+import ConfidenceAsk from "@/features/ai-chat/components/ConfidenceAsk";
+import SayItAgain from "@/features/ai-chat/components/SayItAgain";
+import { useVoiceRecorder, type Recording } from "@/features/ai-chat/hooks/useVoiceRecorder";
+import { maxRecordingSeconds } from "@/features/ai-chat/lib/voice";
 import { useCoachVoice } from "@/features/ai-chat/hooks/useCoachVoice";
 import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOfCredits";
 import { markSentence } from "@/features/ai-chat/lib/marks";
+import { feedbackView } from "@/features/ai-chat/lib/feedback";
+import { freezeView, thinkSeconds } from "@/features/ai-chat/lib/freeze";
+import { confidenceLine, shouldAskBefore } from "@/features/ai-chat/lib/confidence";
+import { MODE_LABEL, feedbackModeFrom, modeHint } from "@/features/ai-chat/lib/mode";
 import type { ChatMessage, Correction, SentenceStatus, SessionReport } from "@/features/ai-chat/types/ai";
 import { Avatar, Button, Card, EmptyState, PageHeader, Skeleton } from "@/components/ui";
 import { startHref } from "@/components/cards";
@@ -112,6 +119,9 @@ function Chat() {
   const speakLast = useSpeakLastLine(sessionId);
   const s = session.data;
   const scenarioId = s?.scenarioId ?? urlScenarioId;
+  // Improvement 3: the mode of a running session wins; a new one takes it from the link (?mode=interview).
+  const feedbackMode = s?.feedbackMode ?? feedbackModeFrom(params.get("mode"));
+  const interview = feedbackMode === "interview";
 
   const [mode, setMode] = useState<"text" | "voice">(readMode);
   const [avatarOn, setAvatarOn] = useState(readAvatar);
@@ -132,13 +142,19 @@ function Chat() {
   const lastRecording = useRef<Recording | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
   const answerField = useRef<HTMLInputElement>(null);
-  const rec = useVoiceRecorder({ onAutoStop: (r) => r && sendRecording(r) });
+  // Freeze meter: when the coach's question was done, and when the student started (first sound or first letter).
+  const questionDone = useRef<{ line: string; at: number | null }>({ line: "", at: null });
+  const began = useRef<number | null>(null);
+  const [nailed, setNailed] = useState<Set<string>>(() => new Set()); // answers said again correctly
+  const [skippedConfidence, setSkippedConfidence] = useState(false);
+  const maxSeconds = maxRecordingSeconds(scenarioId);
+  const rec = useVoiceRecorder({ onAutoStop: (r) => r && sendRecording(r), maxSeconds });
 
   const begin = (id: string) => {
     started.current = id;
     // The session starts as text so the first question shows at once; in voice mode its audio is asked right after
     // (POST /speak, which also makes the session a voice session): the student reads it while the voice is made.
-    start.mutate({ scenarioId: id, mode: "text" }, {
+    start.mutate({ scenarioId: id, mode: "text", feedbackMode }, {
       onSuccess: (s) => {
         router.replace(`/ai-chat?sessionId=${encodeURIComponent(s.sessionId)}&scenarioId=${encodeURIComponent(id)}`);
         if (mode === "voice") speakLast.mutate(s.sessionId, { onSuccess: (r) => coach.play(r.audio_url, r.text) });
@@ -164,7 +180,7 @@ function Chat() {
     if (!id) return router.push("/practice");
     if (!sessionId && id === urlScenarioId) return begin(id);
     started.current = null;
-    router.replace(startHref(id));
+    router.replace(startHref(id, feedbackMode));
   };
 
   const submit = () => {
@@ -174,13 +190,13 @@ function Chat() {
     setPending({ kind: "text", text: answer });
     // The answer shows in the chat at once, so the field empties; if it fails, it comes back to be sent again.
     setText("");
-    send.mutate({ text: answer }, { onError: () => setText((t) => t || answer), onSettled: () => setPending(null) });
+    send.mutate({ text: answer, think: thinkSeconds(questionDone.current.at, began.current) }, { onError: () => setText((t) => t || answer), onSettled: () => setPending(null) });
   };
 
   function sendRecording(r: Recording) {
     lastRecording.current = r;
     setPending({ kind: "voice", seconds: r.seconds });
-    send.mutate({ audio: r.blob }, { onSuccess: () => { lastRecording.current = null; }, onSettled: () => setPending(null) });
+    send.mutate({ audio: r.blob, think: thinkSeconds(questionDone.current.at, began.current) }, { onSuccess: () => { lastRecording.current = null; }, onSettled: () => setPending(null) });
   }
 
   async function toggleMic() {
@@ -190,6 +206,7 @@ function Chat() {
       if (r) sendRecording(r);
     } else {
       coach.stop(); // the student can interrupt the coach
+      began.current ??= Date.now();
       rec.start();
     }
   }
@@ -214,7 +231,16 @@ function Chat() {
   const title = s?.title ?? scenario?.title ?? scenarioId;
   const icon = scenario?.icon ?? scenarioId;
   const tint = scenarioTint(scenario?.category);
-  if (s?.report) return <Report report={s.report} title={title} onRestart={() => restart()} />;
+  // Freeze meter: a new coach line starts a new wait, counted from the moment the coach is done talking. (Before the
+  // report's early return: hooks cannot come after it.)
+  const lastLineId = [...(s?.messages ?? [])].reverse().find((m) => m.role === "assistant")?.id ?? "";
+  const coachBusy = rec.isRecording || coach.speaking || send.isPending || speakLast.isPending || !!pending;
+  useEffect(() => {
+    if (questionDone.current.line !== lastLineId) { questionDone.current = { line: lastLineId, at: null }; began.current = null; }
+    if (!coachBusy && questionDone.current.at === null && lastLineId && !s?.finished) questionDone.current.at = Date.now();
+  }, [lastLineId, coachBusy, s?.finished]);
+
+  if (s?.report) return <Report report={s.report} title={title} sessionId={sessionId} onRestart={() => restart()} />;
 
   const live = send.live;
   const coachState: CoachState = rec.isRecording ? "listening" : coach.speaking ? "speaking" : send.isPending || speakLast.isPending ? "thinking" : "idle";
@@ -236,16 +262,66 @@ function Chat() {
   } else if (!s) {
     body = <div className="space-y-4"><Skeleton className="h-20 w-2/3" /><Skeleton className="ml-auto h-20 w-2/3" /></div>;
   } else {
+    const answerIndex = new Map(s.messages.filter((m) => m.role === "user").map((m, i) => [m.id, i]));
     body = s.messages.map((m) => (
-      <Bubble key={m.id} m={m} icon={icon} tint={tint} user={user} onListen={m.role === "assistant" ? () => coach.play(m.audioUrl, m.content) : undefined} />
+      <Bubble key={m.id} m={m} icon={icon} tint={tint} user={user} nailed={nailed.has(m.id)}
+        onListen={m.role === "assistant" ? () => coach.play(m.audioUrl, m.content) : undefined}
+        sayItAgain={m.role === "user" && sessionId && m.corrections?.length ? (
+          <SayItAgain sessionId={sessionId} turn={answerIndex.get(m.id) ?? 0} disabled={rec.isRecording || send.isPending}
+            onStart={() => coach.stop()} onNailed={() => setNailed((prev) => new Set(prev).add(m.id))} />
+        ) : undefined} />
     ));
   }
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <div className="flex min-h-[calc(100vh-110px)] flex-col">
-        <PageHeader title="AI Chat" subtitle="Answer by voice or by typing. Your coach corrects each answer and explains why." />
+      <div className="flex min-h-[calc(100dvh-210px)] flex-col md:min-h-[calc(100vh-110px)]">
+        <PageHeader title="AI Chat" subtitle={s ? undefined : "Answer by voice or by typing. Your coach corrects each answer and explains why."} />
 
+        {s ? (
+          <>
+        {/* During an interview the settings shrink to one line, so the question and the answer field fit a phone. */}
+        <div className="relative mb-3 flex flex-wrap items-center gap-2">
+          <button onClick={() => setMenu((m) => !m)} aria-expanded={menu}
+            className={cn("inline-flex min-h-11 max-w-full items-center gap-2 rounded-full py-1.5 pl-1.5 pr-3 text-sm font-semibold", tint)}>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/70"><Icon name={icon ?? "briefcase"} size={16} /></span>
+            <span className="truncate">{title}</span><span className="sr-only">, change scenario</span>
+            <ChevronDown size={16} className="shrink-0" aria-hidden />
+          </button>
+          <span className="inline-flex min-h-11 items-center gap-1 rounded-full bg-surface px-3 text-sm">
+            <span className="text-slate">Level</span> <span className="font-semibold">{user?.level ?? "—"}</span>
+          </span>
+          <span className={cn("inline-flex min-h-11 items-center rounded-full px-3 text-sm font-semibold", interview ? "bg-ink text-white" : "bg-surface")}>
+            {MODE_LABEL[feedbackMode]}
+          </span>
+          <div className="inline-flex rounded-full bg-black/[0.03] p-0.5" role="radiogroup" aria-label="Answer mode">
+            {(["voice", "text"] as const).map((m) => (
+              <button key={m} role="radio" aria-checked={mode === m} onClick={() => chooseMode(m)}
+                className={cn("inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-semibold capitalize", mode === m ? "bg-ink text-white" : "text-muted")}>
+                {m === "text" ? <MessageCircle size={15} aria-hidden /> : <Mic size={15} aria-hidden />} {m}
+              </button>
+            ))}
+          </div>
+          {mode === "voice" && (
+            <button onClick={toggleAvatar} className="inline-flex min-h-11 items-center rounded-full border border-line px-3 text-xs font-semibold">
+              {avatarOn ? "Hide 3D coach" : "Show 3D coach"}
+            </button>
+          )}
+          {menu && (
+              <ul className="absolute left-0 top-full z-20 mt-2 max-h-72 w-full overflow-auto rounded-2xl border border-line bg-white p-1.5 shadow-soft">
+                {(scenarios.data ?? []).map((sc) => (
+                  <li key={sc.id}><button className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-black/5"
+                    onClick={() => { setMenu(false); restart(sc.id); }}><span className="block font-medium">{sc.title}</span><span className="block text-xs text-muted">{sc.description}</span></button></li>
+                ))}
+              </ul>
+            )}
+        </div>
+        {interview && <p className="-mt-1 mb-3 text-sm text-charcoal">{modeHint("interview")}</p>}
+        {mode === "voice" && avatarOn && <div className="mb-4"><CoachAvatar {...coach.avatarProps} /></div>}
+
+          </>
+        ) : (
+          <>
         <div className="mb-4 grid gap-3 md:grid-cols-[1.3fr_0.8fr_1fr]">
           <div className="relative">
             <button onClick={() => setMenu((m) => !m)} className={cn("flex w-full items-center gap-3 rounded-2xl p-3 text-left", tint)}>
@@ -285,6 +361,9 @@ function Chat() {
           </div>
         )}
 
+          </>
+        )}
+
         <div className="flex flex-1 flex-col overflow-hidden rounded-card border border-line bg-white">
           {s && (
             <div className="flex items-center justify-between gap-3 border-b border-line px-6 py-3 text-sm">
@@ -299,10 +378,14 @@ function Chat() {
 
           <div role="log" aria-label="Conversation" className="flex-1 space-y-5 overflow-y-auto p-6">
             {body}
+            {sessionId && s && shouldAskBefore(answers.length, skippedConfidence) && !pending && (
+              <ConfidenceAsk sessionId={sessionId} when="before" question="How confident do you feel about this interview?"
+                value={s.confidence.before} onSkip={() => setSkippedConfidence(true)} />
+            )}
             {pending && (
               <>
                 {live?.transcript || pending.kind === "text"
-                  ? <Bubble m={{ id: "pending", role: "user", content: live?.transcript ?? (pending.kind === "text" ? pending.text : ""), corrections: live?.corrections, status: live?.status }} icon={icon} tint={tint} user={user} />
+                  ? <Bubble m={{ id: "pending", role: "user", content: live?.transcript ?? (pending.kind === "text" ? pending.text : ""), corrections: live?.corrections, status: live?.status, praise: live?.praise, priorityIndex: live?.priorityIndex }} icon={icon} tint={tint} user={user} />
                   : <Bubble m={{ id: "pending", role: "user", content: `Voice answer (${formatTime(pending.seconds)})`, pending: true }} icon={icon} tint={tint} user={user} />}
                 {live?.reply ? (
                   <Bubble m={{ id: "pending-reply", role: "assistant", content: live.reply }} icon={icon} tint={tint} user={user} />
@@ -351,7 +434,7 @@ function Chat() {
                   )}
                 </div>
               )}
-              {sessionId && s && (
+              {sessionId && s && !interview && (
                 <HelpMeStart sessionId={sessionId} questionKey={lastCoachLine?.id ?? "start"} typing={text.trim().length > 0}
                   recording={rec.isRecording} busy={coachState === "thinking" || coachState === "speaking" || !!pending}
                   onUse={(t) => { setText(t); answerField.current?.focus(); }} />
@@ -362,13 +445,13 @@ function Chat() {
                     className={cn("flex h-14 w-14 items-center justify-center rounded-full bg-ink text-white disabled:opacity-50", rec.isRecording && "ring-[6px] ring-brand")}>
                     {rec.isRecording ? <Square size={18} /> : <Mic size={22} />}
                   </button>
-                  <span className="mt-1 text-[11px] text-muted">{rec.isRecording ? `Tap to send · max ${MAX_RECORDING_S}s` : "Tap to speak"}</span>
+                  <span className="mt-1 text-[11px] text-muted">{rec.isRecording ? `Tap to send · max ${maxSeconds}s` : "Tap to speak"}</span>
                 </div>
                 {rec.isRecording ? (
                   <VoiceState state="listening" seconds={rec.seconds} className="flex-1" />
                 ) : (
                   <div className="flex-1">
-                    <input ref={answerField} value={text} maxLength={MAX} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()}
+                    <input ref={answerField} value={text} maxLength={MAX} onChange={(e) => { if (e.target.value && began.current === null) began.current = Date.now(); setText(e.target.value); }} onKeyDown={(e) => e.key === "Enter" && submit()}
                       disabled={!s || send.isPending} aria-label="Your answer" placeholder="Type here"
                       className="w-full rounded-full border border-line px-3.5 py-3.5 outline-none focus:border-ink disabled:bg-black/[0.03]" />
                     <p className="mt-1 text-right text-xs text-muted">{text.length} / {MAX}</p>
@@ -382,7 +465,7 @@ function Chat() {
         </div>
       </div>
 
-      <aside className="hidden space-y-4 xl:block">
+      <aside className={cn("hidden space-y-4", interview ? "" : "xl:block")}>
         <Card className="space-y-3">
           <div className="flex items-center justify-between"><h2 className="text-xl font-semibold">Live corrections</h2>
             {s && !s.finished && <span className="flex items-center gap-2 text-sm"><span className="h-2.5 w-2.5 rounded-full bg-success" /> Active</span>}</div>
@@ -417,8 +500,12 @@ function StatusPill({ status, label }: { status: SentenceStatus; label: string }
   return <span className={cn("inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-semibold", STATUS_STYLE[status])}>{label}</span>;
 }
 
-function Bubble({ m, icon, tint, user, onListen }: { m: ChatMessage; icon?: string; tint?: string; user?: ReturnType<typeof useCurrentUser>["user"]; onListen?: () => void }) {
+function Bubble({ m, icon, tint, user, onListen, sayItAgain, nailed }: {
+  m: ChatMessage; icon?: string; tint?: string; user?: ReturnType<typeof useCurrentUser>["user"]; onListen?: () => void;
+  sayItAgain?: ReactNode; nailed?: boolean;
+}) {
   const mine = m.role === "user";
+  const { isGuest: guest } = useCurrentUser(); // a guest has no name: a neutral icon, not "GU"
   const time = m.createdAt && new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   return (
     <div className={cn("flex items-start gap-3", mine && "justify-end")}>
@@ -427,9 +514,14 @@ function Bubble({ m, icon, tint, user, onListen }: { m: ChatMessage; icon?: stri
         <p className={cn("whitespace-pre-wrap rounded-3xl px-5 py-4 text-left", mine ? "bg-ink text-white" : "bg-black/[0.05]", m.pending && "flex items-center gap-2 italic text-white/70")}>
           {m.pending && <Mic size={16} aria-hidden />}{m.content}
         </p>
-        {mine && !m.pending && m.corrections && m.corrections.length > 0 && <InlineCorrection text={m.content} corrections={m.corrections} />}
+        {mine && !m.pending && ((m.corrections?.length ?? 0) > 0 || m.praise) && (
+          <InlineCorrection text={m.content} corrections={m.corrections ?? []} praise={m.praise} priorityIndex={m.priorityIndex} />
+        )}
+        {mine && !m.pending && sayItAgain}
         <div className={cn("mt-1 flex items-center gap-2", mine && "justify-end")}>
-          {m.status && <StatusPill status={m.status} label={answerLabel(m.status, m.corrections?.length ?? 0)} />}
+          {m.status && (nailed
+            ? <StatusPill status="green" label="Nailed it" />
+            : <StatusPill status={m.status} label={answerLabel(m.status, m.corrections?.length ?? 0)} />)}
           {time && <span className="text-xs text-muted">{time}</span>}
           {onListen && (
             <button onClick={onListen} className="relative inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs text-muted hover:bg-black/5 after:absolute after:-inset-3 after:content-['']" aria-label="Listen to this line">
@@ -438,29 +530,50 @@ function Bubble({ m, icon, tint, user, onListen }: { m: ChatMessage; icon?: stri
           )}
         </div>
       </div>
-      {mine && <Avatar src={user?.avatarUrl} first={user?.firstName} last={user?.lastName} size={44} />}
+      {mine && (guest
+        ? <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black/[0.06]" aria-hidden><UserRound size={20} /></span>
+        : <Avatar src={user?.avatarUrl} first={user?.firstName} last={user?.lastName} size={44} />)}
     </div>
   );
 }
 
 /** DESIGN.md "Correction": right under the student's answer. Line 1 the sentence with each wrong part struck, line 2
  *  the corrected sentence with each fix in bold, then one short explanation per fix (in French by default). */
-function InlineCorrection({ text, corrections }: { text: string; corrections: Correction[] }) {
-  const { before, after, unplaced } = markSentence(text, corrections);
+function Fix({ c }: { c: Correction }) {
+  return (
+    <div className="mt-1.5">
+      {/* Red is kept for "Redo" (docs/JURY_BRIEF.md, improvement 4): a small mistake is struck in grey. */}
+      <p><s className="text-steel">{c.original}</s> → <span className="font-semibold text-[color:var(--good)]">{c.fixed}</span></p>
+      <p className="text-xs text-muted">{c.why}</p>
+    </div>
+  );
+}
+
+function InlineCorrection({ text, corrections, praise, priorityIndex = 0 }: {
+  text: string; corrections: Correction[]; praise?: string | null; priorityIndex?: number;
+}) {
+  const { after } = markSentence(text, corrections);
+  const { priority, others, moreLabel } = feedbackView(corrections, priorityIndex);
   return (
     <div className="tk-in ml-auto mt-2 rounded-2xl border border-[color:var(--hairline-soft)] bg-[color:var(--surface)] p-3 text-left text-sm">
-      <p className="text-muted">
-        {before.map((p, i) => (p.kind === "wrong" ? <s key={i} className="text-[color:var(--bad)]">{p.text}</s> : <span key={i}>{p.text}</span>))}
-      </p>
-      <p className="mt-0.5 font-medium text-ink">
-        {after.map((p, i) => (p.kind === "fixed" ? <span key={i} className="font-semibold text-[color:var(--good)]">{p.text}</span> : <span key={i}>{p.text}</span>))}
-      </p>
-      {unplaced.map((c, i) => (
-        <p key={`u${i}`} className="mt-0.5"><s className="text-[color:var(--bad)]">{c.original}</s> → <span className="font-semibold text-[color:var(--good)]">{c.fixed}</span></p>
-      ))}
-      <ul className="mt-1.5 space-y-0.5 text-xs text-muted">
-        {corrections.map((c, i) => <li key={i}>{c.why}</li>)}
-      </ul>
+      {praise && (
+        <p className="flex items-start gap-1.5 font-medium text-[color:var(--good)]">
+          <Check size={16} className="mt-0.5 shrink-0" aria-hidden /> <span>{praise}</span>
+        </p>
+      )}
+      {priority && <Fix c={priority} />}
+      {others.length > 0 && (
+        <details className="mt-1">
+          <summary className="flex min-h-11 cursor-pointer items-center font-semibold text-ink">{moreLabel}</summary>
+          {others.map((c, i) => <Fix key={i} c={c} />)}
+        </details>
+      )}
+      {priority && (
+        <p className="mt-2 border-t border-[color:var(--hairline-soft)] pt-2 font-medium text-ink">
+          <span className="font-normal text-slate">Say it: </span>
+          {after.map((p, i) => (p.kind === "fixed" ? <span key={i} className="font-semibold text-[color:var(--good)]">{p.text}</span> : <span key={i}>{p.text}</span>))}
+        </p>
+      )}
     </div>
   );
 }
@@ -495,7 +608,7 @@ function SummaryRow({ icon, tone, title, sub }: { icon: React.ReactNode; tone: s
   );
 }
 
-function Report({ report, title, onRestart }: { report: SessionReport; title?: string; onRestart: () => void }) {
+function Report({ report, title, sessionId, onRestart }: { report: SessionReport; title?: string; sessionId?: string; onRestart: () => void }) {
   const metrics = [
     { label: "Mistakes per 100 words", value: report.metrics.mistakesPer100, level: report.levels.mistakesPer100, missing: "Not available" },
     { label: "Words per answer", value: report.metrics.wordsPerAnswer, level: report.levels.wordsPerAnswer, missing: "Not available" },
@@ -505,7 +618,12 @@ function Report({ report, title, onRestart }: { report: SessionReport; title?: s
 
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader eyebrow={title} title="Your session report" />
+      <PageHeader eyebrow={`${title ?? ""} · ${MODE_LABEL[report.feedbackMode]}`} title="Your session report" />
+      {report.progress && (
+        <p className="mb-4 flex items-start gap-2 rounded-2xl bg-good-bg px-4 py-3 font-medium text-good">
+          <TrendingUp size={20} className="mt-0.5 shrink-0" aria-hidden /> <span>{report.progress}</span>
+        </p>
+      )}
       <Card>
         <h2 className="text-lg font-semibold">Your coach's note</h2>
         <p className="mt-2 whitespace-pre-wrap">{report.note}</p>
@@ -522,6 +640,22 @@ function Report({ report, title, onRestart }: { report: SessionReport; title?: s
           </Card>
         ))}
       </div>
+      {sessionId && (
+        <div className="mt-4 space-y-2">
+          {confidenceLine(report.confidence) && <p className="rounded-2xl bg-good-bg px-4 py-3 font-medium text-good">{confidenceLine(report.confidence)}</p>}
+          <ConfidenceAsk sessionId={sessionId} when="after" question="How confident do you feel now?" value={report.confidence.after} />
+        </div>
+      )}
+      {report.freeze && (() => {
+        const v = freezeView(report.freeze);
+        return (
+          <Card className="mt-4">
+            <p className="text-sm text-muted">{v.title}</p>
+            <p className="mt-2 text-3xl font-semibold">{v.value}</p>
+            {v.note && <p className="mt-2 text-sm text-charcoal">{v.note}</p>}
+          </Card>
+        );
+      })()}
       {speaking !== null && <p className="mt-3 text-sm text-muted">Speaking time: {formatMinutes(speaking / 60)}</p>}
 
       <Card className="mt-4">
@@ -541,7 +675,7 @@ function Report({ report, title, onRestart }: { report: SessionReport; title?: s
                   {i === report.redoIndex && <p className="text-sm font-semibold">Redo this answer first</p>}
                   {line.corrections.map((c, j) => (
                     <div key={j} className="rounded-2xl border border-line p-3 text-sm">
-                      <p><s className="text-[color:var(--bad)]">{c.original}</s></p>
+                      <p><s className="text-steel">{c.original}</s></p>
                       <p className="font-semibold text-[color:var(--good)]">{c.fixed}</p>
                       <p className="text-muted">{c.why}</p>
                     </div>

@@ -25,7 +25,7 @@ def create_session(
 def get_session_for_user(conn: Connection, session_id: UUID, user_id: int) -> dict | None:
     return conn.execute(
         """
-        SELECT id, scenario_id, mode, explain_lang, state, started_at, ended_at
+        SELECT id, scenario_id, mode, explain_lang, state, started_at, ended_at, confidence_before, confidence_after
         FROM practice_sessions
         WHERE id = %s AND user_id = %s
         """,
@@ -37,7 +37,7 @@ def get_session_detail(conn: Connection, session_id: UUID, user_id: int) -> dict
     """The session with what /end stored (note and metrics, NULL until then). None if it is not the user's."""
     return conn.execute(
         """
-        SELECT s.id, s.scenario_id, s.mode, s.state, s.note, s.started_at, s.ended_at,
+        SELECT s.id, s.scenario_id, s.mode, s.state, s.note, s.started_at, s.ended_at, s.confidence_before, s.confidence_after,
                m.mistakes_per_100, m.words_per_answer, m.hesitations_per_min, m.speaking_seconds
         FROM practice_sessions s
         LEFT JOIN session_metrics m ON m.session_id = s.id
@@ -168,3 +168,41 @@ def list_sessions_for_user(conn: Connection, user_id: int, limit: int) -> list[d
         """,
         (user_id, limit),
     ).fetchall()
+
+def previous_finished(conn: Connection, user_id: int, session_id: UUID, before) -> tuple[dict | None, int]:
+    """The student's last finished session before `before` (its metrics, None if there is none) and how many they
+    finished before it: the report opens with the progress since then (app/progress_line.py)."""
+    rows = conn.execute(
+        """
+        SELECT m.mistakes_per_100, m.words_per_answer, m.hesitations_per_min, m.speaking_seconds, s.state
+        FROM practice_sessions s
+        JOIN session_metrics m ON m.session_id = s.id
+        WHERE s.user_id = %s AND s.id <> %s AND s.ended_at IS NOT NULL AND s.ended_at < %s
+        ORDER BY s.ended_at DESC
+        """,
+        (user_id, session_id, before),
+    ).fetchall()
+    return (dict(rows[0]) if rows else None), len(rows)
+
+
+def set_confidence(conn: Connection, session_id: UUID, user_id: int, when: str, value: int) -> bool:
+    """The student's 1-to-5 answer to "How confident do you feel?", before or after. False if it is not their session."""
+    column = {"before": "confidence_before", "after": "confidence_after"}[when]  # a fixed pair: never user text in the SQL
+    row = conn.execute(
+        f"UPDATE practice_sessions SET {column} = %s WHERE id = %s AND user_id = %s RETURNING id",
+        (value, session_id, user_id),
+    ).fetchone()
+    return row is not None
+
+
+def confidence_summary(conn: Connection) -> dict:
+    """Over every session where both answers exist: how many, and the average before and after (docs/IMPACT.md)."""
+    return conn.execute(
+        """
+        SELECT count(*) AS sessions,
+               round(avg(confidence_before)::numeric, 2) AS before,
+               round(avg(confidence_after)::numeric, 2) AS after
+        FROM practice_sessions
+        WHERE confidence_before IS NOT NULL AND confidence_after IS NOT NULL
+        """
+    ).fetchone()

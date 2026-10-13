@@ -13,6 +13,8 @@ export const endpoints = {
     end: (id: string) => `/sessions/${id}/end`,
     speak: (id: string) => `/sessions/${id}/speak`,
     hint: (id: string) => `/sessions/${id}/hint`,
+    repeat: (id: string) => `/sessions/${id}/repeat`,
+    confidence: (id: string) => `/sessions/${id}/confidence`,
   },
   groups: {
     list: "/api/groups",

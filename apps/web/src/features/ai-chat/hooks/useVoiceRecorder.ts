@@ -8,7 +8,7 @@ export { MAX_RECORDING_S };
 export type Recording = { blob: Blob; seconds: number };
 
 /** Browser-side recording only. Upload/processing states are driven by the caller. */
-export function useVoiceRecorder({ onAutoStop }: { onAutoStop?: (r: Recording | null) => void } = {}) {
+export function useVoiceRecorder({ onAutoStop, maxSeconds = MAX_RECORDING_S }: { onAutoStop?: (r: Recording | null) => void; maxSeconds?: number } = {}) {
   const [isRecording, setIsRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -100,10 +100,10 @@ export function useVoiceRecorder({ onAutoStop }: { onAutoStop?: (r: Recording | 
     const t = window.setInterval(() => {
       const s = (performance.now() - startedAt.current) / 1000;
       setSeconds(s);
-      if (s >= MAX_RECORDING_S) stop().then((r) => autoStop.current?.(r));
+      if (s >= maxSeconds) stop().then((r) => autoStop.current?.(r));
     }, 250);
     return () => window.clearInterval(t);
-  }, [isRecording, stop]);
+  }, [isRecording, stop, maxSeconds]);
 
   // Release the microphone if the page is left while recording.
   useEffect(() => () => { recorder.current?.stream.getTracks().forEach((t) => t.stop()); stopMeter(); }, []);

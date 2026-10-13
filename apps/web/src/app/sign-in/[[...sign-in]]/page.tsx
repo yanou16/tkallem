@@ -101,7 +101,7 @@ export default function SignInPage() {
           />
 
           <div className="flex justify-end pt-1">
-            <Link href="/forgot-password" className="text-[13px] font-medium text-ink underline underline-offset-2">
+            <Link href="/forgot-password" className="inline-block py-2 text-[13px] font-medium text-ink underline underline-offset-2">
               Forgot password?
             </Link>
           </div>
@@ -116,7 +116,7 @@ export default function SignInPage() {
 
           <p className="pt-1 text-center text-[13px] text-[#6b6b75]">
             Don&apos;t have an account?{" "}
-            <Link href="/sign-up" className="font-medium text-ink underline underline-offset-2">
+            <Link href="/sign-up" className="inline-block py-2 font-medium text-ink underline underline-offset-2">
               Create an account
             </Link>
           </p>

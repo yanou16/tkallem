@@ -178,7 +178,7 @@ export default function SignUpPage() {
 
             <p className="pt-1 text-center text-[13px] text-[#6b6b75]">
               Already have an account?{" "}
-              <Link href="/sign-in" className="font-medium text-ink underline underline-offset-2">
+              <Link href="/sign-in" className="inline-block py-2 font-medium text-ink underline underline-offset-2">
                 Sign in
               </Link>
             </p>

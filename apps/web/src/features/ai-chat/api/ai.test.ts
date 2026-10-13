@@ -8,6 +8,8 @@ const TURN: TurnDto = {
   reply_audio_url: null,
   corrections: [{ original: "for study", fixed: "to study", type: "grammar", why: "Le but : to + verbe." }],
   sentence_status: "orange",
+  praise: "Clear goal: 'I go to the US'.",
+  priority_index: 0,
   finished: false,
 };
 
@@ -37,6 +39,8 @@ describe("mapTurn", () => {
       reply: "Good. Which university will you attend?",
       corrections: TURN.corrections,
       sentenceStatus: "orange",
+      praise: "Clear goal: 'I go to the US'.",
+      priorityIndex: 0,
       finished: false,
       audioUrl: null,
       credits: undefined,
@@ -64,8 +68,8 @@ describe("session calls", () => {
 
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toMatch(/\/sessions$/);
-    expect(JSON.parse(String(init.body))).toEqual({ scenario_id: "visa-us", mode: "text" });
-    expect(started).toEqual({ sessionId: "s1", firstQuestion: "What is the purpose of your trip?", firstQuestionAudio: null });
+    expect(JSON.parse(String(init.body))).toEqual({ scenario_id: "visa-us", mode: "text", feedback_mode: "practice" });
+    expect(started).toEqual({ sessionId: "s1", firstQuestion: "What is the purpose of your trip?", firstQuestionAudio: null, feedbackMode: "practice" });
   });
 
   it("starts a voice session: the first question comes spoken", async () => {
@@ -73,8 +77,17 @@ describe("session calls", () => {
 
     const started = await startSession("visa-us", "voice");
 
-    expect(JSON.parse(String(fetchMock.mock.calls[0][1].body))).toEqual({ scenario_id: "visa-us", mode: "voice" });
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1].body))).toEqual({ scenario_id: "visa-us", mode: "voice", feedback_mode: "practice" });
     expect(started.firstQuestionAudio).toBe("data:audio/wav;base64,AAA");
+  });
+
+  it("starts a real interview when asked, and reads the mode the API confirms", async () => {
+    const fetchMock = serverReplies({ session_id: "s3", first_question: { text: "Hello?", audio_url: null }, feedback_mode: "interview" });
+
+    const started = await startSession("visa-us", "text", "interview");
+
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1].body))).toEqual({ scenario_id: "visa-us", mode: "text", feedback_mode: "interview" });
+    expect(started.feedbackMode).toBe("interview");
   });
 
   it("sends an answer as the form field `text`", async () => {
@@ -110,7 +123,7 @@ const OPEN_SESSION: SessionDetailDto = {
   total_questions: 6,
   first_question: "What is the purpose of your trip?",
   turns: [
-    { position: 1, transcript: "I go to the US for study.", reply: "Good. Which university?", sentence_status: "orange", corrections: TURN.corrections },
+    { position: 1, transcript: "I go to the US for study.", reply: "Good. Which university?", sentence_status: "orange", corrections: TURN.corrections, praise: "Clear goal: 'I go to the US'.", priority_index: 0 },
   ],
   note: null,
   metrics: null,
@@ -123,7 +136,7 @@ describe("mapSessionDetail", () => {
     expect(session).toMatchObject({ id: "s1", scenarioId: "visa-us", title: "Visa interview", finished: false });
     expect(session.messages).toEqual([
       { id: "s1-0", role: "assistant", content: "What is the purpose of your trip?" },
-      { id: "s1-1", role: "user", content: "I go to the US for study.", status: "orange", corrections: TURN.corrections },
+      { id: "s1-1", role: "user", content: "I go to the US for study.", status: "orange", corrections: TURN.corrections, praise: "Clear goal: 'I go to the US'.", priorityIndex: 0 },
       { id: "s1-2", role: "assistant", content: "Good. Which university?" },
     ]);
     expect(session.report).toBeUndefined();
@@ -134,6 +147,10 @@ describe("mapSessionDetail", () => {
       ...OPEN_SESSION,
       ended_at: "2026-10-10T10:08:00Z",
       note: "Honest note.",
+      feedback_mode: "interview",
+      confidence: { before: 2, after: null },
+      progress: "First interview done: this is your starting point.",
+      freeze: { seconds: 3.4, answers: 4, kind: "voice", previous: 9 },
       metrics: { mistakes_per_100: 14.3, words_per_answer: 7, hesitations_per_min: null, speaking_seconds: null },
     });
 
@@ -144,6 +161,10 @@ describe("mapSessionDetail", () => {
         { role: "coach", text: "Good. Which university?", status: null, corrections: [] },
       ],
       note: "Honest note.",
+      feedbackMode: "interview",
+      confidence: { before: 2, after: null },
+      progress: "First interview done: this is your starting point.",
+      freeze: { seconds: 3.4, answers: 4, kind: "voice", previous: 9 },
       metrics: { mistakesPer100: 14.3, wordsPerAnswer: 7, hesitationsPerMin: null, speakingSeconds: null },
       levels: { mistakesPer100: null, wordsPerAnswer: null, hesitationsPerMin: null },
       redoIndex: null,
@@ -192,7 +213,7 @@ describe("streamAnswer", () => {
       ev("transcript", { text: "I go to the US for study." }),
       ev("reply", { text: "Good. Which university?" }),
       ev("audio", { audio_url: "data:audio/wav;base64,AAA" }),
-      ev("corrections", { corrections: TURN.corrections, sentence_status: "orange" }),
+      ev("corrections", { corrections: TURN.corrections, sentence_status: "orange", praise: "Clear goal: 'I go to the US'.", priority_index: 0 }),
       ev("done", { ...TURN, reply_audio_url: undefined, credits: { balance: 39, next_refill_at: null } }),
     ]);
     const live: unknown[] = [];
@@ -204,7 +225,7 @@ describe("streamAnswer", () => {
     expect(live).toEqual([
       { transcript: "I go to the US for study." },
       { reply: "Good. Which university?" },
-      { corrections: TURN.corrections, status: "orange" },
+      { corrections: TURN.corrections, status: "orange", praise: "Clear goal: 'I go to the US'.", priorityIndex: 0 },
     ]);
     expect(played).toEqual([["data:audio/wav;base64,AAA", "Good. Which university?"]]);
     expect(turn.audioUrl).toBe("data:audio/wav;base64,AAA");
