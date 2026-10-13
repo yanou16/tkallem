@@ -204,6 +204,8 @@ def test_get_session_returns_the_history(client, session_id):
         "reply": turn["reply"],
         "sentence_status": "orange",
         "corrections": turn["corrections"],
+        "praise": None,  # the fake corrector gave none
+        "priority_index": 0,
     }]
 
 
