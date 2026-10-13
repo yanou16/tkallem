@@ -91,6 +91,7 @@ class SessionReport(BaseModel):
     metrics: Metrics
     levels: Levels
     redo_index: int | None
+    progress: str | None = None  # first line of the report: progress since the last finished session, written by code
 
 
 class SessionSummary(BaseModel):
@@ -127,3 +128,4 @@ class SessionDetail(BaseModel):
     # What /end stored, null before. The rest of the report (levels, redo_index) is not stored.
     note: str | None
     metrics: Metrics | None
+    progress: str | None = None  # finished sessions: the report's first line
