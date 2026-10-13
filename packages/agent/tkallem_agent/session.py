@@ -23,6 +23,7 @@ from dataclasses import asdict, dataclass, field
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 
+from .freeze import clean_think
 from .graph import CLOSING, build_graph, compose_reply, final_corrections
 from .hints import Hint, HintError, starter_hint, translation_hint
 from .levels import MAX_WORDS
@@ -54,6 +55,7 @@ class TurnLog:
     audio_seconds: float | None = None
     pauses: int = 0  # long silences counted on the audio by the voice pipeline
     timings: dict = field(default_factory=dict)
+    think_seconds: float | None = None  # freeze meter: seconds before starting to answer (clean_think), None if not measured
     praise: str | None = None  # improvement 4: shown before the corrections (None when the code refused it)
     priority_index: int = 0  # the correction shown in full; the others are folded
 
@@ -128,7 +130,8 @@ class CoachSession:
             raise ValueError("pauses must be positive")
         return text
 
-    def turn_events(self, student_text: str, audio_seconds: float | None = None, pauses: int = 0) -> Iterator[dict]:
+    def turn_events(self, student_text: str, audio_seconds: float | None = None, pauses: int = 0,
+                    think_seconds: float | None = None) -> Iterator[dict]:
         """Same as turn(), but yields each part as soon as it is ready, so the app can start the coach's voice
         before the corrections are done (DESIGN.md: corrections animate in after the coach reply starts).
 
@@ -193,6 +196,7 @@ class CoachSession:
                 priority_index=turn.priority_index,
                 audio_seconds=audio_seconds,
                 pauses=pauses,
+                think_seconds=clean_think(think_seconds),
                 timings=timings,
             )
         )
@@ -228,9 +232,10 @@ class CoachSession:
             return translation_hint(self.llm, idea, question, self.level, self.scenario.starters, index, config)
         raise HintError(f"unknown hint type {kind!r}: expected 'starter' or 'translate'")
 
-    def turn(self, student_text: str, audio_seconds: float | None = None, pauses: int = 0) -> AgentTurn:
+    def turn(self, student_text: str, audio_seconds: float | None = None, pauses: int = 0,
+             think_seconds: float | None = None) -> AgentTurn:
         """One student answer in, the full coach turn out (reply + corrections + status), as in the contract."""
-        for event in self.turn_events(student_text, audio_seconds, pauses):
+        for event in self.turn_events(student_text, audio_seconds, pauses, think_seconds):
             if event["type"] == "done":
                 return event["turn"]
         raise AgentError("no turn produced")  # unreachable: turn_events ends with "done" or raises
