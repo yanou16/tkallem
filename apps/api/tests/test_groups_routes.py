@@ -11,7 +11,9 @@ from app.db.sessions import create_session
 from app.db.users import get_or_create_by_clerk_id, update_profile
 from app.main import app
 from app.routes.groups import load_themes
+from app.routes.sessions import get_llm
 from app.security import ClerkClaims, get_clerk_claims
+from tkallem_agent.testing import FakeChat
 
 # Every route of the groups feature, with a valid body (method, path, json).
 ROUTES = [
@@ -25,6 +27,7 @@ ROUTES = [
     ("DELETE", "/groups/1/members/me", None),
     ("POST", "/groups/1/messages/1/report", {"reason": "spam"}),
     ("GET", "/groups/1/leaderboard", None),
+    ("POST", "/groups/1/check", {"text": "Hello"}),
 ]
 
 
@@ -53,9 +56,11 @@ def students(db):
     app.dependency_overrides[get_conn] = lambda: db
     app.dependency_overrides[get_conn_factory] = lambda: (lambda: nullcontext(db))
     rate_limit.group_messages.reset()
+    rate_limit.group_checks.reset()
     yield s
     app.dependency_overrides.clear()
     rate_limit.group_messages.reset()
+    rate_limit.group_checks.reset()
 
 
 @pytest.fixture
@@ -460,3 +465,104 @@ def test_leaderboard_is_for_members_only(students, client, db):
 
     assert client.get(f"/groups/{group}/leaderboard").status_code == 403
     assert client.get("/groups/999999999/leaderboard").status_code == 404
+
+
+# ---------- POST /groups/{id}/check ----------
+
+DRAFT = "Yesterday I go to the university for study."
+FIX = {"original": "for study", "fixed": "to study", "type": "grammar", "why": "Le but : to + verbe.", "rule": "verb_pattern"}
+
+
+def use_llm(fake: FakeChat) -> FakeChat:
+    app.dependency_overrides[get_llm] = lambda: fake
+    return fake
+
+
+def check(client, group_id: int, text: str = DRAFT):
+    return client.post(f"/groups/{group_id}/check", json={"text": text})
+
+
+def test_check_returns_private_corrections_and_stores_nothing(students, client, db):
+    group = new_group(db)
+    students.act_as(member(students, group))
+    llm = use_llm(FakeChat(found=[{"corrections": [FIX]}]))
+
+    response = check(client, group)
+
+    assert response.status_code == 200
+    assert response.json() == [{
+        "original": "for study",
+        "correction": "to study",
+        "explanation": "Le but : to + verbe.",
+        "type": "grammar",
+        "rule": "verb_pattern",
+    }]
+    assert dict(llm.calls) == {"Found": 1}  # the corrector only, no coach
+    assert client.get(f"/groups/{group}/messages").json() == []  # nothing posted in the group
+    assert db.execute("SELECT count(*) AS n FROM group_messages WHERE group_id = %s", (group,)).fetchone()["n"] == 0
+
+
+def test_check_uses_my_level_and_my_explanation_language(students, client, db):
+    group = new_group(db, "B2")
+    amina = member(students, group, level="B2")
+    update_profile(db, amina["id"], {"explain_lang": "en"})
+    students.act_as(amina)
+    llm = use_llm(FakeChat(found=[{"corrections": []}]))
+
+    assert check(client, group).json() == []
+    system = llm.seen["Found"][0][0].content
+    assert "B2" in system and "SIMPLE English" in system
+
+
+def test_check_is_for_members_only(students, client, db):
+    group = new_group(db)
+    member(students, group)
+    students.act_as(students.new())  # another student, not a member
+    llm = use_llm(FakeChat(found=[{"corrections": []}]))
+
+    assert check(client, group).status_code == 403
+    assert check(client, 999999999).status_code == 404
+    assert sum(llm.calls.values()) == 0  # no model call for them
+
+
+@pytest.mark.parametrize("body", [{"text": ""}, {"text": "   "}, {"text": "x" * 501}, {"text": "Hi", "publish": True}],
+                         ids=["empty", "spaces", "too_long", "extra_field"])
+def test_check_an_invalid_text(students, client, db, body):
+    group = new_group(db)
+    students.act_as(member(students, group))
+    use_llm(FakeChat())
+
+    assert client.post(f"/groups/{group}/check", json=body).status_code == 422
+
+
+def test_check_returns_502_when_the_model_fails(students, client, db):
+    group = new_group(db)
+    students.act_as(member(students, group))
+    use_llm(FakeChat(found=[RuntimeError("provider down"), RuntimeError("still down")]))
+
+    response = check(client, group)
+
+    assert response.status_code == 502
+    assert "try again" in response.json()["detail"]
+
+
+def test_at_most_30_checks_per_day(students, client, db):
+    group = new_group(db)
+    students.act_as(member(students, group))
+    use_llm(FakeChat(found=[{"corrections": []}] * 30))
+
+    statuses = [check(client, group).status_code for _ in range(31)]
+
+    assert statuses == [200] * 30 + [429]
+    assert "30 checks" in check(client, group).json()["detail"]
+
+
+def test_check_keeps_the_type_when_there_is_no_rule(students, client, db):
+    group = new_group(db)
+    students.act_as(member(students, group))
+    no_rule = {"original": "big fault", "fixed": "big mistake", "type": "vocabulary", "why": "On dit « mistake »."}
+    use_llm(FakeChat(found=[{"corrections": [no_rule]}]))
+
+    [correction] = check(client, group, "I made a big fault yesterday.").json()
+
+    assert (correction["type"], correction["rule"]) == ("vocabulary", None)

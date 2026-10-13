@@ -3,6 +3,7 @@
 (run_in_threadpool) inside `with connect()`, which commits when the block ends, so what is pushed afterwards is
 already saved."""
 import json
+import logging
 from datetime import date
 from functools import lru_cache
 from pathlib import Path
@@ -10,8 +11,11 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.concurrency import run_in_threadpool
 from psycopg import Connection
+from tkallem_agent import AgentError
+from tkallem_agent.check import check_text
 
 from app import guests, rate_limit, realtime
+from app.config import settings
 from app.db.connection import ConnFactory, get_conn, get_conn_factory
 from app.db.groups import (
     get_group,
@@ -28,7 +32,10 @@ from app.db.groups import (
 )
 from app.db.progress import TIMEZONE, get_activity
 from app.dependencies import user_for_claims
+from app.routes.sessions import get_llm
 from app.schemas.groups import (
+    CheckedCorrection,
+    CheckRequest,
     GroupDetail,
     GroupMessage,
     GroupSummary,
@@ -39,6 +46,8 @@ from app.schemas.groups import (
     ReportResult,
 )
 from app.security import ClerkClaims, get_clerk_claims
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["groups"])
 
@@ -220,6 +229,37 @@ def read_group(group_id: int, student: dict = Depends(get_student), conn: Connec
         "members": [{"id": m["id"], "first_name": m["first_name"]} for m in list_members(conn, group_id)],
         "theme": theme_of_the_day(algiers_today(conn)),
     }
+
+
+@router.post("/groups/{group_id}/check", response_model=list[CheckedCorrection])
+def check_a_draft(
+    group_id: int,
+    body: CheckRequest,
+    claims: ClerkClaims = Depends(student_claims),
+    connect: ConnFactory = Depends(get_conn_factory),
+    llm=Depends(get_llm),
+) -> list[dict]:
+    """Private check of a draft before sending it: the corrections are for her only, nothing is posted or stored.
+    The agent's corrector (the one of a coach turn, `rule` included), applied to the text alone."""
+    with connect() as conn:  # a short connection: none is held during the model call (a few seconds)
+        student = user_for_claims(conn, claims)
+        _member_group(conn, group_id, student["id"])
+        level = _require_level(student)
+
+    # TODO: credits: a check is a paid model call but costs no credit for now (team decision to come).
+    if not rate_limit.group_checks.allow(claims.user_id):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "You used your 30 checks of the last 24 hours: try again tomorrow")
+    try:
+        corrections = check_text(body.text, level, student["explain_lang"], llm=llm, max_text_chars=settings.max_text_chars)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc))
+    except AgentError:
+        logger.exception("Check failed in group %s", group_id)
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "The check is unavailable right now, try again")
+    return [
+        {"original": c.original, "correction": c.fixed, "explanation": c.why, "type": c.type, "rule": c.rule}
+        for c in corrections
+    ]
 
 
 @router.get("/groups/{group_id}/leaderboard", response_model=list[LeaderboardEntry])

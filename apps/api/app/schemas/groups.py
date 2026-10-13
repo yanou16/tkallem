@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from tkallem_agent.schemas import Level
+from tkallem_agent.schemas import ErrorType, Level
 
 MESSAGE_MAX = 500
 ThemeCategory = Literal["travel", "work", "study", "exams", "daily_life"]
@@ -85,6 +85,29 @@ class ReportCreate(BaseModel):
 
 class ReportResult(BaseModel):
     hidden: bool  # this report was the one that hid the message for the whole group
+
+
+class CheckRequest(BaseModel):
+    """A draft checked privately before sending it (same length as a message)."""
+    model_config = ConfigDict(extra="forbid")
+
+    text: str
+
+    @field_validator("text")
+    @classmethod
+    def trimmed_text(cls, value: str) -> str:
+        value = value.strip()
+        if not 1 <= len(value) <= MESSAGE_MAX:
+            raise ValueError(f"a text to check has 1 to {MESSAGE_MAX} characters")
+        return value
+
+
+class CheckedCorrection(BaseModel):
+    original: str
+    correction: str
+    explanation: str  # in the student's explanation language (profile)
+    type: ErrorType  # grammar, vocabulary, word_choice or other: the label to show when there is no rule
+    rule: str | None  # fine-grained category (verb_tense...), null when the model gave none
 
 
 class LeaderboardEntry(BaseModel):
