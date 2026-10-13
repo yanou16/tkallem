@@ -60,6 +60,8 @@ class TurnResult(BaseModel):
     reply_audio_url: str | None = None
     corrections: list[Correction] = Field(max_length=3)
     sentence_status: Status
+    praise: str | None = None  # improvement 4: one short true positive, checked by the agent's code
+    priority_index: int = 0  # the correction shown in full; the others are folded
     finished: bool
     credits: Credits | None = None  # balance after this answer
 
@@ -89,6 +91,7 @@ class SessionReport(BaseModel):
     metrics: Metrics
     levels: Levels
     redo_index: int | None
+    progress: str | None = None  # first line of the report: progress since the last finished session, written by code
 
 
 class SessionSummary(BaseModel):
@@ -107,6 +110,8 @@ class TurnDetail(BaseModel):
     reply: str
     sentence_status: Status
     corrections: list[Correction]
+    praise: str | None = None  # improvement 4: shown before the corrections
+    priority_index: int = 0  # the correction shown in full; the others are folded
 
 
 class SessionDetail(BaseModel):
@@ -123,3 +128,4 @@ class SessionDetail(BaseModel):
     # What /end stored, null before. The rest of the report (levels, redo_index) is not stored.
     note: str | None
     metrics: Metrics | None
+    progress: str | None = None  # finished sessions: the report's first line

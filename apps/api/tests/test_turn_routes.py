@@ -128,7 +128,7 @@ def test_end_returns_report_and_saves_metrics(client, db, session_id):
 
     assert response.status_code == 200
     body = response.json()
-    assert set(body) == {"lines", "note", "metrics", "levels", "redo_index"}
+    assert set(body) == {"lines", "note", "progress", "metrics", "levels", "redo_index"}
     assert body["levels"] == {"mistakes_per_100": "red", "words_per_answer": "orange", "hesitations_per_min": None}
     assert body["lines"][body["redo_index"]]["role"] == "student"
     assert body["note"]
@@ -204,6 +204,8 @@ def test_get_session_returns_the_history(client, session_id):
         "reply": turn["reply"],
         "sentence_status": "orange",
         "corrections": turn["corrections"],
+        "praise": None,  # the fake corrector gave none
+        "priority_index": 0,
     }]
 
 

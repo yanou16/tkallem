@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 import logging
 import time
 from collections import deque
@@ -19,10 +20,12 @@ from app.db.sessions import (
     get_session_detail,
     get_session_for_user,
     list_turns,
+    previous_finished,
     save_turn,
     set_session_mode,
 )
 from app.dependencies import get_current_user, user_for_claims
+from app.progress_line import progress_line
 from app.schemas.sessions import (
     HintRequest, HintResult, RepeatResult, SessionCreate, SessionDetail, SessionReport, SessionStarted, Spoken,
     TurnResult,
@@ -148,10 +151,32 @@ def read_session(
         "started_at": session["started_at"],
         "ended_at": session["ended_at"],
         **_scenario_view(session),
-        "turns": list_turns(conn, session_id, user["id"]),
+        "turns": _with_praise(list_turns(conn, session_id, user["id"]), session["state"]),
         "note": session["note"],
         "metrics": {key: session[key] for key in METRIC_KEYS} if session["ended_at"] else None,
+        "progress": _progress(conn, user["id"], session),
     }
+
+
+def _progress(conn: Connection, user_id: int, session: dict) -> str | None:
+    """A finished session shows the same first line as its report did: progress since the session finished before it."""
+    if session["ended_at"] is None:
+        return None
+    before, count = previous_finished(conn, user_id, session["id"], session["ended_at"])
+    return progress_line({key: session[key] for key in METRIC_KEYS}, before, count)
+
+
+def _with_praise(turns: list[dict], state: dict) -> list[dict]:
+    """Praise and priority correction of each answer (improvement 4), from the session state the agent keeps: the
+    turns table does not store them. Position 1 is the first answer."""
+    logged = state.get("turns", [])
+    out = []
+    for t in turns:
+        log = logged[t["position"] - 1] if 0 < t["position"] <= len(logged) else {}
+        n = len(t.get("corrections") or [])
+        priority = log.get("priority_index", 0)
+        out.append({**t, "praise": log.get("praise"), "priority_index": priority if 0 <= priority < max(n, 1) else 0})
+    return out
 
 
 def _spend(connect: ConnFactory, user: dict, session_id: UUID) -> credits.CreditStatus:
@@ -191,6 +216,8 @@ def _save(connect: ConnFactory, session_id: UUID, coach: CoachSession, turn, exp
         "reply": turn.reply,
         "corrections": corrections,
         "sentence_status": turn.sentence_status,
+        "praise": turn.praise,
+        "priority_index": turn.priority_index,
         "finished": coach.finished,
     }
 
@@ -231,7 +258,8 @@ def _stream_answer(session_id: UUID, session: dict, user: dict, wallet, text: st
                 if ev["type"] == "reply":
                     yield _sse("reply", {"text": ev["reply"]})
                 elif ev["type"] == "corrections":
-                    yield _sse("corrections", {"corrections": ev["corrections"], "sentence_status": ev["sentence_status"]})
+                    yield _sse("corrections", {"corrections": ev["corrections"], "sentence_status": ev["sentence_status"],
+                                               "praise": ev.get("praise"), "priority_index": ev.get("priority_index", 0)})
                 elif ev["type"] == "audio":
                     yield _sse("audio", {"audio_url": ev["speech"].data_uri if ev["speech"] else None})
                 elif ev["type"] == "done":
@@ -452,7 +480,8 @@ def end_practice_session(
 
     with connect() as conn:
         ended = end_session(conn, session_id, report.note, report.metrics)
-    if not ended:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
+        if not ended:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
+        before, count = previous_finished(conn, user["id"], session_id, datetime.now(timezone.utc))
 
-    return report.model_dump()
+    return {**report.model_dump(), "progress": progress_line(report.metrics, before, count)}
