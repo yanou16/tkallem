@@ -36,9 +36,11 @@ def interview(client, answer, found):
     return sid, report.json()
 
 
-def test_the_report_opens_with_progress_since_the_last_interview(client):
+def test_the_report_opens_with_progress_since_the_last_interview(client, db):
     sid1, first = interview(client, "I go to the US for study.", {"corrections": [FIX]})
     assert first["progress"] == "First interview done: this is your starting point."
+    # one test = one transaction = one now(): put the first interview an hour back, as real requests would be
+    db.execute("UPDATE practice_sessions SET ended_at = ended_at - interval '1 hour' WHERE id = %s", (sid1,))
     sid2, second = interview(client, "I go to the US to study computer science.", {"corrections": []})
     assert second["progress"].startswith("Fewer mistakes than last time: 0 per 100 words, down from ")
     # a reloaded finished session shows the same first line
