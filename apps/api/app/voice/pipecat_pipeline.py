@@ -1,9 +1,6 @@
-"""Pipecat WebRTC Voice Pipeline for Tkallem.
 
-Integrates SmallWebRTC, Silero VAD, STT (Groq/Whisper), RTVI events,
-LangGraph CoachSession conversation branch (streaming TTS without delay),
-and asynchronous non-blocking Qwen instruction correction branch.
-"""
+"""Tkallem — Pipecat WebRTC voice pipeline."""
+
 import asyncio
 import io
 import logging
@@ -19,9 +16,11 @@ from pipecat.audio.vad.vad_analyzer import VADParams
 from pipecat.frames.frames import (
     BotStartedSpeakingFrame,
     BotStoppedSpeakingFrame,
+    CancelFrame,
+    EndFrame,
     Frame,
     InterruptionFrame,
-    TextFrame,
+    StartFrame,
     TranscriptionFrame,
     TTSAudioRawFrame,
     TTSStartedFrame,
@@ -35,114 +34,182 @@ from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.audio.vad_processor import VADProcessor
-from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
-from pipecat.processors.frameworks.rtvi import RTVIProcessor
+from pipecat.processors.frame_processor import (
+    FrameDirection,
+    FrameProcessor,
+)
+from pipecat.processors.frameworks.rtvi import (
+    RTVIProcessor,
+    RTVIObserver,
+)
 from pipecat.services.settings import STTSettings
 from pipecat.services.stt_service import SegmentedSTTService
 from pipecat.transports.base_transport import TransportParams
-from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
-from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
+from pipecat.transports.smallwebrtc.connection import (
+    SmallWebRTCConnection,
+)
+from pipecat.transports.smallwebrtc.transport import (
+    SmallWebRTCTransport,
+)
+
 from tkallem_agent import CoachSession
 
 from app import credits
-from app.voice import smallwebrtc_patch  # noqa: F401 - apply SmallWebRTC fix
+from app.voice import smallwebrtc_patch  # noqa: F401
 from app.config import settings
 from app.db.connection import ConnFactory
-from app.db.sessions import get_session_for_user, save_turn
+from app.db.sessions import save_turn
 from app.voice.stt import transcribe
-from app.voice.tts import Speech, synthesize
+from app.voice.tts import Speech, synthesize, TtsError
 
 logger = logging.getLogger(__name__)
 
 
-def audio_bytes_to_pcm16(audio_bytes: bytes, target_sr: int = 16000) -> bytes:
-    """Extract mono 16-bit PCM at target_sr from WAV bytes produced by synthesize().
+# ============================================================
+# AUDIO UTILITIES
+# ============================================================
 
-    synthesize() returns WAV audio (audio/wav). We use stdlib `wave` to read it
-    and resample only if the sample rate differs. This avoids heavy dependencies
-    like PyAV or soundfile that may not be installed in all environments.
-    """
+def audio_bytes_to_pcm16(
+    audio_bytes: bytes,
+    target_sr: int = 16000,
+) -> bytes:
+    """Convert WAV audio to mono signed PCM16."""
+
     if not audio_bytes:
         return b""
+
     try:
         with wave.open(io.BytesIO(audio_bytes), "rb") as wf:
             channels = wf.getnchannels()
-            sampwidth = wf.getsampwidth()  # bytes per sample
-            framerate = wf.getframerate()
+            width = wf.getsampwidth()
+            source_sr = wf.getframerate()
             raw = wf.readframes(wf.getnframes())
 
-        # Convert to 16-bit if needed (most TTS providers return 16-bit already)
-        if sampwidth == 1:
-            # 8-bit unsigned → 16-bit signed
-            raw = struct.pack(f"{len(raw)}h", *[b * 256 - 32768 for b in raw])
-        elif sampwidth == 4:
-            # 32-bit → 16-bit (drop lower 2 bytes)
-            samples = struct.unpack(f"{len(raw) // 4}i", raw)
-            raw = struct.pack(f"{len(samples)}h", *[s >> 16 for s in samples])
-        # sampwidth == 2: already 16-bit, nothing to do
+        if width == 1:
+            samples = [
+                (value - 128) << 8
+                for value in raw
+            ]
+        elif width == 2:
+            samples = list(
+                struct.unpack(
+                    f"<{len(raw) // 2}h",
+                    raw,
+                )
+            )
+        elif width == 4:
+            values = struct.unpack(
+                f"<{len(raw) // 4}i",
+                raw,
+            )
+            samples = [value >> 16 for value in values]
+        else:
+            raise ValueError(
+                f"Unsupported WAV sample width: {width}"
+            )
 
-        # Mix down to mono if stereo
         if channels > 1:
-            samples = struct.unpack(f"{len(raw) // 2}h", raw)
-            mono = [sum(samples[i:i + channels]) // channels for i in range(0, len(samples), channels)]
-            raw = struct.pack(f"{len(mono)}h", *mono)
+            samples = [
+                sum(samples[i:i + channels]) // channels
+                for i in range(0, len(samples), channels)
+            ]
 
-        # Simple nearest-neighbor resample when sample rate differs
-        if framerate != target_sr:
-            src_samples = struct.unpack(f"{len(raw) // 2}h", raw)
-            ratio = framerate / target_sr
-            dst_len = int(len(src_samples) / ratio)
-            resampled = [src_samples[min(int(i * ratio), len(src_samples) - 1)] for i in range(dst_len)]
-            raw = struct.pack(f"{len(resampled)}h", *resampled)
+        if source_sr != target_sr and samples:
+            ratio = source_sr / target_sr
+            count = int(len(samples) / ratio)
 
-        return raw
-    except Exception as exc:
-        logger.warning("Failed to decode TTS audio to PCM: %s", exc)
+            samples = [
+                samples[min(
+                    int(i * ratio),
+                    len(samples) - 1,
+                )]
+                for i in range(count)
+            ]
+
+        if not samples:
+            return b""
+
+        return struct.pack(
+            f"<{len(samples)}h",
+            *samples,
+        )
+
+    except Exception:
+        logger.exception("Failed to decode TTS audio")
         return b""
 
 
+# ============================================================
+# SPEECH TO TEXT
+# ============================================================
+
 class TkallemSTTService(SegmentedSTTService):
-    """Segmented STT service leveraging the existing Tkallem transcribe() function."""
+    """Reuse existing Tkallem STT provider."""
 
     def __init__(self, **kwargs):
         super().__init__(
             sample_rate=16000,
             trailing_silence_secs=0.4,
-            settings=STTSettings(model=settings.stt_model, language="en"),
+            settings=STTSettings(
+                model=settings.stt_model,
+                language="en",
+            ),
             **kwargs,
         )
 
     async def cleanup(self):
-        """Stop the segment worker even when the transport closes abruptly."""
         await self._cancel_segment_task()
         await super().cleanup()
 
-    async def run_stt(self, audio: bytes) -> AsyncGenerator[Frame, None]:
+    async def run_stt(
+        self,
+        audio: bytes,
+    ) -> AsyncGenerator[Frame, None]:
+
         if not audio or len(audio) < 1600:
             return
-        try:
-            # SegmentedSTTService already provides a WAV container by default.
-            transcription = await asyncio.to_thread(transcribe, audio, "turn.wav", "audio/wav")
-            if not transcription or not transcription.text:
-                logger.warning("TkallemSTTService returned an empty transcription")
-                return
-            if transcription.unclear:
-                logger.warning("TkallemSTTService rejected an unclear transcription")
-                return
-            yield TranscriptionFrame(
-                text=transcription.text.strip(),
-                user_id=getattr(self, "_user_id", "") or "student",
-                timestamp=datetime.now(timezone.utc).isoformat(),
-            )
-        except Exception:
-            logger.exception("TkallemSTTService transcription error")
 
+        try:
+            result = await asyncio.to_thread(
+                transcribe,
+                audio,
+                "turn.wav",
+                "audio/wav",
+            )
+
+            if not result or not result.text:
+                logger.warning("Empty STT transcription")
+                return
+
+            if result.unclear:
+                logger.warning("Unclear STT transcription")
+                return
+
+            text = result.text.strip()
+
+            logger.info("STT transcription: %s", text)
+
+            yield TranscriptionFrame(
+                text=text,
+                user_id="student",
+                timestamp=datetime.now(
+                    timezone.utc
+                ).isoformat(),
+            )
+
+        except Exception:
+            logger.exception("STT transcription failed")
+
+
+# ============================================================
+# VOICE CONVERSATION PROCESSOR
+# ============================================================
 
 class TkallemVoiceTurnProcessor(FrameProcessor):
-    """Handles conversation turns, interruptions, asynchronous corrections, and audio streaming."""
 
     def __init__(
         self,
+        *,
         session_id: UUID,
         user: dict,
         coach: CoachSession,
@@ -151,38 +218,96 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
         **kwargs,
     ):
         super().__init__(**kwargs)
+
         self.session_id = session_id
         self.user = user
         self.coach = coach
         self.connect = connect
         self.rtvi = rtvi
-        self._current_speech_task: asyncio.Task | None = None
+
+        self._current_speech_task = None
+        self._current_turn_task = None
+        self._background_tasks = set()
         self._is_speaking = False
 
+    def _track_task(self, task):
+        self._background_tasks.add(task)
+        task.add_done_callback(
+            self._background_tasks.discard
+        )
+        return task
+
+    async def send_event(self, payload: dict):
+        try:
+            await self.rtvi.send_server_message(payload)
+        except Exception:
+            logger.exception(
+                "Failed to send RTVI server message"
+            )
+
+    # --------------------------------------------------------
+    # TEXT TO SPEECH
+    # --------------------------------------------------------
+
     async def speak_text(self, text: str):
-        """Synthesizes text and streams 20ms PCM audio frames downstream."""
+        """Speak a response through WebRTC output."""
+
         if not text:
             return
-        try:
-            self._is_speaking = True
-            await self.push_frame(BotStartedSpeakingFrame())
-            await self.push_frame(TTSStartedFrame())
-            speech: Speech = await asyncio.to_thread(synthesize, text)
-            audio_bytes = getattr(speech, "audio", None) or getattr(speech, "audio_bytes", None)
-            if not speech or not audio_bytes:
-                await self.push_frame(TTSStoppedFrame())
-                await self.push_frame(BotStoppedSpeakingFrame())
-                self._is_speaking = False
-                return
 
-            pcm = audio_bytes_to_pcm16(audio_bytes, target_sr=16000)
-            chunk_size = 640  # 20ms of 16kHz 16-bit mono PCM (16000 * 2 * 0.02)
-            for i in range(0, len(pcm), chunk_size):
+        self._is_speaking = True
+
+        try:
+            await self.push_frame(
+                TTSStartedFrame()
+            )
+            await self.push_frame(
+                BotStartedSpeakingFrame()
+            )
+
+            logger.info("TTS started: %s", text)
+
+            speech: Speech = await asyncio.to_thread(
+                synthesize,
+                text,
+            )
+
+            audio = (
+                getattr(speech, "audio", None)
+                or getattr(speech, "audio_bytes", None)
+            )
+
+            if not audio:
+                raise RuntimeError(
+                    "TTS returned no audio"
+                )
+
+            pcm = audio_bytes_to_pcm16(
+                audio,
+                target_sr=16000,
+            )
+
+            if not pcm:
+                raise RuntimeError(
+                    "TTS audio could not be decoded"
+                )
+
+            chunk_size = 640
+
+            for index in range(0, len(pcm), chunk_size):
                 if not self._is_speaking:
                     break
-                chunk = pcm[i : i + chunk_size]
+
+                chunk = pcm[
+                    index:index + chunk_size
+                ]
+
                 if len(chunk) < chunk_size:
-                    chunk = chunk.ljust(chunk_size, b"\x00")
+                    chunk = chunk.ljust(
+                        chunk_size,
+                        b"\x00",
+                    )
+
                 await self.push_frame(
                     TTSAudioRawFrame(
                         audio=chunk,
@@ -190,45 +315,71 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
                         num_channels=1,
                     )
                 )
-                # No sleep here — SmallWebRTC transport applies natural backpressure.
-                # An artificial asyncio.sleep(0.018) would add 4-5 s of latency
-                # for a typical 5-second reply (250 chunks × 18 ms = 4.5 s).
+
                 await asyncio.sleep(0)
+
+            logger.info("TTS audio queued successfully")
+
         except asyncio.CancelledError:
-            logger.info("Speech playback cancelled (barge-in)")
-        except Exception as exc:
-            logger.error("Error during speech synthesis or streaming: %s", exc)
-            try:
-                await self.rtvi.send_server_message(
-                    {"type": "error", "code": "tts_error", "detail": f"Text-to-speech error: {exc}"}
-                )
-            except Exception:
-                pass
+            logger.info("Speech interrupted")
+            raise
+
+        except (TtsError, Exception) as exc:
+            logger.exception("TTS failed")
+
+            await self.send_event({
+                "type": "error",
+                "code": "tts_error",
+                "detail": str(exc),
+            })
+
         finally:
             self._is_speaking = False
-            await self.push_frame(TTSStoppedFrame())
-            await self.push_frame(BotStoppedSpeakingFrame())
+
+            await self.push_frame(
+                TTSStoppedFrame()
+            )
+            await self.push_frame(
+                BotStoppedSpeakingFrame()
+            )
 
     def interrupt_speech(self):
-        """Cancels current speech streaming upon user barge-in."""
-        if self._current_speech_task and not self._current_speech_task.done():
-            self._current_speech_task.cancel()
-            self._current_speech_task = None
+        """Cancel current speech generation."""
+
         self._is_speaking = False
 
-    async def _handle_async_correction(
+        task = self._current_speech_task
+
+        if task and not task.done():
+            task.cancel()
+
+        self._current_speech_task = None
+
+    def start_speaking(self, text: str):
+        self.interrupt_speech()
+
+        task = asyncio.create_task(
+            self.speak_text(text)
+        )
+
+        self._current_speech_task = task
+        self._track_task(task)
+
+    # --------------------------------------------------------
+    # PERSISTENCE / CORRECTIONS
+    # --------------------------------------------------------
+
+    async def save_correction(
         self,
         utterance_id: str,
         student_text: str,
         reply: str,
-        corrections: list[dict],
+        corrections: list,
         sentence_status: str,
-        goal_covered: str | None,
+        goal_covered,
         expected_turns: int,
     ):
-        """Asynchronous branch: saves turn in DB and notifies RTVI client with structured corrections."""
         try:
-            # 1. Save in PostgreSQL
             with self.connect() as conn:
                 save_turn(
                     conn,
@@ -242,8 +393,7 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
                     expected_turns=expected_turns,
                 )
 
-            # 2. Push structured correction event via RTVI
-            correction_payload = {
+            await self.send_event({
                 "type": "correction",
                 "utterance_id": utterance_id,
                 "original": student_text,
@@ -252,114 +402,285 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
                 "sentence_status": sentence_status,
                 "level": self.coach.level,
                 "explain_lang": self.coach.explain_lang,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            }
-            await self.rtvi.send_server_message(correction_payload)
-        except Exception as exc:
-            logger.exception("Failed in async correction branch: %s", exc)
+                "timestamp": datetime.now(
+                    timezone.utc
+                ).isoformat(),
+            })
 
-    async def process_frame(self, frame: Frame, direction: FrameDirection):
-        await super().process_frame(frame, direction)
-
-        # Handle user barge-in / interruption
-        if isinstance(frame, (VADUserStartedSpeakingFrame, UserStartedSpeakingFrame)):
-            if self._is_speaking:
-                self.interrupt_speech()
-                await self.push_frame(InterruptionFrame())
-            if isinstance(frame, VADUserStartedSpeakingFrame):
-                await self.push_frame(UserStartedSpeakingFrame())
-
-        elif isinstance(frame, VADUserStoppedSpeakingFrame):
-            await self.push_frame(UserStoppedSpeakingFrame())
-
-        # Handle finalized speech-to-text
-        elif isinstance(frame, TranscriptionFrame):
-            text = frame.text.strip()
-            if not text:
-                return
-
-            await self.rtvi.send_server_message(
-                {"type": "user_transcript", "text": text}
+        except Exception:
+            logger.exception(
+                "Failed to save voice turn"
             )
 
-            # Check credits before generating turn
+    # --------------------------------------------------------
+    # CONVERSATION
+    # --------------------------------------------------------
+
+    async def handle_transcription(self, text: str):
+        """Generate one conversation turn."""
+
+        logger.info(
+            "Processing user transcription: %s",
+            text,
+        )
+
+        await self.send_event({
+            "type": "user_transcript",
+            "text": text,
+        })
+
+        try:
+            with self.connect() as conn:
+                credits.spend(
+                    conn,
+                    self.user,
+                    self.session_id,
+                )
+
+        except credits.NoCredits:
+            await self.send_event({
+                "type": "error",
+                "code": "no_credits",
+                "detail": "You are out of credits.",
+            })
+            return
+
+        except credits.DailyBudgetReached:
+            await self.send_event({
+                "type": "error",
+                "code": "daily_budget_reached",
+                "detail": "Daily practice budget reached.",
+            })
+            return
+
+        utterance_id = uuid.uuid4().hex
+        expected_turns = len(self.coach.turns)
+
+        reply_text = ""
+        corrections = []
+        sentence_status = "green"
+        goal_covered = None
+
+        try:
+            # Existing LangGraph / CoachSession logic.
+            def get_events():
+                return list(
+                    self.coach.turn_events(text)
+                )
+
+            events = await asyncio.to_thread(
+                get_events
+            )
+
+            for event in events:
+                event_type = event.get("type")
+
+                if event_type == "reply":
+                    reply_text = event.get(
+                        "reply",
+                        "",
+                    )
+
+                elif event_type == "corrections":
+                    corrections = event.get(
+                        "corrections",
+                        [],
+                    )
+                    sentence_status = event.get(
+                        "sentence_status",
+                        "green",
+                    )
+
+                elif event_type == "done":
+                    turn = event.get("turn")
+
+                    if turn:
+                        goal_covered = (
+                            turn.goal_covered
+                        )
+
+            if not reply_text:
+                reply_text = (
+                    "I see. Let's continue."
+                )
+
+            logger.info(
+                "LLM response: %s",
+                reply_text,
+            )
+
+            # Send text to the frontend immediately.
+            await self.send_event({
+                "type": "bot_transcript",
+                "text": reply_text,
+                "utterance_id": utterance_id,
+            })
+
+            # Start audio generation automatically.
+            self.start_speaking(reply_text)
+
+            # Save conversation separately.
+            task = asyncio.create_task(
+                self.save_correction(
+                    utterance_id,
+                    text,
+                    reply_text,
+                    corrections,
+                    sentence_status,
+                    goal_covered,
+                    expected_turns,
+                )
+            )
+            self._track_task(task)
+
+        except asyncio.CancelledError:
+            raise
+
+        except Exception:
+            logger.exception(
+                "Voice conversation failed"
+            )
+
             try:
                 with self.connect() as conn:
-                    credits.spend(conn, self.user, self.session_id)
-            except credits.NoCredits:
-                await self.rtvi.send_server_message(
-                    {"type": "error", "code": "no_credits", "detail": "You are out of credits."}
-                )
-                return
-            except credits.DailyBudgetReached:
-                await self.rtvi.send_server_message(
-                    {"type": "error", "code": "daily_budget_reached", "detail": "Daily practice budget reached."}
-                )
-                return
-
-            utterance_id = uuid.uuid4().hex
-            expected_turns = len(self.coach.turns)
-
-            # A. Conversation branch: generate coach reply and stream TTS immediately
-            reply_text = ""
-            corrections = []
-            sentence_status = "green"
-            goal_covered = None
-
-            try:
-                # Use CoachSession.turn_events to get the reply event early
-                def get_events():
-                    return list(self.coach.turn_events(text))
-
-                events = await asyncio.to_thread(get_events)
-                for ev in events:
-                    if ev["type"] == "reply":
-                        reply_text = ev["reply"]
-                    elif ev["type"] == "corrections":
-                        corrections = ev.get("corrections", [])
-                        sentence_status = ev.get("sentence_status", "green")
-                    elif ev["type"] == "done":
-                        turn = ev.get("turn")
-                        if turn:
-                            goal_covered = turn.goal_covered
-
-                if not reply_text:
-                    reply_text = "I see. Let's continue."
-
-                # Send bot transcript via RTVI
-                await self.rtvi.send_server_message(
-                    {"type": "bot_transcript", "text": reply_text, "utterance_id": utterance_id}
-                )
-
-                # Play speech
-                self.interrupt_speech()
-                self._current_speech_task = asyncio.create_task(self.speak_text(reply_text))
-
-                # B. Correction branch (asynchronous, non-blocking)
-                asyncio.create_task(
-                    self._handle_async_correction(
-                        utterance_id,
-                        text,
-                        reply_text,
-                        corrections,
-                        sentence_status,
-                        goal_covered,
-                        expected_turns,
+                    credits.refund(
+                        conn,
+                        self.user,
+                        self.session_id,
                     )
+            except Exception:
+                logger.exception(
+                    "Credit refund failed"
                 )
 
-            except Exception as exc:
-                logger.exception("Error processing turn in voice pipeline: %s", exc)
-                # Refund credit on failure
-                try:
-                    with self.connect() as conn:
-                        credits.refund(conn, self.user, self.session_id)
-                except Exception:
-                    pass
-                await self.rtvi.send_server_message(
-                    {"type": "error", "detail": "Coach encountered an error. Please speak again."}
+            await self.send_event({
+                "type": "error",
+                "code": "conversation_error",
+                "detail": (
+                    "Coach encountered an error. "
+                    "Please speak again."
+                ),
+            })
+
+    # --------------------------------------------------------
+    # FRAME PROCESSING
+    # --------------------------------------------------------
+
+    async def process_frame(
+        self,
+        frame: Frame,
+        direction: FrameDirection,
+    ):
+        await super().process_frame(
+            frame,
+            direction,
+        )
+
+        # Essential: forward lifecycle frames.
+        if isinstance(
+            frame,
+            (StartFrame, EndFrame, CancelFrame),
+        ):
+            await self.push_frame(
+                frame,
+                direction,
+            )
+            return
+
+        if isinstance(
+            frame,
+            (
+                VADUserStartedSpeakingFrame,
+                UserStartedSpeakingFrame,
+            ),
+        ):
+            if self._is_speaking:
+                self.interrupt_speech()
+
+                await self.push_frame(
+                    InterruptionFrame()
                 )
 
+            if isinstance(
+                frame,
+                VADUserStartedSpeakingFrame,
+            ):
+                await self.push_frame(
+                    UserStartedSpeakingFrame()
+                )
+            else:
+                await self.push_frame(
+                    frame,
+                    direction,
+                )
+
+            return
+
+        if isinstance(
+            frame,
+            VADUserStoppedSpeakingFrame,
+        ):
+            await self.push_frame(
+                UserStoppedSpeakingFrame()
+            )
+            return
+
+        if isinstance(frame, TranscriptionFrame):
+            # Let RTVI observers see this frame.
+            await self.push_frame(
+                frame,
+                direction,
+            )
+
+            text = frame.text.strip()
+
+            if text:
+                # Do not block frame propagation
+                # with a slow LLM request.
+                if (
+                    self._current_turn_task
+                    and not self._current_turn_task.done()
+                ):
+                    logger.warning(
+                        "Previous turn still processing"
+                    )
+                    return
+
+                task = asyncio.create_task(
+                    self.handle_transcription(text)
+                )
+
+                self._current_turn_task = task
+                self._track_task(task)
+
+            return
+
+        # Forward ALL other frames, including
+        # control, audio and system frames.
+        await self.push_frame(
+            frame,
+            direction,
+        )
+
+    async def cleanup(self):
+        self.interrupt_speech()
+
+        for task in list(self._background_tasks):
+            if not task.done():
+                task.cancel()
+
+        if self._background_tasks:
+            await asyncio.gather(
+                *self._background_tasks,
+                return_exceptions=True,
+            )
+
+        await super().cleanup()
+
+
+# ============================================================
+# BUILD VOICE PIPELINE
+# ============================================================
 
 def build_voice_pipeline(
     webrtc_connection: SmallWebRTCConnection,
@@ -367,12 +688,13 @@ def build_voice_pipeline(
     user: dict,
     coach: CoachSession,
     connect: ConnFactory,
-) -> tuple["PipelineRunner", "PipelineTask", "TkallemVoiceTurnProcessor"]:
-    """Constructs the full Pipecat pipeline with SmallWebRTC, Silero VAD, STT, and RTVI.
+) -> tuple[
+    PipelineRunner,
+    PipelineTask,
+    TkallemVoiceTurnProcessor,
+]:
+    """Build the Tkallem real-time voice pipeline."""
 
-    The Silero VAD analyzer is wrapped in ``VADProcessor`` inline in the pipeline
-    so that user speech start and stop events trigger ``SegmentedSTTService`` automatically.
-    """
     vad = SileroVADAnalyzer(
         params=VADParams(
             confidence=0.65,
@@ -385,8 +707,8 @@ def build_voice_pipeline(
     transport = SmallWebRTCTransport(
         webrtc_connection=webrtc_connection,
         params=TransportParams(
-            audio_out_enabled=True,
             audio_in_enabled=True,
+            audio_out_enabled=True,
             audio_in_sample_rate=16000,
             audio_out_sample_rate=16000,
         ),
@@ -394,7 +716,10 @@ def build_voice_pipeline(
 
     rtvi = RTVIProcessor()
 
-    vad_processor = VADProcessor(vad_analyzer=vad)
+    vad_processor = VADProcessor(
+        vad_analyzer=vad
+    )
+
     stt = TkallemSTTService()
 
     processor = TkallemVoiceTurnProcessor(
@@ -405,64 +730,126 @@ def build_voice_pipeline(
         rtvi=rtvi,
     )
 
+    # --------------------------------------------------------
+    # GREETING
+    # --------------------------------------------------------
+
     greeted = False
 
     async def greet(rtvi_proc):
         nonlocal greeted
+
         if greeted:
             return
+
         greeted = True
+
+        logger.info(
+            "Preparing greeting for session %s",
+            session_id,
+        )
+
         try:
             await rtvi_proc.set_bot_ready()
-        except Exception as e:
-            logger.debug("set_bot_ready: %s", e)
-        if not coach.turns and coach.opening:
-            await rtvi_proc.send_server_message(
-                {"type": "bot_transcript", "text": coach.opening, "utterance_id": uuid.uuid4().hex}
+
+            if not coach.turns and coach.opening:
+                greeting_text = coach.opening
+
+            elif coach.turns:
+                greeting_text = coach.turns[-1].reply
+
+            else:
+                greeting_text = (
+                    "Hello! I'm your English tutor. "
+                    "How are you today?"
+                )
+
+            await processor.send_event({
+                "type": "bot_transcript",
+                "text": greeting_text,
+                "utterance_id": uuid.uuid4().hex,
+            })
+
+            processor.start_speaking(
+                greeting_text
             )
-            asyncio.create_task(processor.speak_text(coach.opening))
-        elif coach.turns:
-            last_line = coach.turns[-1].reply
-            await rtvi_proc.send_server_message(
-                {"type": "bot_transcript", "text": last_line, "utterance_id": uuid.uuid4().hex}
+
+            logger.info(
+                "Greeting started for session %s",
+                session_id,
             )
-            asyncio.create_task(processor.speak_text(last_line))
+
+        except Exception:
+            greeted = False
+            logger.exception(
+                "Greeting failed for session %s",
+                session_id,
+            )
 
     @rtvi.event_handler("on_client_ready")
     async def on_client_ready(rtvi_proc):
-        logger.info("RTVI client is ready for session %s, sending bot-ready", session_id)
+        logger.info(
+            "RTVI client ready for session %s",
+            session_id,
+        )
         await greet(rtvi_proc)
 
-    @transport.event_handler("on_client_connected")
-    async def on_client_connected(transport_obj, client_conn):
-        logger.info("WebRTC client connected for session %s", session_id)
-        async def fallback_ready():
-            await asyncio.sleep(0.5)
-            await greet(rtvi)
-        asyncio.create_task(fallback_ready())
+    # --------------------------------------------------------
+    # TRANSPORT EVENTS
+    # --------------------------------------------------------
 
-    pipeline = Pipeline(
-        [
-            transport.input(),
-            rtvi,
-            vad_processor,
-            stt,
-            processor,
-            transport.output(),
-        ]
-    )
+    @transport.event_handler("on_client_connected")
+    async def on_client_connected(
+        transport_obj,
+        client_conn,
+    ):
+        logger.info(
+            "WebRTC connected for session %s",
+            session_id,
+        )
+
+    @transport.event_handler("on_client_disconnected")
+    async def on_client_disconnected(
+        transport_obj,
+        client_conn,
+    ):
+        logger.info(
+            "WebRTC disconnected for session %s",
+            session_id,
+        )
+        processor.interrupt_speech()
+
+    # --------------------------------------------------------
+    # PIPELINE
+    # --------------------------------------------------------
+
+    pipeline = Pipeline([
+        transport.input(),
+        rtvi,
+        vad_processor,
+        stt,
+        processor,
+        transport.output(),
+    ])
+
+    # Explicit observer paired with RTVIProcessor.
+    observer = RTVIObserver(rtvi)
 
     task = PipelineTask(
         pipeline,
         params=PipelineParams(
             allow_interruptions=True,
         ),
+        observers=[observer],
         rtvi_processor=rtvi,
     )
 
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-    runner = PipelineRunner(loop=loop)
+    # Use the existing runner convention.
+    runner = PipelineRunner()
+
+    logger.info(
+        "Voice pipeline constructed for session %s",
+        session_id,
+    )
+
     return runner, task, processor

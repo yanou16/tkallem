@@ -6,7 +6,7 @@ import { ArrowDown, ChartNoAxesColumn, ChevronDown, ChevronRight, CircleAlert, L
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
-import { aiSessionKey, useAiSession, useAnswer, useEndSession, useSpeakLastLine, useStartSession } from "@/features/ai-chat/hooks/useAiChat";
+import { aiSessionKey, useAiSession, useAnswer, useEndSession, useStartSession } from "@/features/ai-chat/hooks/useAiChat";
 import { CoachAvatar } from "@/components/CoachAvatar";
 import VoiceState, { formatTime, type CoachState } from "@/features/ai-chat/components/VoiceState";
 import { MAX_RECORDING_S, useVoiceRecorder, type Recording } from "@/features/ai-chat/hooks/useVoiceRecorder";
@@ -109,7 +109,6 @@ function Chat() {
   const start = useStartSession();
   const session = useAiSession(sessionId);
   const end = useEndSession(sessionId);
-  const speakLast = useSpeakLastLine(sessionId);
   const s = session.data;
   const scenarioId = s?.scenarioId ?? urlScenarioId;
 
@@ -124,8 +123,8 @@ function Chat() {
   };
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const coach = useCoachVoice(mode === "voice" && avatarOn);
-  // The coach's voice is played as soon as it arrives, while the corrections are still being written.
-  const send = useAnswer(sessionId, (url, reply) => coach.play(url, reply));
+  // Message audio is available through each assistant message's explicit Listen button.
+  const send = useAnswer(sessionId, () => undefined);
   const [text, setText] = useState("");
   const [pending, setPending] = useState<Pending | null>(null);
   const [rtLive, setRtLive] = useState<{
@@ -144,9 +143,37 @@ function Chat() {
     sessionId,
     onUserTranscript: (userText) => {
       setRtLive({ transcript: userText });
+      if (sessionId) {
+        qc.setQueryData<AiSession>(aiSessionKey(sessionId), (prev) => {
+          if (!prev) return prev;
+          const n = prev.messages.length;
+          return {
+            ...prev,
+            messages: [
+              ...prev.messages,
+              { id: `${prev.id}-${n}`, role: "user", content: userText, createdAt: new Date().toISOString(), status: "green" },
+            ],
+          };
+        });
+      }
     },
     onBotTranscript: (botText) => {
       setRtLive((prev) => ({ ...(prev ?? {}), reply: botText }));
+      if (sessionId) {
+        qc.setQueryData<AiSession>(aiSessionKey(sessionId), (prev) => {
+          if (!prev) return prev;
+          const n = prev.messages.length;
+          return {
+            ...prev,
+            messages: [
+              ...prev.messages,
+              { id: `${prev.id}-${n}`, role: "assistant", content: botText, createdAt: new Date().toISOString() },
+            ],
+          };
+        });
+        // AI response is played via Pipecat WebRTC pipeline (masculine chatbot voice).
+        // Do not call coach.play() here to avoid duplicate/browser TTS playback.
+      }
     },
     onCorrection: (data) => {
       setRtLive(null);
@@ -193,12 +220,9 @@ function Chat() {
 
   const begin = (id: string) => {
     started.current = id;
-    // The session starts as text so the first question shows at once; in voice mode its audio is asked right after
-    // (POST /speak, which also makes the session a voice session): the student reads it while the voice is made.
     start.mutate({ scenarioId: id, mode: "text" }, {
       onSuccess: (s) => {
         router.replace(`/ai-chat?sessionId=${encodeURIComponent(s.sessionId)}&scenarioId=${encodeURIComponent(id)}`);
-        if (mode === "voice") speakLast.mutate(s.sessionId, { onSuccess: (r) => coach.play(r.audio_url, r.text) });
       },
     });
   };
@@ -264,8 +288,6 @@ function Chat() {
       if (rec.isRecording) rec.stop();
       return;
     }
-    // Switching to voice in the middle: the coach repeats its last line aloud, and its next replies are spoken.
-    if (sessionId && s && !s.finished && !send.isPending) speakLast.mutate(sessionId, { onSuccess: (r) => coach.play(r.audio_url, r.text) });
   }
   const finish = () => {
     rtVoice.stop();
@@ -284,7 +306,7 @@ function Chat() {
     ? "listening"
     : coach.speaking
     ? "speaking"
-    : send.isPending || speakLast.isPending || rtVoice.isConnecting
+    : send.isPending || rtVoice.isConnecting
     ? "thinking"
     : "idle";
   const barState: CoachState = coachState === "thinking" && pending ? "idle" : coachState; // "Thinking…" already shows in the chat
@@ -304,9 +326,11 @@ function Chat() {
   } else if (!s) {
     body = <div className="space-y-4"><Skeleton className="h-20 w-2/3" /><Skeleton className="ml-auto h-20 w-2/3" /></div>;
   } else {
-    body = s.messages.map((m) => (
-      <Bubble key={m.id} m={m} icon={icon} user={user} onListen={m.role === "assistant" ? () => coach.play(m.audioUrl, m.content) : undefined} />
-    ));
+    body = mode === "voice"
+      ? null
+      : s.messages.map((m) => (
+        <Bubble key={m.id} m={m} icon={icon} user={user} onListen={m.role === "assistant" ? () => coach.play(m.audioUrl, m.content) : undefined} />
+      ));
   }
 
   return (
@@ -441,44 +465,44 @@ function Chat() {
                 )}
               </>
             )}
-            {rtLive && (
-              <>
-                {rtLive.transcript && (
-                  <Bubble
-                    m={{
-                      id: "rt-pending-user",
-                      role: "user",
-                      content: rtLive.transcript,
-                      corrections: rtLive.corrections,
-                      status: rtLive.status,
-                    }}
-                    icon={icon}
-                    user={user}
-                  />
-                )}
-                {rtLive.reply ? (
-                  <Bubble
-                    m={{
-                      id: "rt-pending-reply",
-                      role: "assistant",
-                      content: rtLive.reply,
-                    }}
-                    icon={icon}
-                    user={user}
-                  />
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-mint">
-                      <Icon name={icon ?? "briefcase"} />
-                    </span>
-                    <VoiceState
-                      state={rtVoice.state === "speaking" ? "speaking" : "thinking"}
-                      className="rounded-3xl bg-black/[0.05] px-5 py-4"
-                    />
-                  </div>
-                )}
-              </>
-            )}
+            {mode !== "voice" && rtLive && (
+  <>
+    {rtLive.transcript && (
+      <Bubble
+        m={{
+          id: "rt-pending-user",
+          role: "user",
+          content: rtLive.transcript,
+          corrections: rtLive.corrections,
+          status: rtLive.status,
+        }}
+        icon={icon}
+        user={user}
+      />
+    )}
+    {rtLive.reply ? (
+      <Bubble
+        m={{
+          id: "rt-pending-reply",
+          role: "assistant",
+          content: rtLive.reply,
+        }}
+        icon={icon}
+        user={user}
+      />
+    ) : (
+      <div className="flex items-center gap-3">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-mint">
+          <Icon name={icon ?? "briefcase"} />
+        </span>
+        <VoiceState
+          state={rtVoice.state === "speaking" ? "speaking" : "thinking"}
+          className="rounded-3xl bg-black/[0.05] px-5 py-4"
+        />
+      </div>
+    )}
+  </>
+)}
             <div ref={bottom} />
           </div>
 
@@ -562,7 +586,7 @@ function Chat() {
             {s && !s.finished && <span className="flex items-center gap-2 text-sm"><span className="h-2.5 w-2.5 rounded-full bg-success" /> Active</span>}</div>
           {!last ? (
             <EmptyState title="No corrections yet" text="Send an answer and your tutor will suggest improvements here." />
-          ) : last.corrections?.length ? (
+          ) : last.sentence_status !== "green" && last.corrections?.length ? (
             last.corrections.map((c, i) => <CorrectionCard key={i} c={c} />)
           ) : (
             <EmptyState title="Clean answer" text="No correction on your last answer." />

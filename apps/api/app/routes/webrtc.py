@@ -62,6 +62,7 @@ async def handle_webrtc_offer(
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 pass
 
+        # Build the voice pipeline and capture all required variables.
         try:
             runner, task, processor = build_voice_pipeline(
                 webrtc_connection=webrtc_connection,
@@ -78,6 +79,8 @@ async def handle_webrtc_offer(
             asyncio.create_task(webrtc_connection.disconnect())
             raise
 
+        # Session task must capture runner, task, processor, and webrtc_connection
+        # from the enclosing scope via closure.
         async def run_session():
             try:
                 await runner.run(task)
@@ -85,14 +88,36 @@ async def handle_webrtc_offer(
                 logger.info(f"Voice session {session_id} cancelled")
             except Exception as e:
                 logger.exception(f"Error running voice session {session_id}: {e}")
-                webrtc_connection.send_app_message(
-                    {"type": "error", "code": "session_error", "detail": f"Voice session error: {e}"}
-                )
+                try:
+                    await webrtc_connection.send_app_message(
+                        {"type": "error", "code": "session_error", "detail": f"Voice session error: {e}"}
+                    )
+                except Exception:
+                    pass
             finally:
                 _active_sessions.pop(session_id, None)
 
         session_task = asyncio.create_task(run_session())
         _active_sessions[session_id] = session_task
+
+        # Robust fallback: ensure the pipeline greeting runs even if
+        # on_client_ready never fires. This prevents pipeline startup delay
+        # on "second connections" where RTVI state may not be fully initialized.
+        async def robust_greet_fallback():
+            await asyncio.sleep(1.5)
+            logger.info("Robust fallback: running greet for session %s", session_id)
+            try:
+                # Run greet through the processor which has the correct context.
+                await processor.send_event({
+                    "type": "bot_transcript",
+                    "text": coach.opening or "Hello! I'm your English tutor. How are you today?",
+                    "utterance_id": uuid.uuid4().hex,
+                })
+                processor.start_speaking(coach.opening or "Hello! I'm your English tutor. How are you today?")
+            except Exception as e:
+                logger.warning("Robust greet failed: %s", e)
+
+        asyncio.create_task(robust_greet_fallback())
 
     answer = await _webrtc_handler.handle_web_request(request, on_connection)
     if answer is None:
