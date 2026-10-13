@@ -12,6 +12,9 @@ class SessionCreate(BaseModel):
     scenario_id: str = Field(min_length=1, max_length=100)
     mode: Literal["text", "voice"] = "text"
     explain_lang: ExplainLang | None = None
+    # "practice": corrections after each answer, hints and Say it again. "interview": the coach plays the real officer and
+    # nothing is shown until the report (docs/JURY_BRIEF.md, improvement 3).
+    feedback_mode: Literal["practice", "interview"] = "practice"
 
 
 class FirstQuestion(BaseModel):
@@ -53,13 +56,14 @@ class RepeatResult(BaseModel):
 class SessionStarted(BaseModel):
     session_id: str
     first_question: FirstQuestion
+    feedback_mode: Literal["practice", "interview"] = "practice"
 
 class TurnResult(BaseModel):
     transcript: str
     reply: str
     reply_audio_url: str | None = None
     corrections: list[Correction] = Field(max_length=3)
-    sentence_status: Status
+    sentence_status: Status | None  # None in a real interview: corrections are kept for the report
     praise: str | None = None  # improvement 4: one short true positive, checked by the agent's code
     priority_index: int = 0  # the correction shown in full; the others are folded
     finished: bool
@@ -99,6 +103,7 @@ class SessionReport(BaseModel):
     metrics: Metrics
     levels: Levels
     redo_index: int | None
+    feedback_mode: Literal["practice", "interview"] = "practice"
     progress: str | None = None  # first line of the report: progress since the last finished session, written by code
     freeze: Freeze | None = None  # time before starting to answer, with the previous session's when comparable
 
@@ -117,7 +122,7 @@ class TurnDetail(BaseModel):
     position: int
     transcript: str
     reply: str
-    sentence_status: Status
+    sentence_status: Status | None  # None while a real interview runs: nothing is shown before the report
     corrections: list[Correction]
     praise: str | None = None  # improvement 4: shown before the corrections
     priority_index: int = 0  # the correction shown in full; the others are folded
@@ -137,5 +142,6 @@ class SessionDetail(BaseModel):
     # What /end stored, null before. The rest of the report (levels, redo_index) is not stored.
     note: str | None
     metrics: Metrics | None
+    feedback_mode: Literal["practice", "interview"] = "practice"
     progress: str | None = None  # finished sessions: the report's first line
     freeze: Freeze | None = None
