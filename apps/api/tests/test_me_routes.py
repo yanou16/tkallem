@@ -53,6 +53,32 @@ def test_patch_me_updates_level(client):
 def test_patch_me_rejects_invalid_body(client, body):
     assert client.patch("/me", json=body).status_code == 422
 
+
+def test_patch_me_sets_the_first_name_without_spaces(client):
+    response = client.patch("/me", json={"first_name": "  Amina  "})
+
+    assert response.status_code == 200
+    assert response.json()["first_name"] == "Amina"
+    assert client.get("/me").json()["first_name"] == "Amina"
+
+
+def test_patch_me_clears_the_first_name_with_null(client):
+    client.patch("/me", json={"first_name": "Amina"})
+
+    response = client.patch("/me", json={"first_name": None})
+
+    assert response.status_code == 200
+    assert response.json()["first_name"] is None
+
+
+@pytest.mark.parametrize("first_name", ["", "   ", "x" * 51], ids=["empty", "spaces", "too_long"])
+def test_patch_me_rejects_an_invalid_first_name(client, first_name):
+    assert client.patch("/me", json={"first_name": first_name}).status_code == 422
+
+
+def test_patch_me_accepts_a_first_name_of_50_characters(client):
+    assert client.patch("/me", json={"first_name": "x" * 50}).json()["first_name"] == "x" * 50
+
 def test_patch_me_updates_learning_setup(client):
     response = client.patch("/me", json={
         "daily_goal_minutes": 20,
