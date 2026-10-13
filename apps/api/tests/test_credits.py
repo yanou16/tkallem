@@ -156,12 +156,15 @@ def test_guest_mode_needs_a_real_secret(monkeypatch, db):
 
 def test_guests_per_address_are_capped_and_the_address_is_not_stored(db, monkeypatch):
     monkeypatch.setattr(settings, "guest_ip_daily_cap", 2)
-    credits.create_guest(db, "10.0.0.9", T0)
-    credits.create_guest(db, "10.0.0.9", T0)
+    # The real clock, like test_total_guests_per_day_are_capped: users.created_at is the database's now(), so a fixed
+    # date made "the next day" fail once the real day passed the fixed one (CI broke on 13 October at 10:00 UTC).
+    now = datetime.now(timezone.utc)
+    credits.create_guest(db, "10.0.0.9", now)
+    credits.create_guest(db, "10.0.0.9", now)
     with pytest.raises(credits.GuestLimit):
-        credits.create_guest(db, "10.0.0.9", T0)
-    credits.create_guest(db, "10.0.0.10", T0)              # another address is fine
-    credits.create_guest(db, "10.0.0.9", T0 + 2 * DAY)     # the next day too
+        credits.create_guest(db, "10.0.0.9", now)
+    credits.create_guest(db, "10.0.0.10", now)              # another address is fine
+    credits.create_guest(db, "10.0.0.9", now + 2 * DAY)     # the next day too
     stored = [r["guest_ip_hash"] for r in db.execute("SELECT guest_ip_hash FROM users WHERE guest_ip_hash IS NOT NULL")]
     assert stored and all("10.0.0" not in h for h in stored)
 
