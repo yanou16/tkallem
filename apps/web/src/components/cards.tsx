@@ -9,7 +9,9 @@ import type { Scenario, SessionSummary } from "@/features/practice/types/practic
 import type { GroupSummary } from "@/features/groups/types/groups";
 import { useToggleMembership } from "@/features/groups/hooks/useGroups";
 
-export const startHref = (scenarioId: string) => `/ai-chat?scenarioId=${encodeURIComponent(scenarioId)}`;
+/** Practice by default; `mode: "interview"` opens the same scenario as a real interview (no feedback until the report). */
+export const startHref = (scenarioId: string, mode: "practice" | "interview" = "practice") =>
+  `/ai-chat?scenarioId=${encodeURIComponent(scenarioId)}${mode === "interview" ? "&mode=interview" : ""}`;
 
 export function IconBadge({ name, tone, size = 44 }: { name?: string; tone: Tone; size?: number }) {
   return (
@@ -49,8 +51,11 @@ export function ScenarioCard({ s }: { s: Scenario }) {
           {s.minutes !== null && <><Clock size={14} /> {s.minutes} min</>}
           {s.level && <Pill>{s.level}</Pill>}
         </span>
-        <StartButton href={startHref(s.id)} />
+        <StartButton href={startHref(s.id)} label="Practice" />
       </div>
+      <Link href={startHref(s.id, "interview")} className="-mb-2 inline-flex min-h-11 items-center self-start text-sm font-medium text-ink underline underline-offset-2">
+        Real interview: no corrections until the end
+      </Link>
     </article>
   );
 }

@@ -5,7 +5,7 @@ import { askHint, endSession, repeatAnswer, getSession, sendAnswer, speakLastLin
 import { CREDITS_KEY } from "@/features/credits/hooks/useCredits";
 import { MY_SESSIONS_KEY } from "@/features/practice/hooks/usePractice";
 import { ACHIEVEMENTS_KEY } from "@/features/profile/hooks/useProfile";
-import type { AiSession, HintRequestDto, Turn } from "../types/ai";
+import type { AiSession, FeedbackMode, HintRequestDto, Turn } from "../types/ai";
 
 const key = (id?: string) => ["ai-session", id] as const;
 
@@ -31,11 +31,13 @@ export const useAiSession = (id?: string) =>
 export const useStartSession = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ scenarioId, mode }: { scenarioId: string; mode: "text" | "voice" }) => startSession(scenarioId, mode),
+    mutationFn: ({ scenarioId, mode, feedbackMode }: { scenarioId: string; mode: "text" | "voice"; feedbackMode?: FeedbackMode }) =>
+      startSession(scenarioId, mode, feedbackMode),
     onSuccess: (s, { scenarioId }) => {
       qc.setQueryData<AiSession>(key(s.sessionId), {
         id: s.sessionId,
         scenarioId,
+        feedbackMode: s.feedbackMode,
         finished: false,
         messages: [{ id: `${s.sessionId}-0`, role: "assistant", content: s.firstQuestion, createdAt: new Date().toISOString(), audioUrl: s.firstQuestionAudio }],
       });

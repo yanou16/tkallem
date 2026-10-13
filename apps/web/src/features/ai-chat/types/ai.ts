@@ -10,13 +10,14 @@ export type Correction = {
 
 /** Traffic light of one answer: green clean, orange small fixes, red redo it. */
 export type SentenceStatus = "green" | "orange" | "red";
+export type FeedbackMode = "practice" | "interview";
 
 /* ---------- GET /sessions/{id}, POST /sessions, /sessions/{id}/turn and /sessions/{id}/end as sent by the API ---------- */
 export type TurnDetailDto = {
   position: number;
   transcript: string;
   reply: string;
-  sentence_status: SentenceStatus;
+  sentence_status: SentenceStatus | null;
   corrections: Correction[];
   praise?: string | null;
   priority_index?: number;
@@ -36,6 +37,7 @@ export type SessionDetailDto = {
   turns: TurnDetailDto[];
   /** What /end stored, null before. levels and redo_index are not stored. */
   note: string | null;
+  feedback_mode?: FeedbackMode;
   metrics: ProgressMetricsDto | null;
   progress?: string | null;
   freeze?: FreezeDto | null;
@@ -46,11 +48,14 @@ export type StartSessionDto = {
   mode: "text" | "voice";
   /** Omitted: the API uses the student's profile preference. */
   explain_lang?: "en" | "fr";
+  /** Improvement 3. Omitted: practice. */
+  feedback_mode?: FeedbackMode;
 };
 
 export type SessionStartedDto = {
   session_id: string;
   first_question: { text: string; audio_url: string | null };
+  feedback_mode?: FeedbackMode;
 };
 
 export type TurnDto = {
@@ -58,7 +63,7 @@ export type TurnDto = {
   reply: string;
   reply_audio_url: string | null;
   corrections: Correction[];
-  sentence_status: SentenceStatus;
+  sentence_status: SentenceStatus | null;
   /** Improvement 4: one short true positive, checked by the agent's code (null when refused). */
   praise?: string | null;
   priority_index?: number;
@@ -92,6 +97,7 @@ export type SessionReportDto = {
   note: string;
   /** Improvement 4: the report's first line, progress since the last finished session, written by code. */
   progress?: string | null;
+  feedback_mode?: FeedbackMode;
   freeze?: FreezeDto | null;
   metrics: ProgressMetricsDto;
   levels: {
@@ -103,14 +109,15 @@ export type SessionReportDto = {
 };
 
 /* ---------- what the chat uses ---------- */
-export type SessionStarted = { sessionId: string; firstQuestion: string; firstQuestionAudio: string | null };
+export type SessionStarted = { sessionId: string; firstQuestion: string; firstQuestionAudio: string | null; feedbackMode: FeedbackMode };
 
 export type Turn = {
   /** The student's answer as the API kept it. */
   transcript: string;
   reply: string;
   corrections: Correction[];
-  sentenceStatus: SentenceStatus;
+  /** Null in a real interview: nothing is shown before the report. */
+  sentenceStatus: SentenceStatus | null;
   praise: string | null;
   /** The correction shown in full; the others are folded. */
   priorityIndex: number;
@@ -133,6 +140,7 @@ export type SessionReport = {
   note: string;
   /** Progress since the last finished session (or the starting point), shown before the mistakes. */
   progress: string | null;
+  feedbackMode: FeedbackMode;
   /** Time before starting to answer, with the previous session's when comparable. */
   freeze: FreezeDto | null;
   metrics: ProgressMetrics;
@@ -152,8 +160,8 @@ export type ChatMessage = {
   content: string;
   /** Unknown for a reloaded session: the API does not send the time of each turn. */
   createdAt?: string;
-  /** Student answers only. */
-  status?: SentenceStatus;
+  /** Student answers only. Null in a real interview (nothing is shown before the report). */
+  status?: SentenceStatus | null;
   corrections?: Correction[];
   /** Student answers: a short true positive shown before the corrections, and the correction shown in full. */
   praise?: string | null;
@@ -167,6 +175,8 @@ export type ChatMessage = {
 export type AiSession = {
   id: string;
   scenarioId: string;
+  /** Improvement 3: a real interview shows no feedback before the report. */
+  feedbackMode: FeedbackMode;
   /** From GET /sessions/{id}; a new session takes its title from the scenario list. */
   title?: string;
   messages: ChatMessage[];

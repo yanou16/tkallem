@@ -18,6 +18,7 @@ import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOf
 import { markSentence } from "@/features/ai-chat/lib/marks";
 import { feedbackView } from "@/features/ai-chat/lib/feedback";
 import { freezeView, thinkSeconds } from "@/features/ai-chat/lib/freeze";
+import { MODE_LABEL, feedbackModeFrom, modeHint } from "@/features/ai-chat/lib/mode";
 import type { ChatMessage, Correction, SentenceStatus, SessionReport } from "@/features/ai-chat/types/ai";
 import { Avatar, Button, Card, EmptyState, PageHeader, Skeleton } from "@/components/ui";
 import { startHref } from "@/components/cards";
@@ -116,6 +117,9 @@ function Chat() {
   const speakLast = useSpeakLastLine(sessionId);
   const s = session.data;
   const scenarioId = s?.scenarioId ?? urlScenarioId;
+  // Improvement 3: the mode of a running session wins; a new one takes it from the link (?mode=interview).
+  const feedbackMode = s?.feedbackMode ?? feedbackModeFrom(params.get("mode"));
+  const interview = feedbackMode === "interview";
 
   const [mode, setMode] = useState<"text" | "voice">(readMode);
   const [avatarOn, setAvatarOn] = useState(readAvatar);
@@ -147,7 +151,7 @@ function Chat() {
     started.current = id;
     // The session starts as text so the first question shows at once; in voice mode its audio is asked right after
     // (POST /speak, which also makes the session a voice session): the student reads it while the voice is made.
-    start.mutate({ scenarioId: id, mode: "text" }, {
+    start.mutate({ scenarioId: id, mode: "text", feedbackMode }, {
       onSuccess: (s) => {
         router.replace(`/ai-chat?sessionId=${encodeURIComponent(s.sessionId)}&scenarioId=${encodeURIComponent(id)}`);
         if (mode === "voice") speakLast.mutate(s.sessionId, { onSuccess: (r) => coach.play(r.audio_url, r.text) });
@@ -173,7 +177,7 @@ function Chat() {
     if (!id) return router.push("/practice");
     if (!sessionId && id === urlScenarioId) return begin(id);
     started.current = null;
-    router.replace(startHref(id));
+    router.replace(startHref(id, feedbackMode));
   };
 
   const submit = () => {
@@ -284,6 +288,9 @@ function Chat() {
           <span className="inline-flex min-h-11 items-center gap-1 rounded-full bg-surface px-3 text-sm">
             <span className="text-slate">Level</span> <span className="font-semibold">{user?.level ?? "—"}</span>
           </span>
+          <span className={cn("inline-flex min-h-11 items-center rounded-full px-3 text-sm font-semibold", interview ? "bg-ink text-white" : "bg-surface")}>
+            {MODE_LABEL[feedbackMode]}
+          </span>
           <div className="inline-flex rounded-full bg-black/[0.03] p-0.5" role="radiogroup" aria-label="Answer mode">
             {(["voice", "text"] as const).map((m) => (
               <button key={m} role="radio" aria-checked={mode === m} onClick={() => chooseMode(m)}
@@ -306,6 +313,7 @@ function Chat() {
               </ul>
             )}
         </div>
+        {interview && <p className="-mt-1 mb-3 text-sm text-charcoal">{modeHint("interview")}</p>}
         {mode === "voice" && avatarOn && <div className="mb-4"><CoachAvatar {...coach.avatarProps} /></div>}
 
           </>
@@ -419,7 +427,7 @@ function Chat() {
                   )}
                 </div>
               )}
-              {sessionId && s && (
+              {sessionId && s && !interview && (
                 <HelpMeStart sessionId={sessionId} questionKey={lastCoachLine?.id ?? "start"} typing={text.trim().length > 0}
                   recording={rec.isRecording} busy={coachState === "thinking" || coachState === "speaking" || !!pending}
                   onUse={(t) => { setText(t); answerField.current?.focus(); }} />
@@ -450,7 +458,7 @@ function Chat() {
         </div>
       </div>
 
-      <aside className="hidden space-y-4 xl:block">
+      <aside className={cn("hidden space-y-4", interview ? "" : "xl:block")}>
         <Card className="space-y-3">
           <div className="flex items-center justify-between"><h2 className="text-xl font-semibold">Live corrections</h2>
             {s && !s.finished && <span className="flex items-center gap-2 text-sm"><span className="h-2.5 w-2.5 rounded-full bg-success" /> Active</span>}</div>
@@ -603,7 +611,7 @@ function Report({ report, title, onRestart }: { report: SessionReport; title?: s
 
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader eyebrow={title} title="Your session report" />
+      <PageHeader eyebrow={`${title ?? ""} · ${MODE_LABEL[report.feedbackMode]}`} title="Your session report" />
       {report.progress && (
         <p className="mb-4 flex items-start gap-2 rounded-2xl bg-good-bg px-4 py-3 font-medium text-good">
           <TrendingUp size={20} className="mt-0.5 shrink-0" aria-hidden /> <span>{report.progress}</span>

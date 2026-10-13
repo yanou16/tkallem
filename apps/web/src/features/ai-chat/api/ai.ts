@@ -2,7 +2,7 @@ import { ApiError, api, apiStream } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
 import { mapMetrics } from "@/features/progress/api/progress";
 import type {
-  AiSession, ChatMessage, HintDto, HintRequestDto, RepeatDto, ReportLine, ReportLineDto, SessionDetailDto, SessionReport, SessionReportDto, SessionStarted,
+  AiSession, ChatMessage, FeedbackMode, HintDto, HintRequestDto, RepeatDto, ReportLine, ReportLineDto, SessionDetailDto, SessionReport, SessionReportDto, SessionStarted,
   SessionStartedDto, SpokenDto, StartSessionDto, Turn, TurnDto,
 } from "../types/ai";
 
@@ -10,6 +10,7 @@ export const mapSessionStarted = (s: SessionStartedDto): SessionStarted => ({
   sessionId: s.session_id,
   firstQuestion: s.first_question.text,
   firstQuestionAudio: s.first_question.audio_url,
+  feedbackMode: s.feedback_mode ?? "practice",
 });
 
 export const mapTurn = (t: TurnDto): Turn => ({
@@ -31,6 +32,7 @@ export const mapReport = (r: SessionReportDto): SessionReport => ({
   note: r.note,
   progress: r.progress ?? null,
   freeze: r.freeze ?? null,
+  feedbackMode: r.feedback_mode ?? "practice",
   metrics: mapMetrics(r.metrics),
   levels: {
     mistakesPer100: r.levels.mistakes_per_100,
@@ -64,21 +66,22 @@ export function mapSessionDetail(s: SessionDetailDto): AiSession {
           note: s.note ?? "",
           progress: s.progress ?? null,
           freeze: s.freeze ?? null,
+          feedbackMode: s.feedback_mode ?? "practice",
           metrics: mapMetrics(s.metrics),
           levels: { mistakesPer100: null, wordsPerAnswer: null, hesitationsPerMin: null },
           redoIndex: null,
         }
       : undefined;
 
-  return { id: s.session_id, scenarioId: s.scenario_id, title: s.title, messages, finished: s.finished, report };
+  return { id: s.session_id, scenarioId: s.scenario_id, feedbackMode: s.feedback_mode ?? "practice", title: s.title, messages, finished: s.finished, report };
 }
 
 export const getSession = (sessionId: string) =>
   api.get<SessionDetailDto>(endpoints.ai.session(sessionId)).then(mapSessionDetail);
 
 /** explain_lang is left out so the API uses the profile preference. In a voice session the first question is spoken. */
-export const startSession = (scenarioId: string, mode: StartSessionDto["mode"] = "text") => {
-  const body: StartSessionDto = { scenario_id: scenarioId, mode };
+export const startSession = (scenarioId: string, mode: StartSessionDto["mode"] = "text", feedbackMode: FeedbackMode = "practice") => {
+  const body: StartSessionDto = { scenario_id: scenarioId, mode, feedback_mode: feedbackMode };
   return api.post<SessionStartedDto>(endpoints.ai.sessions, body).then(mapSessionStarted);
 };
 
