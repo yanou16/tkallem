@@ -8,6 +8,8 @@ const TURN: TurnDto = {
   reply_audio_url: null,
   corrections: [{ original: "for study", fixed: "to study", type: "grammar", why: "Le but : to + verbe." }],
   sentence_status: "orange",
+  praise: "Clear goal: 'I go to the US'.",
+  priority_index: 0,
   finished: false,
 };
 
@@ -37,6 +39,8 @@ describe("mapTurn", () => {
       reply: "Good. Which university will you attend?",
       corrections: TURN.corrections,
       sentenceStatus: "orange",
+      praise: "Clear goal: 'I go to the US'.",
+      priorityIndex: 0,
       finished: false,
       audioUrl: null,
       credits: undefined,
@@ -110,7 +114,7 @@ const OPEN_SESSION: SessionDetailDto = {
   total_questions: 6,
   first_question: "What is the purpose of your trip?",
   turns: [
-    { position: 1, transcript: "I go to the US for study.", reply: "Good. Which university?", sentence_status: "orange", corrections: TURN.corrections },
+    { position: 1, transcript: "I go to the US for study.", reply: "Good. Which university?", sentence_status: "orange", corrections: TURN.corrections, praise: "Clear goal: 'I go to the US'.", priority_index: 0 },
   ],
   note: null,
   metrics: null,
@@ -123,7 +127,7 @@ describe("mapSessionDetail", () => {
     expect(session).toMatchObject({ id: "s1", scenarioId: "visa-us", title: "Visa interview", finished: false });
     expect(session.messages).toEqual([
       { id: "s1-0", role: "assistant", content: "What is the purpose of your trip?" },
-      { id: "s1-1", role: "user", content: "I go to the US for study.", status: "orange", corrections: TURN.corrections },
+      { id: "s1-1", role: "user", content: "I go to the US for study.", status: "orange", corrections: TURN.corrections, praise: "Clear goal: 'I go to the US'.", priorityIndex: 0 },
       { id: "s1-2", role: "assistant", content: "Good. Which university?" },
     ]);
     expect(session.report).toBeUndefined();
@@ -134,6 +138,7 @@ describe("mapSessionDetail", () => {
       ...OPEN_SESSION,
       ended_at: "2026-10-10T10:08:00Z",
       note: "Honest note.",
+      progress: "First interview done: this is your starting point.",
       metrics: { mistakes_per_100: 14.3, words_per_answer: 7, hesitations_per_min: null, speaking_seconds: null },
     });
 
@@ -144,6 +149,7 @@ describe("mapSessionDetail", () => {
         { role: "coach", text: "Good. Which university?", status: null, corrections: [] },
       ],
       note: "Honest note.",
+      progress: "First interview done: this is your starting point.",
       metrics: { mistakesPer100: 14.3, wordsPerAnswer: 7, hesitationsPerMin: null, speakingSeconds: null },
       levels: { mistakesPer100: null, wordsPerAnswer: null, hesitationsPerMin: null },
       redoIndex: null,
@@ -192,7 +198,7 @@ describe("streamAnswer", () => {
       ev("transcript", { text: "I go to the US for study." }),
       ev("reply", { text: "Good. Which university?" }),
       ev("audio", { audio_url: "data:audio/wav;base64,AAA" }),
-      ev("corrections", { corrections: TURN.corrections, sentence_status: "orange" }),
+      ev("corrections", { corrections: TURN.corrections, sentence_status: "orange", praise: "Clear goal: 'I go to the US'.", priority_index: 0 }),
       ev("done", { ...TURN, reply_audio_url: undefined, credits: { balance: 39, next_refill_at: null } }),
     ]);
     const live: unknown[] = [];
@@ -204,7 +210,7 @@ describe("streamAnswer", () => {
     expect(live).toEqual([
       { transcript: "I go to the US for study." },
       { reply: "Good. Which university?" },
-      { corrections: TURN.corrections, status: "orange" },
+      { corrections: TURN.corrections, status: "orange", praise: "Clear goal: 'I go to the US'.", priorityIndex: 0 },
     ]);
     expect(played).toEqual([["data:audio/wav;base64,AAA", "Good. Which university?"]]);
     expect(turn.audioUrl).toBe("data:audio/wav;base64,AAA");

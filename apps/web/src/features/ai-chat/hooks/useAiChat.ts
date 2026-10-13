@@ -17,7 +17,7 @@ export function addTurn(session: AiSession, turn: Turn, at = new Date().toISOStr
     finished: turn.finished,
     messages: [
       ...session.messages,
-      { id: `${session.id}-${n}`, role: "user", content: turn.transcript, createdAt: at, status: turn.sentenceStatus, corrections: turn.corrections },
+      { id: `${session.id}-${n}`, role: "user", content: turn.transcript, createdAt: at, status: turn.sentenceStatus, corrections: turn.corrections, praise: turn.praise, priorityIndex: turn.priorityIndex },
       { id: `${session.id}-${n + 1}`, role: "assistant", content: turn.reply, createdAt: at, audioUrl: turn.audioUrl },
     ],
   };
