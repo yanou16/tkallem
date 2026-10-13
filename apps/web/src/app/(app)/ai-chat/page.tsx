@@ -275,20 +275,26 @@ function Chat() {
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <div className="flex min-h-[calc(100dvh-210px)] flex-col md:min-h-[calc(100vh-110px)]">
-        <PageHeader title="AI Chat" subtitle={s ? undefined : "Answer by voice or by typing. Your coach corrects each answer and explains why."} />
+      {/* On a phone, once the session runs, the chat is one screen between the app header and the bottom bar: only the
+          conversation scrolls, the header, the settings and the answer field stay where they are. (66 px header + 8 px
+          padding above, 61 px bar below; the paddings the shell keeps under the page are cancelled by -mb.) */}
+      <div className={cn("flex flex-col md:min-h-[calc(100vh-110px)]",
+        s && "max-md:-mb-[120px] max-md:h-[calc(100dvh-135px-env(safe-area-inset-bottom))]")}>
+        <div className={s ? "hidden md:block" : undefined}>
+          <PageHeader title="AI Chat" subtitle={s ? undefined : "Answer by voice or by typing. Your coach corrects each answer and explains why."} />
+        </div>
 
         {s ? (
           <>
         {/* During an interview the settings shrink to one line, so the question and the answer field fit a phone. */}
-        <div className="relative mb-3 flex flex-wrap items-center gap-2">
+        <div className="relative mb-2 flex shrink-0 flex-wrap items-center gap-2 md:mb-3">
           <button onClick={() => setMenu((m) => !m)} aria-expanded={menu}
             className={cn("inline-flex min-h-11 max-w-full items-center gap-2 rounded-full py-1.5 pl-1.5 pr-3 text-sm font-semibold", tint)}>
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/70"><Icon name={icon ?? "briefcase"} size={16} /></span>
             <span className="truncate">{title}</span><span className="sr-only">, change scenario</span>
             <ChevronDown size={16} className="shrink-0" aria-hidden />
           </button>
-          <span className="inline-flex min-h-11 items-center gap-1 rounded-full bg-surface px-3 text-sm">
+          <span className="hidden min-h-11 items-center gap-1 rounded-full bg-surface px-3 text-sm md:inline-flex">
             <span className="text-slate">Level</span> <span className="font-semibold">{user?.level ?? "—"}</span>
           </span>
           <span className={cn("inline-flex min-h-11 items-center rounded-full px-3 text-sm font-semibold", interview ? "bg-ink text-white" : "bg-surface")}>
@@ -303,7 +309,7 @@ function Chat() {
             ))}
           </div>
           {mode === "voice" && (
-            <button onClick={toggleAvatar} className="inline-flex min-h-11 items-center rounded-full border border-line px-3 text-xs font-semibold">
+            <button onClick={toggleAvatar} className="hidden min-h-11 items-center rounded-full border border-line px-3 text-xs font-semibold md:inline-flex">
               {avatarOn ? "Hide 3D coach" : "Show 3D coach"}
             </button>
           )}
@@ -364,9 +370,9 @@ function Chat() {
           </>
         )}
 
-        <div className="flex flex-1 flex-col overflow-hidden rounded-card border border-line bg-white">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-line bg-white">
           {s && (
-            <div className="flex items-center justify-between gap-3 border-b border-line px-6 py-3 text-sm">
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-2 text-sm md:px-6 md:py-3">
               <span className="text-muted">{plural(answers.length, "answer")}</span>
               {answers.length > 0 && !s.finished && (
                 <Button dark={false} onClick={finish} disabled={end.isPending} className="!px-4 !py-2">
@@ -376,7 +382,7 @@ function Chat() {
             </div>
           )}
 
-          <div role="log" aria-label="Conversation" className="flex-1 space-y-5 overflow-y-auto p-6">
+          <div role="log" aria-label="Conversation" className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
             {body}
             {sessionId && s && shouldAskBefore(answers.length, skippedConfidence) && !pending && (
               <ConfidenceAsk sessionId={sessionId} when="before" question="How confident do you feel about this interview?"
@@ -422,7 +428,7 @@ function Chat() {
               <Button onClick={finish} disabled={end.isPending}>{end.isPending ? "Preparing your report…" : "See my report"}</Button>
             </div>
           ) : (
-            <div className="border-t border-line">
+            <div className="shrink-0 border-t border-line">
               {/* The coach's state sits above the field: typing stays possible while it thinks or speaks. */}
               {(barState === "thinking" || barState === "speaking") && (
                 <div className="flex items-center justify-between gap-3 px-4 pt-3">
