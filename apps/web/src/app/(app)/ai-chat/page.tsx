@@ -10,6 +10,7 @@ import { CoachAvatar } from "@/components/CoachAvatar";
 import InstallButton from "@/components/InstallButton";
 import VoiceState, { formatTime, type CoachState } from "@/features/ai-chat/components/VoiceState";
 import HelpMeStart from "@/features/ai-chat/components/HelpMeStart";
+import ConfidenceAsk from "@/features/ai-chat/components/ConfidenceAsk";
 import SayItAgain from "@/features/ai-chat/components/SayItAgain";
 import { useVoiceRecorder, type Recording } from "@/features/ai-chat/hooks/useVoiceRecorder";
 import { maxRecordingSeconds } from "@/features/ai-chat/lib/voice";
@@ -18,6 +19,7 @@ import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOf
 import { markSentence } from "@/features/ai-chat/lib/marks";
 import { feedbackView } from "@/features/ai-chat/lib/feedback";
 import { freezeView, thinkSeconds } from "@/features/ai-chat/lib/freeze";
+import { confidenceLine, shouldAskBefore } from "@/features/ai-chat/lib/confidence";
 import { MODE_LABEL, feedbackModeFrom, modeHint } from "@/features/ai-chat/lib/mode";
 import type { ChatMessage, Correction, SentenceStatus, SessionReport } from "@/features/ai-chat/types/ai";
 import { Avatar, Button, Card, EmptyState, PageHeader, Skeleton } from "@/components/ui";
@@ -144,6 +146,7 @@ function Chat() {
   const questionDone = useRef<{ line: string; at: number | null }>({ line: "", at: null });
   const began = useRef<number | null>(null);
   const [nailed, setNailed] = useState<Set<string>>(() => new Set()); // answers said again correctly
+  const [skippedConfidence, setSkippedConfidence] = useState(false);
   const maxSeconds = maxRecordingSeconds(scenarioId);
   const rec = useVoiceRecorder({ onAutoStop: (r) => r && sendRecording(r), maxSeconds });
 
@@ -237,7 +240,7 @@ function Chat() {
     if (!coachBusy && questionDone.current.at === null && lastLineId && !s?.finished) questionDone.current.at = Date.now();
   }, [lastLineId, coachBusy, s?.finished]);
 
-  if (s?.report) return <Report report={s.report} title={title} onRestart={() => restart()} />;
+  if (s?.report) return <Report report={s.report} title={title} sessionId={sessionId} onRestart={() => restart()} />;
 
   const live = send.live;
   const coachState: CoachState = rec.isRecording ? "listening" : coach.speaking ? "speaking" : send.isPending || speakLast.isPending ? "thinking" : "idle";
@@ -375,6 +378,10 @@ function Chat() {
 
           <div role="log" aria-label="Conversation" className="flex-1 space-y-5 overflow-y-auto p-6">
             {body}
+            {sessionId && s && shouldAskBefore(answers.length, skippedConfidence) && !pending && (
+              <ConfidenceAsk sessionId={sessionId} when="before" question="How confident do you feel about this interview?"
+                value={s.confidence.before} onSkip={() => setSkippedConfidence(true)} />
+            )}
             {pending && (
               <>
                 {live?.transcript || pending.kind === "text"
@@ -601,7 +608,7 @@ function SummaryRow({ icon, tone, title, sub }: { icon: React.ReactNode; tone: s
   );
 }
 
-function Report({ report, title, onRestart }: { report: SessionReport; title?: string; onRestart: () => void }) {
+function Report({ report, title, sessionId, onRestart }: { report: SessionReport; title?: string; sessionId?: string; onRestart: () => void }) {
   const metrics = [
     { label: "Mistakes per 100 words", value: report.metrics.mistakesPer100, level: report.levels.mistakesPer100, missing: "Not available" },
     { label: "Words per answer", value: report.metrics.wordsPerAnswer, level: report.levels.wordsPerAnswer, missing: "Not available" },
@@ -633,6 +640,12 @@ function Report({ report, title, onRestart }: { report: SessionReport; title?: s
           </Card>
         ))}
       </div>
+      {sessionId && (
+        <div className="mt-4 space-y-2">
+          {confidenceLine(report.confidence) && <p className="rounded-2xl bg-good-bg px-4 py-3 font-medium text-good">{confidenceLine(report.confidence)}</p>}
+          <ConfidenceAsk sessionId={sessionId} when="after" question="How confident do you feel now?" value={report.confidence.after} />
+        </div>
+      )}
       {report.freeze && (() => {
         const v = freezeView(report.freeze);
         return (

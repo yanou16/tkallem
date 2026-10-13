@@ -11,6 +11,8 @@ export type Correction = {
 /** Traffic light of one answer: green clean, orange small fixes, red redo it. */
 export type SentenceStatus = "green" | "orange" | "red";
 export type FeedbackMode = "practice" | "interview";
+/** The student's own 1-to-5 answers, before and after (null while not given). */
+export type ConfidenceDto = { before: number | null; after: number | null };
 
 /* ---------- GET /sessions/{id}, POST /sessions, /sessions/{id}/turn and /sessions/{id}/end as sent by the API ---------- */
 export type TurnDetailDto = {
@@ -38,6 +40,7 @@ export type SessionDetailDto = {
   /** What /end stored, null before. levels and redo_index are not stored. */
   note: string | null;
   feedback_mode?: FeedbackMode;
+  confidence?: ConfidenceDto | null;
   metrics: ProgressMetricsDto | null;
   progress?: string | null;
   freeze?: FreezeDto | null;
@@ -98,6 +101,7 @@ export type SessionReportDto = {
   /** Improvement 4: the report's first line, progress since the last finished session, written by code. */
   progress?: string | null;
   feedback_mode?: FeedbackMode;
+  confidence?: ConfidenceDto | null;
   freeze?: FreezeDto | null;
   metrics: ProgressMetricsDto;
   levels: {
@@ -141,6 +145,7 @@ export type SessionReport = {
   /** Progress since the last finished session (or the starting point), shown before the mistakes. */
   progress: string | null;
   feedbackMode: FeedbackMode;
+  confidence: ConfidenceDto;
   /** Time before starting to answer, with the previous session's when comparable. */
   freeze: FreezeDto | null;
   metrics: ProgressMetrics;
@@ -177,6 +182,7 @@ export type AiSession = {
   scenarioId: string;
   /** Improvement 3: a real interview shows no feedback before the report. */
   feedbackMode: FeedbackMode;
+  confidence: ConfidenceDto;
   /** From GET /sessions/{id}; a new session takes its title from the scenario list. */
   title?: string;
   messages: ChatMessage[];
