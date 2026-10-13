@@ -85,6 +85,14 @@ class Levels(BaseModel):
     hesitations_per_min: Status | None
 
 
+class Freeze(BaseModel):
+    """Freeze meter: average seconds between the end of the coach's question and the first sound or letter."""
+    seconds: float
+    answers: int
+    kind: Literal["voice", "text", "mixed"]
+    previous: float | None = None  # the last finished session's, only when the same kind of answers
+
+
 class SessionReport(BaseModel):
     lines: list[ReportLine]
     note: str
@@ -92,6 +100,7 @@ class SessionReport(BaseModel):
     levels: Levels
     redo_index: int | None
     progress: str | None = None  # first line of the report: progress since the last finished session, written by code
+    freeze: Freeze | None = None  # time before starting to answer, with the previous session's when comparable
 
 
 class SessionSummary(BaseModel):
@@ -129,3 +138,4 @@ class SessionDetail(BaseModel):
     note: str | None
     metrics: Metrics | None
     progress: str | None = None  # finished sessions: the report's first line
+    freeze: Freeze | None = None

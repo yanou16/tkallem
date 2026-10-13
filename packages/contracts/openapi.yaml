@@ -277,6 +277,7 @@ paths:
               properties:
                 audio: { type: string, format: binary }
                 text: { type: string }
+                think_seconds: { type: string, description: "Freeze meter: seconds before the student started to answer, measured by the app. A value that is not a number is ignored." }
       responses:
         "200":
           description: Coach reply with corrections
@@ -323,6 +324,17 @@ paths:
                           type: array
                           items: { $ref: "#/components/schemas/Correction" }
                   note: { type: string }
+                  freeze:
+                    description: "Freeze meter: average seconds between the end of the coach's question and the first sound or letter, measured by the app and cleaned by the server (0 to 120 s). `previous`: the last finished session's, only for the same kind of answers (voice or typed). Null when no answer was measured."
+                    oneOf:
+                      - type: "null"
+                      - type: object
+                        required: [seconds, answers, kind]
+                        properties:
+                          seconds: { type: number }
+                          answers: { type: integer }
+                          kind: { type: string, enum: [voice, text, mixed] }
+                          previous: { type: [number, "null"] }
                   progress:
                     type: [string, "null"]
                     description: "Improvement 4: the report's first line, progress since the student's last finished session (or the starting point), written by code from the metrics, never by the model."
