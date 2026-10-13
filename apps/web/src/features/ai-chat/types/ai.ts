@@ -38,6 +38,7 @@ export type SessionDetailDto = {
   note: string | null;
   metrics: ProgressMetricsDto | null;
   progress?: string | null;
+  freeze?: FreezeDto | null;
 };
 
 export type StartSessionDto = {
@@ -75,6 +76,8 @@ export type HintRequestDto = { type: "starter" } | { type: "translate"; text: st
 export type RepeatDto = {
   nailed: boolean; heard: string; target: string; missing: string[]; similarity: number; tries_left: number;
 };
+/** Freeze meter: the time before starting to answer, averaged by the server (POST /end, GET /sessions/{id}). */
+export type FreezeDto = { seconds: number; answers: number; kind: "voice" | "text" | "mixed"; previous?: number | null };
 export type HintDto = { kind: "starter" | "translation"; lines: string[]; fallback: boolean; remaining: number };
 
 export type ReportLineDto = {
@@ -89,6 +92,7 @@ export type SessionReportDto = {
   note: string;
   /** Improvement 4: the report's first line, progress since the last finished session, written by code. */
   progress?: string | null;
+  freeze?: FreezeDto | null;
   metrics: ProgressMetricsDto;
   levels: {
     mistakes_per_100: SentenceStatus | null;
@@ -129,6 +133,8 @@ export type SessionReport = {
   note: string;
   /** Progress since the last finished session (or the starting point), shown before the mistakes. */
   progress: string | null;
+  /** Time before starting to answer, with the previous session's when comparable. */
+  freeze: FreezeDto | null;
   metrics: ProgressMetrics;
   /** Traffic light per metric, null when the metric is not available (hesitations in text mode). */
   levels: {

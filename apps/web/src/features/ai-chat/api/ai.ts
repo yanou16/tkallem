@@ -30,6 +30,7 @@ export const mapReport = (r: SessionReportDto): SessionReport => ({
   lines: r.lines.map(mapReportLine),
   note: r.note,
   progress: r.progress ?? null,
+  freeze: r.freeze ?? null,
   metrics: mapMetrics(r.metrics),
   levels: {
     mistakesPer100: r.levels.mistakes_per_100,
@@ -62,6 +63,7 @@ export function mapSessionDetail(s: SessionDetailDto): AiSession {
           lines,
           note: s.note ?? "",
           progress: s.progress ?? null,
+          freeze: s.freeze ?? null,
           metrics: mapMetrics(s.metrics),
           levels: { mistakesPer100: null, wordsPerAnswer: null, hesitationsPerMin: null },
           redoIndex: null,
@@ -90,7 +92,8 @@ export const sendAnswer = (sessionId: string, text: string) => {
 export const endSession = (sessionId: string) =>
   api.post<SessionReportDto>(endpoints.ai.end(sessionId)).then(mapReport);
 
-export type AnswerInput = { text: string } | { audio: Blob };
+/** `think`: seconds before the student started (freeze meter), when it could be measured. */
+export type AnswerInput = ({ text: string } | { audio: Blob }) & { think?: number };
 
 /** What is known so far about an answer being processed (Server-Sent Events from POST /turn). */
 export type LiveTurn = {
@@ -111,6 +114,7 @@ export async function streamAnswer(
   const form = new FormData();
   if ("text" in input) form.append("text", input.text);
   else form.append("audio", input.audio, "recording.webm");
+  if (input.think !== undefined) form.append("think_seconds", String(input.think));
   let reply = "";
   let audioUrl: string | null = null;
   let done: TurnDto | null = null;

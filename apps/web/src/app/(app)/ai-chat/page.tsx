@@ -17,6 +17,7 @@ import { useCoachVoice } from "@/features/ai-chat/hooks/useCoachVoice";
 import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOfCredits";
 import { markSentence } from "@/features/ai-chat/lib/marks";
 import { feedbackView } from "@/features/ai-chat/lib/feedback";
+import { freezeView, thinkSeconds } from "@/features/ai-chat/lib/freeze";
 import type { ChatMessage, Correction, SentenceStatus, SessionReport } from "@/features/ai-chat/types/ai";
 import { Avatar, Button, Card, EmptyState, PageHeader, Skeleton } from "@/components/ui";
 import { startHref } from "@/components/cards";
@@ -135,6 +136,9 @@ function Chat() {
   const lastRecording = useRef<Recording | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
   const answerField = useRef<HTMLInputElement>(null);
+  // Freeze meter: when the coach's question was done, and when the student started (first sound or first letter).
+  const questionDone = useRef<{ line: string; at: number | null }>({ line: "", at: null });
+  const began = useRef<number | null>(null);
   const [nailed, setNailed] = useState<Set<string>>(() => new Set()); // answers said again correctly
   const maxSeconds = maxRecordingSeconds(scenarioId);
   const rec = useVoiceRecorder({ onAutoStop: (r) => r && sendRecording(r), maxSeconds });
@@ -179,13 +183,13 @@ function Chat() {
     setPending({ kind: "text", text: answer });
     // The answer shows in the chat at once, so the field empties; if it fails, it comes back to be sent again.
     setText("");
-    send.mutate({ text: answer }, { onError: () => setText((t) => t || answer), onSettled: () => setPending(null) });
+    send.mutate({ text: answer, think: thinkSeconds(questionDone.current.at, began.current) }, { onError: () => setText((t) => t || answer), onSettled: () => setPending(null) });
   };
 
   function sendRecording(r: Recording) {
     lastRecording.current = r;
     setPending({ kind: "voice", seconds: r.seconds });
-    send.mutate({ audio: r.blob }, { onSuccess: () => { lastRecording.current = null; }, onSettled: () => setPending(null) });
+    send.mutate({ audio: r.blob, think: thinkSeconds(questionDone.current.at, began.current) }, { onSuccess: () => { lastRecording.current = null; }, onSettled: () => setPending(null) });
   }
 
   async function toggleMic() {
@@ -195,6 +199,7 @@ function Chat() {
       if (r) sendRecording(r);
     } else {
       coach.stop(); // the student can interrupt the coach
+      began.current ??= Date.now();
       rec.start();
     }
   }
@@ -219,6 +224,15 @@ function Chat() {
   const title = s?.title ?? scenario?.title ?? scenarioId;
   const icon = scenario?.icon ?? scenarioId;
   const tint = scenarioTint(scenario?.category);
+  // Freeze meter: a new coach line starts a new wait, counted from the moment the coach is done talking. (Before the
+  // report's early return: hooks cannot come after it.)
+  const lastLineId = [...(s?.messages ?? [])].reverse().find((m) => m.role === "assistant")?.id ?? "";
+  const coachBusy = rec.isRecording || coach.speaking || send.isPending || speakLast.isPending || !!pending;
+  useEffect(() => {
+    if (questionDone.current.line !== lastLineId) { questionDone.current = { line: lastLineId, at: null }; began.current = null; }
+    if (!coachBusy && questionDone.current.at === null && lastLineId && !s?.finished) questionDone.current.at = Date.now();
+  }, [lastLineId, coachBusy, s?.finished]);
+
   if (s?.report) return <Report report={s.report} title={title} onRestart={() => restart()} />;
 
   const live = send.live;
@@ -422,7 +436,7 @@ function Chat() {
                   <VoiceState state="listening" seconds={rec.seconds} className="flex-1" />
                 ) : (
                   <div className="flex-1">
-                    <input ref={answerField} value={text} maxLength={MAX} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()}
+                    <input ref={answerField} value={text} maxLength={MAX} onChange={(e) => { if (e.target.value && began.current === null) began.current = Date.now(); setText(e.target.value); }} onKeyDown={(e) => e.key === "Enter" && submit()}
                       disabled={!s || send.isPending} aria-label="Your answer" placeholder="Type here"
                       className="w-full rounded-full border border-line px-3.5 py-3.5 outline-none focus:border-ink disabled:bg-black/[0.03]" />
                     <p className="mt-1 text-right text-xs text-muted">{text.length} / {MAX}</p>
@@ -611,6 +625,16 @@ function Report({ report, title, onRestart }: { report: SessionReport; title?: s
           </Card>
         ))}
       </div>
+      {report.freeze && (() => {
+        const v = freezeView(report.freeze);
+        return (
+          <Card className="mt-4">
+            <p className="text-sm text-muted">{v.title}</p>
+            <p className="mt-2 text-3xl font-semibold">{v.value}</p>
+            {v.note && <p className="mt-2 text-sm text-charcoal">{v.note}</p>}
+          </Card>
+        );
+      })()}
       {speaking !== null && <p className="mt-3 text-sm text-muted">Speaking time: {formatMinutes(speaking / 60)}</p>}
 
       <Card className="mt-4">
