@@ -9,7 +9,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import StreamingResponse
 from psycopg import Connection
-from tkallem_agent import AgentError, CoachSession, HintError, ScenarioNotFound, match_repeat
+from tkallem_agent import AgentError, CoachSession, HintError, ScenarioNotFound, freeze_compare, freeze_summary, match_repeat
 
 from app import credits
 from app.config import settings
@@ -155,7 +155,23 @@ def read_session(
         "note": session["note"],
         "metrics": {key: session[key] for key in METRIC_KEYS} if session["ended_at"] else None,
         "progress": _progress(conn, user["id"], session),
+        "freeze": _freeze_of(conn, user["id"], session),
     }
+
+
+def _freeze(state: dict, before: dict | None) -> dict | None:
+    """Freeze meter: the average wait before answering in this session, and the previous finished session's when the two
+    are comparable (same kind of answers). None for a session without measures (before the freeze meter, old client)."""
+    now = freeze_summary(state.get("turns", []))
+    last = freeze_summary(before["state"].get("turns", [])) if before and before.get("state") else None
+    return freeze_compare(now, last)
+
+
+def _freeze_of(conn: Connection, user_id: int, session: dict) -> dict | None:
+    if session["ended_at"] is None:
+        return None
+    before, _ = previous_finished(conn, user_id, session["id"], session["ended_at"])
+    return _freeze(session["state"], before)
 
 
 def _progress(conn: Connection, user_id: int, session: dict) -> str | None:
@@ -222,12 +238,20 @@ def _save(connect: ConnFactory, session_id: UUID, coach: CoachSession, turn, exp
     }
 
 
-def _answer(session_id: UUID, session: dict, text: str, audio_seconds, pauses: int, want_audio: bool, llm, connect: ConnFactory) -> dict:
+def _number(raw: str | None) -> float | None:
+    try:
+        return float(raw) if raw is not None else None
+    except ValueError:
+        return None
+
+
+def _answer(session_id: UUID, session: dict, text: str, audio_seconds, pauses: int, want_audio: bool, llm, connect: ConnFactory,
+            think: float | None = None) -> dict:
     """Run the coach, speak the reply, save the turn (JSON answer). Any exception means: nothing was saved."""
     expected_turns = len(session["state"]["turns"])
     coach = CoachSession.from_state(session["state"], llm=llm, max_text_chars=settings.max_text_chars)
     try:
-        result = run_turn(coach, text, audio_seconds=audio_seconds, pauses=pauses, want_audio=want_audio)
+        result = run_turn(coach, text, audio_seconds=audio_seconds, pauses=pauses, think_seconds=think, want_audio=want_audio)
     except ValueError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc))
     except AgentError:
@@ -244,7 +268,7 @@ def _sse(event: str, data: dict) -> str:
 
 
 def _stream_answer(session_id: UUID, session: dict, user: dict, wallet, text: str, audio_seconds, pauses: int,
-                   want_audio: bool, llm, connect: ConnFactory):
+                   want_audio: bool, llm, connect: ConnFactory, think: float | None = None):
     """Server-Sent Events: transcript, reply (text), corrections and audio as soon as each exists, then done (the
     turn is saved) or error. The credit is given back if the turn is not saved, client gone included."""
     saved = False
@@ -254,7 +278,7 @@ def _stream_answer(session_id: UUID, session: dict, user: dict, wallet, text: st
         coach = CoachSession.from_state(session["state"], llm=llm, max_text_chars=settings.max_text_chars)
         answer = None
         try:
-            for ev in stream_turn(coach, text, audio_seconds=audio_seconds, pauses=pauses, want_audio=want_audio):
+            for ev in stream_turn(coach, text, audio_seconds=audio_seconds, pauses=pauses, think_seconds=think, want_audio=want_audio):
                 if ev["type"] == "reply":
                     yield _sse("reply", {"text": ev["reply"]})
                 elif ev["type"] == "corrections":
@@ -404,6 +428,7 @@ def send_turn(
     request: Request,
     text: str | None = Form(None),
     audio: UploadFile | None = File(None),
+    think_seconds: str | None = Form(None),
     claims: ClerkClaims = Depends(get_clerk_claims),
     connect: ConnFactory = Depends(get_conn_factory),
     llm=Depends(get_llm),
@@ -438,15 +463,16 @@ def send_turn(
             _refund(connect, user, session_id)
             raise
     want_audio = session["mode"] == "voice" or audio is not None  # a spoken answer is always answered aloud
+    think = _number(think_seconds)  # freeze meter, measured by the app: a bad value is ignored, never an error
 
     if "text/event-stream" in request.headers.get("accept", ""):
         return StreamingResponse(
-            _stream_answer(session_id, session, user, wallet, text, audio_seconds, pauses, want_audio, llm, connect),
+            _stream_answer(session_id, session, user, wallet, text, audio_seconds, pauses, want_audio, llm, connect, think),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},  # no proxy buffering: events go out at once
         )
     try:
-        answer = _answer(session_id, session, text, audio_seconds, pauses, want_audio, llm, connect)
+        answer = _answer(session_id, session, text, audio_seconds, pauses, want_audio, llm, connect, think)
     except Exception:
         _refund(connect, user, session_id)
         raise
@@ -484,4 +510,5 @@ def end_practice_session(
             raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
         before, count = previous_finished(conn, user["id"], session_id, datetime.now(timezone.utc))
 
-    return {**report.model_dump(), "progress": progress_line(report.metrics, before, count)}
+    return {**report.model_dump(), "progress": progress_line(report.metrics, before, count),
+            "freeze": _freeze(session["state"], before)}
