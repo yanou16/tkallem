@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { judgeRecording, voiceRoute } from "./voice";
+import { judgeRecording, maxRecordingSeconds, voiceRoute } from "./voice";
 
 describe("judgeRecording", () => {
   it("sends a real answer", () => {
@@ -26,5 +26,14 @@ describe("voiceRoute", () => {
     expect(voiceRoute("data:audio/wav;base64,AA", true, false)).toBe("avatar");
     expect(voiceRoute("data:audio/wav;base64,AA", true, true)).toBe("audio");
     expect(voiceRoute("data:audio/wav;base64,AA", false, false)).toBe("audio");
+  });
+});
+
+
+describe("maxRecordingSeconds", () => {
+  it("gives IELTS part 2 a long turn and every other scenario one minute", () => {
+    expect(maxRecordingSeconds("ielts-part2")).toBe(150);
+    expect(maxRecordingSeconds("visa-us")).toBe(60);
+    expect(maxRecordingSeconds(undefined)).toBe(60);
   });
 });
