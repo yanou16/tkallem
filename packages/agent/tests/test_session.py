@@ -299,6 +299,15 @@ def test_one_answer_can_cover_two_questions_and_both_are_remembered():
     assert again.turn("I am a nurse.").reply.endswith(qs[3])
 
 
+def test_an_empty_structured_answer_from_the_coach_is_retried_not_a_crash():
+    # Seen in CI: the provider answered without the structured output (None, no error) and the turn crashed with
+    # "TypeError: 'NoneType' object is not subscriptable" instead of asking again.
+    llm = FakeChat(found=[{"corrections": []}], replies=[None, {"reaction": "Good.", "goal_covered": "purpose_of_trip"}])
+    turn = CoachSession("visa-us", "B1", llm=llm).turn("I want to study in the US.")
+    assert turn.reply.startswith("Good.")
+    assert llm.calls["Reply"] == 2
+
+
 def test_the_streamed_corrections_carry_the_checked_praise_and_priority():
     found = {"corrections": [{"original": "for study", "fixed": "to study", "type": "grammar", "why": "x"}],
              "praise": "Clear goal: you go to the US.", "priority_index": 0}
