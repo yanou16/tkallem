@@ -1,7 +1,7 @@
 """create groups
 
 Revision ID: 7e1e460646b5
-Revises: a1c3d5e7f901
+Revises: c4f1a7e9b203
 Create Date: 2026-10-12 21:28:27.417961
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '7e1e460646b5'
-down_revision: Union[str, Sequence[str], None] = 'a1c3d5e7f901'
+down_revision: Union[str, Sequence[str], None] = 'c4f1a7e9b203'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -70,5 +70,6 @@ def check_text(
 
     found = raw.get("corrections") if isinstance(raw, dict) else None
     meaning = bool(raw.get("changes_meaning")) if isinstance(raw, dict) else False
-    kept, _status = final_corrections(found or [], {}, text, meaning)  # no scenario: no goal ids to check
+    # No scenario: no goal ids to check. The praise and priority_index the corrector also gives are not used here.
+    kept = final_corrections(found or [], {}, text, meaning)["corrections"]
     return [Correction.model_validate(c) for c in kept]

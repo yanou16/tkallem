@@ -33,7 +33,8 @@ def test_the_same_guardrails_as_a_coach_turn():
 
     corrections = check_text(TEXT, "B1", llm=FakeChat(found=[{"corrections": found}]))
 
-    assert [(c.original, c.rule) for c in corrections] == [("for study", "verb_pattern"), ("I go", None)]
+    # in the order of the sentence, as sanitize returns them
+    assert [(c.original, c.rule) for c in corrections] == [("I go", None), ("for study", "verb_pattern")]
 
 
 def test_at_most_three_corrections():
