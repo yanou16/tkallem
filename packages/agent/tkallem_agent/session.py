@@ -35,6 +35,7 @@ from .tracing import run_config
 
 MAX_TEXT_CHARS = int(os.getenv("TKALLEM_MAX_TEXT_CHARS", "1000"))
 STATE_VERSION = 1
+FEEDBACK_MODES = ("practice", "interview")
 _graphs: dict[int, tuple[BaseChatModel, object]] = {}  # one compiled graph per LLM client
 
 
@@ -77,7 +78,10 @@ class CoachSession:
         llm: BaseChatModel | None = None,
         session_id: str | None = None,
         max_text_chars: int = MAX_TEXT_CHARS,
+        feedback_mode: str = "practice",
     ):
+        if feedback_mode not in FEEDBACK_MODES:
+            raise ValueError(f"unknown feedback mode {feedback_mode!r}: expected one of {list(FEEDBACK_MODES)}")
         if level not in MAX_WORDS:
             raise ValueError(f"unknown level {level!r}: expected one of {list(MAX_WORDS)}")
         if explain_lang not in ("en", "fr"):
@@ -85,6 +89,7 @@ class CoachSession:
         self.scenario = load_scenario(scenario) if isinstance(scenario, str) else scenario
         self.level: Level = level
         self.explain_lang: ExplainLang = explain_lang
+        self.feedback_mode = feedback_mode  # "interview": the coach stays neutral and the app shows the feedback at the end
         self.session_id = session_id or uuid.uuid4().hex
         self.turns: list[TurnLog] = []
         self.last_timings: dict[str, float] = {}
@@ -150,6 +155,7 @@ class CoachSession:
         state = {
             "level": self.level,
             "explain_lang": self.explain_lang,
+            "feedback_mode": self.feedback_mode,
             "scenario": scenario,
             "history": history,
             "covered_goals": covered,
@@ -276,6 +282,7 @@ class CoachSession:
             "scenario_id": self.scenario.id,
             "level": self.level,
             "explain_lang": self.explain_lang,
+            "feedback_mode": self.feedback_mode,
             "turns": [asdict(t) for t in self.turns],
         }
 
@@ -286,6 +293,7 @@ class CoachSession:
         session = cls(
             state["scenario_id"], state["level"], state["explain_lang"],
             llm=llm, session_id=state["session_id"], max_text_chars=max_text_chars,
+            feedback_mode=state.get("feedback_mode", "practice"),  # sessions from before the modes are practice
         )
         session.turns = [TurnLog(**t) for t in state["turns"]]
         return session

@@ -93,6 +93,7 @@ def merge_dicts(a: dict | None, b: dict | None) -> dict:
 class CoachState(TypedDict, total=False):
     level: Level
     explain_lang: ExplainLang  # defaults to "fr"
+    feedback_mode: str  # "practice" (default) or "interview": the coach neither encourages nor evaluates
     scenario: dict
     history: list[BaseMessage]
     covered_goals: list[str]  # goal ids answered by the previous turns
@@ -159,16 +160,35 @@ def next_question(
     return questions[nxt] if nxt < len(questions) else None
 
 
-def build_system_prompt(level: Level, scenario: dict) -> str:
+# "Real interview" mode (docs/JURY_BRIEF.md, improvement 3): the coach behaves like the real officer, no encouragement,
+# no evaluation, no teaching. The corrections are still computed; the app shows them only in the report.
+INTERVIEW_RULES = """
+REAL INTERVIEW MODE: this is a rehearsal under real pressure, so play the role exactly as the real person would.
+Rule 3 is replaced: do NOT encourage, praise, congratulate or evaluate ("Good", "Great", "Well done", "Nice", "Perfect"
+are forbidden), and do not explain or teach. Your `reaction` is neutral and short, as a real officer or recruiter would
+say it: "I see.", "Thank you.", "Understood.", "Noted.", or a very short acknowledgement of a fact the student gave."""
+
+
+_PRAISE = re.compile(r"\b(good|great|well done|nice|perfect|excellent|wonderful|fantastic|congratulations|bravo|impressive|"
+                    r"awesome|amazing|brilliant|encouraging|keep it up|well said|well answered)\b", re.I)
+NEUTRAL_REACTION = "Thank you."
+
+
+def neutral_reaction(reaction: str) -> str:
+    """Real interview mode, decided by code: a reaction that praises or evaluates becomes a neutral acknowledgement."""
+    return NEUTRAL_REACTION if _PRAISE.search(reaction) else reaction
+
+
+def build_system_prompt(level: Level, scenario: dict, interview: bool = False) -> str:
     common = {"coach_role": scenario["coach_role"], "level": level, "level_rules": LEVEL_RULES[level], "max_words": MAX_WORDS[level]}
     if is_free(scenario):
-        return FREE_PROMPT.format(**common)
+        return FREE_PROMPT.format(**common) + (INTERVIEW_RULES if interview else "")
     return PROMPT.format(
         **common,
         questions=" | ".join(scenario["questions"]),
         goals=", ".join(scenario["goals"]),
         useful_words=", ".join(scenario["useful_words"]),
-    )
+    ) + (INTERVIEW_RULES if interview else "")
 
 
 def sentences(text: str) -> list[str]:
@@ -261,7 +281,7 @@ def build_graph(llm: BaseChatModel):
         t0 = time.perf_counter()
         level = state["level"]
         messages = [
-            SystemMessage(build_system_prompt(level, state["scenario"])),
+            SystemMessage(build_system_prompt(level, state["scenario"], state.get("feedback_mode") == "interview")),
             *state.get("history", []),
             HumanMessage(state["student_text"]),
         ]
@@ -287,6 +307,8 @@ def build_graph(llm: BaseChatModel):
         if reply is None:
             return {"error": state.get("coach_error") or "no coach reply"}
         scenario, history = state["scenario"], state.get("history", [])
+        if state.get("feedback_mode") == "interview":  # the code, not the prompt alone, keeps the officer neutral
+            reply = {**reply, "reaction": neutral_reaction(reply["reaction"])}
         merged = {
             "reply": compose_reply(reply, scenario, history, state.get("covered_goals", [])),
             "goal_covered": reply.get("goal_covered"),
