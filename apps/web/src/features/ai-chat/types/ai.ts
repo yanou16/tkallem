@@ -18,6 +18,8 @@ export type TurnDetailDto = {
   reply: string;
   sentence_status: SentenceStatus;
   corrections: Correction[];
+  praise?: string | null;
+  priority_index?: number;
 };
 
 export type SessionDetailDto = {
@@ -35,6 +37,7 @@ export type SessionDetailDto = {
   /** What /end stored, null before. levels and redo_index are not stored. */
   note: string | null;
   metrics: ProgressMetricsDto | null;
+  progress?: string | null;
 };
 
 export type StartSessionDto = {
@@ -55,6 +58,9 @@ export type TurnDto = {
   reply_audio_url: string | null;
   corrections: Correction[];
   sentence_status: SentenceStatus;
+  /** Improvement 4: one short true positive, checked by the agent's code (null when refused). */
+  praise?: string | null;
+  priority_index?: number;
   finished: boolean;
   /** Balance after this answer (docs/CREDITS.md). */
   credits?: Credits;
@@ -81,6 +87,8 @@ export type ReportLineDto = {
 export type SessionReportDto = {
   lines: ReportLineDto[];
   note: string;
+  /** Improvement 4: the report's first line, progress since the last finished session, written by code. */
+  progress?: string | null;
   metrics: ProgressMetricsDto;
   levels: {
     mistakes_per_100: SentenceStatus | null;
@@ -99,6 +107,9 @@ export type Turn = {
   reply: string;
   corrections: Correction[];
   sentenceStatus: SentenceStatus;
+  praise: string | null;
+  /** The correction shown in full; the others are folded. */
+  priorityIndex: number;
   /** Guided scenario: every question is answered, time for the report. Always false in free talk. */
   finished: boolean;
   /** The coach's reply spoken (data: URL), voice sessions and spoken answers only. */
@@ -116,6 +127,8 @@ export type ReportLine = {
 export type SessionReport = {
   lines: ReportLine[];
   note: string;
+  /** Progress since the last finished session (or the starting point), shown before the mistakes. */
+  progress: string | null;
   metrics: ProgressMetrics;
   /** Traffic light per metric, null when the metric is not available (hesitations in text mode). */
   levels: {
@@ -136,6 +149,9 @@ export type ChatMessage = {
   /** Student answers only. */
   status?: SentenceStatus;
   corrections?: Correction[];
+  /** Student answers: a short true positive shown before the corrections, and the correction shown in full. */
+  praise?: string | null;
+  priorityIndex?: number;
   /** Coach lines spoken by the server (data: URL), for the Listen button. */
   audioUrl?: string | null;
   /** Shown at once while the answer is processed (a recording not transcribed yet). */

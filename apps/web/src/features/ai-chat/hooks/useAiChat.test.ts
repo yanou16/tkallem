@@ -16,6 +16,8 @@ const TURN: Turn = {
   reply: "Good. Which university will you attend?",
   corrections: [{ original: "for study", fixed: "to study", type: "grammar", why: "Le but : to + verbe." }],
   sentenceStatus: "orange",
+  praise: "Clear goal: 'I go to the US'.",
+  priorityIndex: 0,
   finished: false,
 };
 
@@ -25,7 +27,7 @@ describe("addTurn", () => {
 
     expect(session.messages).toEqual([
       STARTED.messages[0],
-      { id: "s1-1", role: "user", content: "I go to the US for study.", createdAt: AT, status: "orange", corrections: TURN.corrections },
+      { id: "s1-1", role: "user", content: "I go to the US for study.", createdAt: AT, status: "orange", corrections: TURN.corrections, praise: TURN.praise, priorityIndex: 0 },
       { id: "s1-2", role: "assistant", content: "Good. Which university will you attend?", createdAt: AT },
     ]);
     expect(session.finished).toBe(false);

@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowDown, ChartNoAxesColumn, ChevronDown, ChevronRight, CircleAlert, Lightbulb, MessageCircle, Mic, Send, Square, UserRound, Volume2 } from "lucide-react";
+import { ArrowDown, ChartNoAxesColumn, Check, ChevronDown, ChevronRight, CircleAlert, Lightbulb, MessageCircle, Mic, Send, Square, TrendingUp, UserRound, Volume2 } from "lucide-react";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
 import { useAiSession, useAnswer, useEndSession, useSpeakLastLine, useStartSession } from "@/features/ai-chat/hooks/useAiChat";
@@ -16,6 +16,7 @@ import { maxRecordingSeconds } from "@/features/ai-chat/lib/voice";
 import { useCoachVoice } from "@/features/ai-chat/hooks/useCoachVoice";
 import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOfCredits";
 import { markSentence } from "@/features/ai-chat/lib/marks";
+import { feedbackView } from "@/features/ai-chat/lib/feedback";
 import type { ChatMessage, Correction, SentenceStatus, SessionReport } from "@/features/ai-chat/types/ai";
 import { Avatar, Button, Card, EmptyState, PageHeader, Skeleton } from "@/components/ui";
 import { startHref } from "@/components/cards";
@@ -355,7 +356,7 @@ function Chat() {
             {pending && (
               <>
                 {live?.transcript || pending.kind === "text"
-                  ? <Bubble m={{ id: "pending", role: "user", content: live?.transcript ?? (pending.kind === "text" ? pending.text : ""), corrections: live?.corrections, status: live?.status }} icon={icon} tint={tint} user={user} />
+                  ? <Bubble m={{ id: "pending", role: "user", content: live?.transcript ?? (pending.kind === "text" ? pending.text : ""), corrections: live?.corrections, status: live?.status, praise: live?.praise, priorityIndex: live?.priorityIndex }} icon={icon} tint={tint} user={user} />
                   : <Bubble m={{ id: "pending", role: "user", content: `Voice answer (${formatTime(pending.seconds)})`, pending: true }} icon={icon} tint={tint} user={user} />}
                 {live?.reply ? (
                   <Bubble m={{ id: "pending-reply", role: "assistant", content: live.reply }} icon={icon} tint={tint} user={user} />
@@ -484,7 +485,9 @@ function Bubble({ m, icon, tint, user, onListen, sayItAgain, nailed }: {
         <p className={cn("whitespace-pre-wrap rounded-3xl px-5 py-4 text-left", mine ? "bg-ink text-white" : "bg-black/[0.05]", m.pending && "flex items-center gap-2 italic text-white/70")}>
           {m.pending && <Mic size={16} aria-hidden />}{m.content}
         </p>
-        {mine && !m.pending && m.corrections && m.corrections.length > 0 && <InlineCorrection text={m.content} corrections={m.corrections} />}
+        {mine && !m.pending && ((m.corrections?.length ?? 0) > 0 || m.praise) && (
+          <InlineCorrection text={m.content} corrections={m.corrections ?? []} praise={m.praise} priorityIndex={m.priorityIndex} />
+        )}
         {mine && !m.pending && sayItAgain}
         <div className={cn("mt-1 flex items-center gap-2", mine && "justify-end")}>
           {m.status && (nailed
@@ -507,22 +510,41 @@ function Bubble({ m, icon, tint, user, onListen, sayItAgain, nailed }: {
 
 /** DESIGN.md "Correction": right under the student's answer. Line 1 the sentence with each wrong part struck, line 2
  *  the corrected sentence with each fix in bold, then one short explanation per fix (in French by default). */
-function InlineCorrection({ text, corrections }: { text: string; corrections: Correction[] }) {
-  const { before, after, unplaced } = markSentence(text, corrections);
+function Fix({ c }: { c: Correction }) {
+  return (
+    <div className="mt-1.5">
+      {/* Red is kept for "Redo" (docs/JURY_BRIEF.md, improvement 4): a small mistake is struck in grey. */}
+      <p><s className="text-steel">{c.original}</s> → <span className="font-semibold text-[color:var(--good)]">{c.fixed}</span></p>
+      <p className="text-xs text-muted">{c.why}</p>
+    </div>
+  );
+}
+
+function InlineCorrection({ text, corrections, praise, priorityIndex = 0 }: {
+  text: string; corrections: Correction[]; praise?: string | null; priorityIndex?: number;
+}) {
+  const { after } = markSentence(text, corrections);
+  const { priority, others, moreLabel } = feedbackView(corrections, priorityIndex);
   return (
     <div className="tk-in ml-auto mt-2 rounded-2xl border border-[color:var(--hairline-soft)] bg-[color:var(--surface)] p-3 text-left text-sm">
-      <p className="text-muted">
-        {before.map((p, i) => (p.kind === "wrong" ? <s key={i} className="text-[color:var(--bad)]">{p.text}</s> : <span key={i}>{p.text}</span>))}
-      </p>
-      <p className="mt-0.5 font-medium text-ink">
-        {after.map((p, i) => (p.kind === "fixed" ? <span key={i} className="font-semibold text-[color:var(--good)]">{p.text}</span> : <span key={i}>{p.text}</span>))}
-      </p>
-      {unplaced.map((c, i) => (
-        <p key={`u${i}`} className="mt-0.5"><s className="text-[color:var(--bad)]">{c.original}</s> → <span className="font-semibold text-[color:var(--good)]">{c.fixed}</span></p>
-      ))}
-      <ul className="mt-1.5 space-y-0.5 text-xs text-muted">
-        {corrections.map((c, i) => <li key={i}>{c.why}</li>)}
-      </ul>
+      {praise && (
+        <p className="flex items-start gap-1.5 font-medium text-[color:var(--good)]">
+          <Check size={16} className="mt-0.5 shrink-0" aria-hidden /> <span>{praise}</span>
+        </p>
+      )}
+      {priority && <Fix c={priority} />}
+      {others.length > 0 && (
+        <details className="mt-1">
+          <summary className="flex min-h-11 cursor-pointer items-center font-semibold text-ink">{moreLabel}</summary>
+          {others.map((c, i) => <Fix key={i} c={c} />)}
+        </details>
+      )}
+      {priority && (
+        <p className="mt-2 border-t border-[color:var(--hairline-soft)] pt-2 font-medium text-ink">
+          <span className="font-normal text-slate">Say it: </span>
+          {after.map((p, i) => (p.kind === "fixed" ? <span key={i} className="font-semibold text-[color:var(--good)]">{p.text}</span> : <span key={i}>{p.text}</span>))}
+        </p>
+      )}
     </div>
   );
 }
@@ -568,6 +590,11 @@ function Report({ report, title, onRestart }: { report: SessionReport; title?: s
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader eyebrow={title} title="Your session report" />
+      {report.progress && (
+        <p className="mb-4 flex items-start gap-2 rounded-2xl bg-good-bg px-4 py-3 font-medium text-good">
+          <TrendingUp size={20} className="mt-0.5 shrink-0" aria-hidden /> <span>{report.progress}</span>
+        </p>
+      )}
       <Card>
         <h2 className="text-lg font-semibold">Your coach's note</h2>
         <p className="mt-2 whitespace-pre-wrap">{report.note}</p>
@@ -603,7 +630,7 @@ function Report({ report, title, onRestart }: { report: SessionReport; title?: s
                   {i === report.redoIndex && <p className="text-sm font-semibold">Redo this answer first</p>}
                   {line.corrections.map((c, j) => (
                     <div key={j} className="rounded-2xl border border-line p-3 text-sm">
-                      <p><s className="text-[color:var(--bad)]">{c.original}</s></p>
+                      <p><s className="text-steel">{c.original}</s></p>
                       <p className="font-semibold text-[color:var(--good)]">{c.fixed}</p>
                       <p className="text-muted">{c.why}</p>
                     </div>
