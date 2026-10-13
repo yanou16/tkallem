@@ -21,13 +21,14 @@ from app.db.sessions import (
     get_session_for_user,
     list_turns,
     previous_finished,
+    set_confidence,
     save_turn,
     set_session_mode,
 )
 from app.dependencies import get_current_user, user_for_claims
 from app.progress_line import progress_line
 from app.schemas.sessions import (
-    HintRequest, HintResult, RepeatResult, SessionCreate, SessionDetail, SessionReport, SessionStarted, Spoken,
+    ConfidenceAnswer, HintRequest, HintResult, RepeatResult, SessionCreate, SessionDetail, SessionReport, SessionStarted, Spoken,
     TurnResult,
 )
 from app.security import ClerkClaims, get_clerk_claims
@@ -154,6 +155,7 @@ def read_session(
         "ended_at": session["ended_at"],
         **_scenario_view(session),
         "feedback_mode": session["state"].get("feedback_mode", "practice"),
+        "confidence": _confidence(session),
         "turns": _with_praise(list_turns(conn, session_id, user["id"]), session["state"], hide=_interview_running(session)),
         "note": session["note"],
         "metrics": {key: session[key] for key in METRIC_KEYS} if session["ended_at"] else None,
@@ -183,6 +185,10 @@ def _progress(conn: Connection, user_id: int, session: dict) -> str | None:
         return None
     before, count = previous_finished(conn, user_id, session["id"], session["ended_at"])
     return progress_line({key: session[key] for key in METRIC_KEYS}, before, count)
+
+
+def _confidence(session: dict) -> dict:
+    return {"before": session.get("confidence_before"), "after": session.get("confidence_after")}
 
 
 def _interview_running(session: dict) -> bool:
@@ -361,6 +367,26 @@ def _hint_rate_ok(user_key: str, now: float) -> bool:
     return _hourly_ok(_hint_times, user_key, HINTS_PER_HOUR, now)
 
 
+@router.post("/{session_id}/confidence", status_code=status.HTTP_204_NO_CONTENT)
+def answer_confidence(
+    session_id: UUID,
+    body: ConfidenceAnswer,
+    user: dict = Depends(get_current_user),
+    connect: ConnFactory = Depends(get_conn_factory),
+) -> None:
+    """The student's own 1-to-5 answer, free and repeatable. `before` is taken until the first answer is sent; `after`
+    only once the report exists (the question comes with it)."""
+    with connect() as conn:
+        session = get_session_for_user(conn, session_id, user["id"])
+        if session is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+        if body.when == "before" and session["state"].get("turns"):
+            raise HTTPException(status.HTTP_409_CONFLICT, "Too late: the first answer was already sent")
+        if body.when == "after" and session["ended_at"] is None:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Ask again once the report is ready")
+        set_confidence(conn, session_id, user["id"], body.when, body.value)
+
+
 @router.post("/{session_id}/hint", response_model=HintResult)
 def ask_hint(
     session_id: UUID,
@@ -528,5 +554,5 @@ def end_practice_session(
             raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
         before, count = previous_finished(conn, user["id"], session_id, datetime.now(timezone.utc))
 
-    return {**report.model_dump(), "feedback_mode": coach.feedback_mode, "progress": progress_line(report.metrics, before, count),
+    return {**report.model_dump(), "feedback_mode": coach.feedback_mode, "confidence": _confidence(session), "progress": progress_line(report.metrics, before, count),
             "freeze": _freeze(session["state"], before)}

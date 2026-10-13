@@ -89,6 +89,20 @@ class Levels(BaseModel):
     hesitations_per_min: Status | None
 
 
+class ConfidenceAnswer(BaseModel):
+    """"How confident do you feel about this interview?", 1 (not at all) to 5 (very), before the first answer or after the
+    report. Skippable: the app simply does not send it."""
+    model_config = ConfigDict(extra="forbid")
+
+    when: Literal["before", "after"]
+    value: int = Field(ge=1, le=5)
+
+
+class Confidence(BaseModel):
+    before: int | None = None
+    after: int | None = None
+
+
 class Freeze(BaseModel):
     """Freeze meter: average seconds between the end of the coach's question and the first sound or letter."""
     seconds: float
@@ -103,6 +117,7 @@ class SessionReport(BaseModel):
     metrics: Metrics
     levels: Levels
     redo_index: int | None
+    confidence: Confidence | None = None  # the student's own 1-to-5 answers, before and after
     feedback_mode: Literal["practice", "interview"] = "practice"
     progress: str | None = None  # first line of the report: progress since the last finished session, written by code
     freeze: Freeze | None = None  # time before starting to answer, with the previous session's when comparable
@@ -142,6 +157,7 @@ class SessionDetail(BaseModel):
     # What /end stored, null before. The rest of the report (levels, redo_index) is not stored.
     note: str | None
     metrics: Metrics | None
+    confidence: Confidence | None = None
     feedback_mode: Literal["practice", "interview"] = "practice"
     progress: str | None = None  # finished sessions: the report's first line
     freeze: Freeze | None = None
