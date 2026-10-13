@@ -12,17 +12,18 @@ a coach asks the real questions, listens, and shows what was good and the one th
 
 ## What a student can do
 
-1. **Pick a situation**: visa interview, Campus France, remote job interview, IELTS Speaking, or free talk. Each runs 5 to
+1. **Build your plan (1 minute, optional)**: five questions (why English, how you speak, time per day, what is hardest, subjects you like) set the level, the daily goal and the order of the situations. The situations themselves are the same for everyone.
+2. **Pick a situation**: visa interview, Campus France, remote job interview, IELTS Speaking, or free talk. Each runs 5 to
    10 minutes and ends with a report.
-2. **Choose a mode**: *Practice* (corrections after each answer, hints, "Say it again") or *Real interview* (the coach
+3. **Choose a mode**: *Practice* (corrections after each answer, hints, "Say it again") or *Real interview* (the coach
    plays the officer, nothing is shown until the report, like the real one).
-3. **Answer out loud or by typing.** The coach replies in text and in a natural voice.
-4. **Get feedback that reassures before it corrects**: one true compliment about the answer, then the single correction
+4. **Answer out loud or by typing.** The coach replies in text and in a natural voice.
+5. **Get feedback that reassures before it corrects**: one true compliment about the answer, then the single correction
    that matters most (the other small fixes stay folded), explained in French or simple English.
-5. **When frozen, press "Help me start"**: the first words of an answer, or the student's idea written in French or
+6. **When frozen, press "Help me start"**: the first words of an answer, or the student's idea written in French or
    Darija turned into English to read aloud. Free, two per question.
-6. **Say the corrected sentence again**: the code checks it (not the AI): "Nailed it", or a gentle hint.
-7. **Read the report**: progress since the last interview, **how long they waited before starting to speak** (the freeze,
+7. **Say the corrected sentence again**: the code checks it (not the AI): "Nailed it", or a gentle hint.
+8. **Read the report**: progress since the last interview, **how long they waited before starting to speak** (the freeze,
    made visible), mistakes per 100 words, the answer to redo, and how confident they feel before and after (1 to 5).
 
 It installs on a phone like an app (PWA), works in a browser, and guests can finish a whole interview without an account.

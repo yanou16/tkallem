@@ -40,6 +40,7 @@ green (`.github/workflows/ci.yml`). After a merge, the API image is built, deplo
 | Confidence before and after (1 to 5, skippable): `before` only until the first answer, `after` only with the report, 1 to 5, owner only, summary of sessions with both | API `test_confidence_routes.py`; front `lib/confidence.test.ts` |
 | Welcome page product preview: four tabs, every caption points at a part the preview renders, the mini chat (help, answer, Nailed it, nothing shown in a real interview), voice and report previews | front `features/landing/demo.test.ts` |
 | Credits: grants, daily refill, atomic debit (10 concurrent answers), refunds, budget cap and alert | API `test_credits.py` |
+| Your plan (5 questions, guests too): the answers set the level, the daily goal, the goal and focus in the profile; the goal and liked subjects only decide the order of the same situations | front `features/plan/lib/plan.test.ts` (order, path of 4, focus limit, what is saved), `guestStep.test.ts` (/plan creates a guest) |
 | Guest mode: token, address limits, claim at sign-in, unknown guest refused | API `test_credits_routes.py`; front `features/credits/lib/guestStep.test.ts` |
 | Sign-in: Clerk tokens, allowed origins | API `test_security.py`; front `features/auth/lib/username.test.ts` |
 | Profile, learning setup, progress, top mistakes, achievements | API `test_me_routes.py`, `test_progress_db.py`, `test_achievements_db.py`, `test_users.py`; front `features/profile`, `features/progress` |
