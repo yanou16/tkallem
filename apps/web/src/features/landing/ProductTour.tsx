@@ -10,7 +10,7 @@ import {
 import Platform from "./PlatformPages";
 import { Browser, Lit, Pill, R } from "./TourParts";
 import {
-  INITIAL_PLAN, PAGE_ORDER, PLAN_STEPS, TABS, calloutsFor, planReducer, planView,
+  INITIAL_PLAN, PAGE_ORDER, PLAN_STEPS, TABS, visibleCallouts, planReducer, planView,
   type Callout, type PlanAction, type PlanDemo, type PlatformPage, type TourTab,
 } from "./tour";
 
@@ -34,7 +34,7 @@ export default function ProductTour() {
   const [plan, dispatch] = useReducer(planReducer, INITIAL_PLAN);
   const [lines, setLines] = useState<Line[]>([]);
   const stage = useRef<HTMLDivElement>(null);
-  const callouts = calloutsFor(tab, page);
+  const callouts = visibleCallouts(tab, page, plan.step >= PLAN_STEPS);
   const left = callouts.filter((c) => c.side === "left");
   const right = callouts.filter((c) => c.side === "right");
 
@@ -59,14 +59,14 @@ export default function ProductTour() {
 
   // The tour: one caption after the other; the platform tab then moves to the next page of the menu, until the visitor takes over.
   const turn = useRef(0);
-  const now = useRef({ tab, page });
-  now.current = { tab, page };
+  const now = useRef({ tab, page, done: false });
+  now.current = { tab, page, done: plan.step >= PLAN_STEPS };
   useEffect(() => { turn.current = 0; setActive(null); }, [tab, page]);
   useEffect(() => {
     if (!auto || calm || !visible) return;
     const tick = () => {
-      const { tab: t, page: p } = now.current;
-      const list = calloutsFor(t, p);
+      const { tab: t, page: p, done } = now.current;
+      const list = visibleCallouts(t, p, done);
       if (turn.current >= list.length) {
         const next = PAGE_ORDER[PAGE_ORDER.indexOf(p) + 1];
         if (t === "platform" && next) setPage(next); // the effect above resets the turn
@@ -113,6 +113,11 @@ export default function ProductTour() {
 
   const meta = TABS.find((t) => t.id === tab)!;
   const choose = (t: TourTab) => { setTab(t); setPage("home"); setActive(null); setAuto(true); };
+  /** On a phone the captions sit under the preview: bring the part they talk about into view. */
+  const revealOnPhone = (region: string) => {
+    if (window.innerWidth >= WIDE) return;
+    requestAnimationFrame(() => stage.current?.querySelector<HTMLElement>(`[data-region="${region}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" }));
+  };
   const caption = (c: Callout) => (
     <button key={c.id} type="button" data-callout={c.region} data-side={c.side}
       aria-pressed={active === c.region}
@@ -120,7 +125,7 @@ export default function ProductTour() {
       onPointerLeave={(e) => { if (e.pointerType === "mouse") show(null); }}
       onFocus={() => { setAuto(false); show(c.region); }}
       onBlur={() => show(null)}
-      onClick={() => { setAuto(false); show(c.region); }}
+      onClick={() => { setAuto(false); show(c.region); revealOnPhone(c.region); }}
       className={cn("min-h-11 max-w-[15rem] rounded-lg px-2 py-2 text-base font-semibold leading-snug text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink max-lg:max-w-none max-lg:flex-1 max-lg:basis-[45%] max-lg:rounded-2xl max-lg:border max-lg:border-hairline max-lg:bg-canvas max-lg:px-3 max-lg:py-3 max-lg:text-left",
         c.side === "left" ? "text-right" : "text-left",
         active === c.region && "max-lg:border-ink")}>

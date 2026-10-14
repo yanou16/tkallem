@@ -50,7 +50,7 @@ export default function ProgressPage() {
           action={<Link href="/practice" className="inline-flex min-h-11 items-center rounded-full bg-ink px-5 text-sm font-semibold text-white">Choose a situation</Link>} />
       ) : (
         <div className="space-y-6">
-          {!p.baseline && <p className="text-slate">This is your starting point. The comparison with your first sessions appears after your next one.</p>}
+          {!p.baseline && <p className="text-sm text-slate">This is your starting point. The comparison with your first sessions appears after your next one.</p>}
           <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-card bg-ink p-5 text-white md:row-span-1">
               <p className="text-sm text-white/80">{MISTAKES.label}</p>
@@ -71,7 +71,7 @@ export default function ProgressPage() {
             </div>
           </div>
           {(p.current.hesitationsPerMin === null || p.current.speakingSeconds === null) && (
-            <p className="text-slate">Answer out loud in a session to see your hesitations and your speaking time.</p>
+            <p className="text-sm text-slate">Answer out loud in a session to see your hesitations and your speaking time.</p>
           )}
           <Card>
             <h2 className="text-xl font-semibold">Top mistakes</h2>
@@ -91,6 +91,9 @@ export default function ProgressPage() {
                   </li>
                 ))}
               </ul>
+            )}
+            {p.topMistakes.length > 0 && (
+              <Link href="/practice" className="mt-4 inline-flex min-h-11 items-center rounded-full border border-hairline-strong px-5 text-sm font-semibold hover:bg-surface">Practice again</Link>
             )}
           </Card>
         </div>

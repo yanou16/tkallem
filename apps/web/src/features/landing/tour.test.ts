@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CALLOUTS, DEFAULTS, INITIAL_PLAN, PAGES, PAGE_CALLOUTS, PAGE_ORDER, PAGE_REGIONS, PLAN_STEPS, REGIONS, TABS, calloutsFor, menuOf, planReducer, planView } from "./tour";
+import { CALLOUTS, DEFAULTS, INITIAL_PLAN, PAGES, PAGE_CALLOUTS, PAGE_ORDER, PAGE_REGIONS, PLAN_STEPS, REGIONS, TABS, calloutsFor, menuOf, planReducer, visibleCallouts, planView } from "./tour";
 
 describe("tabs and captions", () => {
   it("has three tabs, each with captions on both sides", () => {
@@ -67,5 +67,16 @@ describe("the plan preview", () => {
     const ielts = planView({ ...INITIAL_PLAN, goal: "ielts" }).path;
     expect(ielts[0].id).toBe("ielts-part2");
     expect(ielts.every((s) => s.mode === "guided")).toBe(true);
+  });
+});
+
+describe("visibleCallouts", () => {
+  it("shows every caption of the questions, and only the result captions once the plan is done", () => {
+    expect(visibleCallouts("plan", "home", false).map((c) => c.region)).toEqual(CALLOUTS.plan.map((c) => c.region));
+    expect(visibleCallouts("plan", "home", true).map((c) => c.region)).toEqual(["result", "order"]);
+  });
+  it("leaves the other tabs untouched", () => {
+    expect(visibleCallouts("voice", "home", true)).toEqual(CALLOUTS.voice);
+    expect(visibleCallouts("platform", "practice", true)).toEqual(PAGE_CALLOUTS.practice);
   });
 });
