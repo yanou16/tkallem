@@ -150,11 +150,27 @@ Large parts of the code were written with Claude Code (an AI coding assistant), 
 
 ```
 apps/web/        Next.js app (screens, PWA, welcome page preview)
+  src/app/           the routes: (app)/ for the app screens (home, plan, practice, AI chat, progress, profile, groups), welcome, sign-in and sign-up
+  src/features/      one folder per feature (ai-chat, practice, progress, profile, groups…): api, hooks, components, lib, types
+  src/components/    shared UI (app shell, cards, buttons, dialogs)
+  src/lib/           API client and endpoints, configuration, feature flags
+  public/            icons, service worker, offline page
 apps/api/        FastAPI (routes, database, voice, answer allowance, migrations)
+  app/               routes/, db/ (raw SQL), schemas/, voice/, realtime and rate limits of the groups
+  alembic/versions/  database migrations
+  tests/             pytest, against a real Postgres
 packages/agent/  the coach: LangGraph, prompts, scenarios, guardrails, evals
+  tkallem_agent/     the graph, the session, prompts/ and scenarios/ (one JSON file per scenario)
+  evals/             evaluation sets and the AI gate run in CI
+  tests/             pytest
 packages/contracts/  OpenAPI and the agent turn schema, shared by the three
 docs/            design system, free answers, testing, operations, impact, submission, what next
 infra/azure/     deployment script and notes
+.github/workflows/   CI (tests, web build, AI gate) and the API image (build, deploy to Azure, smoke test)
+.githooks/       pre-push hook: no direct push to main, quick checks (enable with git config core.hooksPath .githooks)
 ```
+
+Backend details (stack, structure, environment variables, migrations, tests, routes and the groups WebSocket):
+[`apps/api/README.md`](apps/api/README.md).
 
 More: [`docs/WHAT_NEXT.md`](docs/WHAT_NEXT.md) (the next three months), [`docs/DESIGN.md`](docs/DESIGN.md), [`packages/agent/README.md`](packages/agent/README.md).
