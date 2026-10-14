@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { endSession, getSession, mapReport, mapSessionDetail, mapTurn, sendAnswer, startSession, streamAnswer } from "./ai";
+import { endSession, explainNote, getSession, mapReport, mapSessionDetail, mapTurn, sendAnswer, startSession, streamAnswer } from "./ai";
 import type { SessionDetailDto, SessionReportDto, TurnDto } from "../types/ai";
 
 const TURN: TurnDto = {
@@ -240,5 +240,24 @@ describe("streamAnswer", () => {
   it("errors before the stream are plain JSON, as in apiFetch", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ detail: { code: "no_credits", balance: 0 } }), { status: 402 })));
     await expect(streamAnswer("s1", { text: "Hi" }, () => {}, () => {})).rejects.toMatchObject({ status: 402, message: "no_credits" });
+  });
+});
+
+describe("Explain in English / French", () => {
+  it("sends the chosen language with the answer, and nothing when none is chosen", async () => {
+    const withLang = vi.fn(async (_url: string, _init: RequestInit) => new Response("event: done\ndata: " + JSON.stringify(TURN) + "\n\n", { headers: { "content-type": "text/event-stream" } }));
+    vi.stubGlobal("fetch", withLang);
+    await streamAnswer("s1", { text: "Hi", explain: "en" }, () => {}, () => {});
+    expect((withLang.mock.calls[0][1].body as FormData).get("explain_lang")).toBe("en");
+    await streamAnswer("s1", { text: "Hi" }, () => {}, () => {});
+    expect((withLang.mock.calls[1][1].body as FormData).has("explain_lang")).toBe(false);
+  });
+
+  it("asks for the report note in the other language", async () => {
+    const fetchMock = serverReplies({ note: "A short note.", explain_lang: "en" });
+    const r = await explainNote("s1", "en");
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/sessions/s1/note");
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1].body))).toEqual({ lang: "en" });
+    expect(r).toEqual({ note: "A short note.", explain_lang: "en" });
   });
 });

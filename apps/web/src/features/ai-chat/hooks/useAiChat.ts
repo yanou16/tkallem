@@ -1,10 +1,11 @@
 "use client";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { answerConfidence, askHint, endSession, repeatAnswer, getSession, sendAnswer, speakLastLine, startSession, streamAnswer, type AnswerInput, type LiveTurn } from "../api/ai";
+import { answerConfidence, askHint, endSession, explainNote, repeatAnswer, getSession, sendAnswer, speakLastLine, startSession, streamAnswer, type AnswerInput, type LiveTurn } from "../api/ai";
 import { CREDITS_KEY } from "@/features/credits/hooks/useCredits";
 import { MY_SESSIONS_KEY } from "@/features/practice/hooks/usePractice";
 import { ACHIEVEMENTS_KEY } from "@/features/profile/hooks/useProfile";
+import type { ExplainLang } from "@/features/auth/types/user";
 import type { AiSession, FeedbackMode, HintRequestDto, Turn } from "../types/ai";
 
 const key = (id?: string) => ["ai-session", id] as const;
@@ -137,3 +138,6 @@ export const useConfidence = (sessionId?: string) => {
       }),
   });
 };
+
+/** The report's note in the other language. */
+export const useExplainNote = (sessionId?: string) => useMutation({ mutationFn: (lang: ExplainLang) => explainNote(sessionId!, lang) });
