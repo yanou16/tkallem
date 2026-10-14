@@ -318,7 +318,7 @@ function Chat() {
               <ul className="absolute left-0 top-full z-20 mt-2 max-h-72 w-full overflow-auto rounded-2xl border border-line bg-white p-1.5 shadow-soft">
                 {(scenarios.data ?? []).map((sc) => (
                   <li key={sc.id}><button className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-black/5"
-                    onClick={() => { setMenu(false); restart(sc.id); }}><span className="block font-medium">{sc.title}</span><span className="block text-xs text-muted">{sc.description}</span></button></li>
+                    onClick={() => { setMenu(false); restart(sc.id); }}><span className="block font-medium">{sc.title}</span><span className="block text-sm text-muted">{sc.description}</span></button></li>
                 ))}
               </ul>
             )}
@@ -333,22 +333,22 @@ function Chat() {
           <div className="relative">
             <button onClick={() => setMenu((m) => !m)} className={cn("flex w-full items-center gap-3 rounded-2xl p-3 text-left", tint)}>
               <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/70"><Icon name={icon ?? "briefcase"} /></span>
-              <span className="flex-1"><span className="block text-xs text-charcoal">Scenario</span><span className="font-semibold">{title ?? "Choose a scenario"}</span></span>
+              <span className="flex-1"><span className="block text-sm text-charcoal">Scenario</span><span className="font-semibold">{title ?? "Choose a scenario"}</span></span>
               <ChevronDown size={18} />
             </button>
-            {scenario?.description && <p className="mt-2 px-1 text-xs text-muted">{scenario.description}</p>}
+            {scenario?.description && <p className="mt-2 px-1 text-sm text-muted">{scenario.description}</p>}
             {menu && (
               <ul className="absolute z-20 mt-2 max-h-72 w-full overflow-auto rounded-2xl border border-line bg-white p-1.5 shadow-soft">
                 {(scenarios.data ?? []).map((sc) => (
                   <li key={sc.id}><button className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-black/5"
-                    onClick={() => { setMenu(false); restart(sc.id); }}><span className="block font-medium">{sc.title}</span><span className="block text-xs text-muted">{sc.description}</span></button></li>
+                    onClick={() => { setMenu(false); restart(sc.id); }}><span className="block font-medium">{sc.title}</span><span className="block text-sm text-muted">{sc.description}</span></button></li>
                 ))}
               </ul>
             )}
           </div>
           <div className="flex items-center gap-3 rounded-2xl bg-surface p-3">
             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white"><ChartNoAxesColumn size={20} /></span>
-            <span><span className="block text-xs text-muted">Level</span><span className="font-semibold">{user?.level ?? "—"}</span></span>
+            <span><span className="block text-sm text-muted">Level</span><span className="font-semibold">{user?.level ?? "—"}</span></span>
           </div>
           <div className="flex items-center gap-2 rounded-2xl bg-black/[0.03] p-2" role="radiogroup" aria-label="Answer mode">
             {(["voice", "text"] as const).map((m) => (
@@ -362,7 +362,7 @@ function Chat() {
         {mode === "voice" && (
           <div className="mb-4">
             <div className="mb-2 flex justify-end">
-              <button onClick={toggleAvatar} className="relative rounded-full border border-line px-3 py-1 text-xs font-semibold after:absolute after:-inset-y-2.5 after:inset-x-0 after:content-['']">{avatarOn ? "Hide 3D coach" : "Show 3D coach"}</button>
+              <button onClick={toggleAvatar} className="relative min-h-11 rounded-full border border-line px-3 text-sm font-semibold">{avatarOn ? "Hide 3D coach" : "Show 3D coach"}</button>
             </div>
             {avatarOn && <CoachAvatar {...coach.avatarProps} />}
           </div>
@@ -442,7 +442,7 @@ function Chat() {
                 <div className="flex items-center justify-between gap-3 px-4 pt-3">
                   <VoiceState state={barState} />
                   {barState === "speaking" && (
-                    <button onClick={() => coach.stop()} className="relative inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1 text-xs font-semibold after:absolute after:-inset-y-2.5 after:inset-x-0 after:content-['']">
+                    <button onClick={() => coach.stop()} className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line px-4 text-sm font-semibold">
                       <Square size={12} /> Stop
                     </button>
                   )}
@@ -459,7 +459,7 @@ function Chat() {
                     className={cn("flex h-14 w-14 items-center justify-center rounded-full bg-ink text-white disabled:opacity-50", rec.isRecording && "ring-[6px] ring-brand")}>
                     {rec.isRecording ? <Square size={18} /> : <Mic size={22} />}
                   </button>
-                  <span className="mt-1 text-[11px] text-muted">{rec.isRecording ? `Tap to send · max ${maxSeconds}s` : "Tap to speak"}</span>
+                  <span className="mt-1 text-sm text-muted">{rec.isRecording ? `Tap to send · max ${maxSeconds}s` : "Tap to speak"}</span>
                 </div>
                 {rec.isRecording ? (
                   <VoiceState state="listening" seconds={rec.seconds} className="flex-1" />
@@ -468,7 +468,7 @@ function Chat() {
                     <input ref={answerField} value={text} maxLength={MAX} onChange={(e) => { if (e.target.value && began.current === null) began.current = Date.now(); setText(e.target.value); }} onKeyDown={(e) => e.key === "Enter" && submit()}
                       disabled={!s || send.isPending} aria-label="Your answer" placeholder="Type here"
                       className="w-full rounded-full border border-line px-3.5 py-3.5 outline-none focus:border-ink disabled:bg-black/[0.03]" />
-                    <p className="mt-1 text-right text-xs text-muted">{text.length} / {MAX}</p>
+                    <p className="mt-1 text-right text-sm text-muted">{text.length} / {MAX}</p>
                   </div>
                 )}
                 <button onClick={submit} disabled={!text.trim() || !s || send.isPending || rec.isRecording} aria-label="Send"
@@ -498,7 +498,7 @@ function Chat() {
 }
 
 function Problem({ help, onRetry, onRestart }: { help: Help; onRetry?: () => void; onRestart?: () => void }) {
-  const small = "!px-3 !py-1.5 text-xs";
+  const small = "!px-4 text-sm";
   return (
     <div role="alert" className="flex flex-wrap items-center gap-3 rounded-2xl bg-bad-bg p-4 text-sm">
       <CircleAlert className="shrink-0 text-bad" size={18} />
@@ -511,7 +511,7 @@ function Problem({ help, onRetry, onRestart }: { help: Help; onRetry?: () => voi
 }
 
 function StatusPill({ status, label }: { status: SentenceStatus; label: string }) {
-  return <span className={cn("inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-semibold", STATUS_STYLE[status])}>{label}</span>;
+  return <span className={cn("inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[13px] font-semibold", STATUS_STYLE[status])}>{label}</span>;
 }
 
 function Bubble({ m, icon, tint, user, onListen, sayItAgain, nailed }: {
@@ -536,9 +536,9 @@ function Bubble({ m, icon, tint, user, onListen, sayItAgain, nailed }: {
           {m.status && (nailed
             ? <StatusPill status="green" label="Nailed it" />
             : <StatusPill status={m.status} label={answerLabel(m.status, m.corrections?.length ?? 0)} />)}
-          {time && <span className="text-xs text-muted">{time}</span>}
+          {time && <span className="text-sm text-muted">{time}</span>}
           {onListen && (
-            <button onClick={onListen} className="relative inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs text-muted hover:bg-black/5 after:absolute after:-inset-3 after:content-['']" aria-label="Listen to this line">
+            <button onClick={onListen} className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm text-muted hover:bg-black/5" aria-label="Listen to this line">
               <Volume2 size={13} /> Listen
             </button>
           )}
@@ -558,7 +558,7 @@ function Fix({ c }: { c: Correction }) {
     <div className="mt-1.5">
       {/* Red is kept for "Redo" (docs/JURY_BRIEF.md, improvement 4): a small mistake is struck in gray. */}
       <p><s className="text-steel">{c.original}</s> → <span className="font-semibold text-[color:var(--good)]">{c.fixed}</span></p>
-      <p className="text-xs text-muted">{c.why}</p>
+      <p className="text-sm text-muted">{c.why}</p>
     </div>
   );
 }
@@ -602,12 +602,12 @@ function CorrectionCard({ c }: { c: Correction }) {
         </span>
         {grammar ? "Grammar correction" : "Better phrasing"}
       </p>
-      <p className="text-xs font-medium">Your sentence</p>
+      <p className="text-sm font-medium">Your sentence</p>
       <p className="mb-1 rounded-lg bg-white px-3 py-1.5 text-sm">{c.original}</p>
       <ArrowDown size={14} className="mx-auto my-1" />
-      <p className="text-xs font-medium">{grammar ? "Better version" : "More natural"}</p>
+      <p className="text-sm font-medium">{grammar ? "Better version" : "More natural"}</p>
       <p className="mb-2 rounded-lg bg-good-bg px-3 py-1.5 text-sm">{c.fixed}</p>
-      <p className="rounded-lg bg-white px-3 py-2 text-xs text-muted">{c.why}</p>
+      <p className="rounded-lg bg-white px-3 py-2 text-sm text-muted">{c.why}</p>
     </div>
   );
 }
@@ -716,7 +716,7 @@ function Report({ report, title, sessionId, explainDefault, onRestart }: { repor
 
       <div className="mt-6 flex flex-wrap gap-3">
         <Button onClick={onRestart}>Practice again</Button>
-        <Link href="/practice" className="inline-flex items-center justify-center gap-2 rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-black/5">
+        <Link href="/practice" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-black/5">
           Back to practice
         </Link>
         <InstallButton />

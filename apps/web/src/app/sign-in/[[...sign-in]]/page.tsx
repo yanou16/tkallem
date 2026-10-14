@@ -101,7 +101,7 @@ export default function SignInPage() {
           />
 
           <div className="flex justify-end pt-1">
-            <Link href="/forgot-password" className="inline-block py-2 text-[13px] font-medium text-ink underline underline-offset-2">
+            <Link href="/forgot-password" className="inline-flex min-h-11 items-center px-1 text-sm font-medium text-ink underline underline-offset-2">
               Forgot password?
             </Link>
           </div>
@@ -114,9 +114,9 @@ export default function SignInPage() {
             </PrimaryButton>
           </div>
 
-          <p className="pt-1 text-center text-[13px] text-[#6b6b75]">
+          <p className="pt-1 text-center text-sm text-[#6b6b75]">
             Don&apos;t have an account?{" "}
-            <Link href="/sign-up" className="inline-block py-2 font-medium text-ink underline underline-offset-2">
+            <Link href="/sign-up" className="inline-flex min-h-11 items-center px-1 font-medium text-ink underline underline-offset-2">
               Create an account
             </Link>
           </p>

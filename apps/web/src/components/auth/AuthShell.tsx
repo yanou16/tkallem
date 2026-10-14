@@ -56,9 +56,9 @@ export function AuthField({ label, hint, password, id, className = "", ...props 
 
   return (
     <div className={className}>
-      <label htmlFor={fieldId} className="mb-1.5 block text-[13px] font-medium text-[#16161a]">
+      <label htmlFor={fieldId} className="mb-1.5 block text-sm font-medium text-[#16161a]">
         {label}
-        {hint && <span className="ml-1 text-[11px] font-normal text-slate">({hint})</span>}
+        {hint && <span className="ml-1 text-sm font-normal text-slate">({hint})</span>}
       </label>
       <div className="relative">
         <input
@@ -117,7 +117,7 @@ export function GoogleButton({ onClick, loading, label = "Continue with Google" 
 
 export function OrDivider() {
   return (
-    <div className="flex items-center gap-3 py-1 text-[12px] text-slate">
+    <div className="flex items-center gap-3 py-1 text-sm text-slate">
       <span className="h-px flex-1 bg-[#ececef]" />
       or
       <span className="h-px flex-1 bg-[#ececef]" />
@@ -134,8 +134,8 @@ function FeatureCard({ icon, title, text }: { icon: ReactNode; title: string; te
     <div className="relative z-10 flex w-full max-w-[340px] items-center gap-3 rounded-2xl border border-black/5 bg-white px-4 py-3 shadow-[0_6px_20px_rgba(20,20,30,0.06)]">
       {icon}
       <div>
-        <p className="text-[13px] font-semibold text-[#16161a]">{title}</p>
-        <p className="text-[12px] text-[#6b6b75]">{text}</p>
+        <p className="text-sm font-semibold text-[#16161a]">{title}</p>
+        <p className="text-sm text-[#6b6b75]">{text}</p>
       </div>
     </div>
   );
@@ -183,7 +183,7 @@ function SignUpVisual() {
 
 function Pill({ text, className }: { text: string; className: string }) {
   return (
-    <div className={`absolute flex items-center gap-2 rounded-full border border-black/5 bg-white py-1.5 pl-1.5 pr-4 text-[12px] font-medium text-[#16161a] shadow-[0_6px_18px_rgba(20,20,30,0.07)] ${className}`}>
+    <div className={`absolute flex items-center gap-2 rounded-full border border-black/5 bg-white py-1.5 pl-1.5 pr-4 text-sm font-medium text-[#16161a] shadow-[0_6px_18px_rgba(20,20,30,0.07)] ${className}`}>
       <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#d9f5e8] text-[#1f9d6b]">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
           <rect x="9" y="3" width="6" height="12" rx="3" />
@@ -279,7 +279,7 @@ export function AuthCard({ title, subtitle, children }: { title: string; subtitl
 export function FormError({ message }: { message: string }) {
   if (!message) return null;
   return (
-    <p role="alert" className="rounded-lg bg-[#fdecec] px-3 py-2 text-[13px] text-[#b42318]">
+    <p role="alert" className="rounded-lg bg-[#fdecec] px-3 py-2 text-sm text-[#b42318]">
       {message}
     </p>
   );

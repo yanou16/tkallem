@@ -12,7 +12,7 @@ export const startHref = (scenarioId: string, mode: "practice" | "interview" = "
 
 export function StartButton({ href, label = "Start" }: { href: string; label?: string }) {
   return (
-    <Link href={href} className="inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-black/80">
+    <Link href={href} className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-black/80">
       {label} <ArrowRight size={14} />
     </Link>
   );
@@ -58,7 +58,7 @@ export function SessionList({ sessions, actions }: { sessions: SessionSummary[];
       {sessions.map((s) => (
         <li key={s.id} className="flex items-center gap-3 py-3">
           <div className="min-w-0 flex-1">
-            <Link href={sessionHref(s)} className="block truncate font-medium hover:underline">{s.title}</Link>
+            <Link href={sessionHref(s)} className="flex min-h-11 items-center truncate font-medium hover:underline">{s.title}</Link>
             <p className="text-sm text-muted">
               {answered(s)} · {s.endedAt ? "Finished" : "Not finished"} · {timeAgo(s.startedAt)}
             </p>

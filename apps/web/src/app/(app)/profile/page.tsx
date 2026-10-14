@@ -96,7 +96,7 @@ export default function ProfilePage() {
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
 
   const Pen = ({ onClick, label }: { onClick: () => void; label: string }) => (
-    <button onClick={onClick} aria-label={`Edit ${label}`} className="rounded-full p-1.5 text-muted hover:bg-black/5"><Pencil size={15} /></button>
+    <button onClick={onClick} aria-label={`Edit ${label}`} className="flex size-11 items-center justify-center rounded-full text-muted hover:bg-black/5"><Pencil size={16} /></button>
   );
 
   return (
@@ -195,7 +195,7 @@ export default function ProfilePage() {
               Learning goal
               <textarea rows={3} maxLength={MAX_TEXT} value={value} onChange={(e) => setValue(e.target.value)}
                 className="mt-1 w-full rounded-xl border border-line px-3 py-2.5 outline-none focus:border-ink" />
-              <span className="mt-1 block text-right text-xs font-normal text-muted">{value.length} / {MAX_TEXT}</span>
+              <span className="mt-1 block text-right text-sm font-normal text-muted">{value.length} / {MAX_TEXT}</span>
             </label>
           )}
           {edit === "focus" && (
@@ -238,7 +238,7 @@ function Badge({ a, tone }: { a: Achievement; tone: number }) {
       <div className="min-w-0">
         <p className="font-semibold">{a.title}</p>
         <p className="text-sm text-muted">{a.description}</p>
-        {!a.unlocked && <p className="mt-1 text-xs font-semibold text-muted">Locked</p>}
+        {!a.unlocked && <p className="mt-1 text-sm font-semibold text-muted">Locked</p>}
       </div>
     </div>
   );
@@ -250,7 +250,7 @@ function SetupCard({ tone, icon, title, text, empty, onEdit }: { tone: number; i
     <div className={cn("flex gap-4 rounded-card p-5", toneBg[t])}>
       <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl", toneDeep[t])}><Icon name={icon} /></span>
       <div className="flex-1"><p className="font-semibold">{title}</p><p className={cn("text-sm", text ? "text-muted" : "italic text-muted")}>{text || empty}</p></div>
-      <button onClick={onEdit} aria-label={`Edit ${title}`} className="h-fit rounded-full p-1.5 text-muted hover:bg-black/5"><Pencil size={15} /></button>
+      <button onClick={onEdit} aria-label={`Edit ${title}`} className="-mr-2 -mt-2 flex size-11 shrink-0 items-center justify-center rounded-full text-muted hover:bg-black/5"><Pencil size={16} /></button>
     </div>
   );
 }

@@ -10,7 +10,7 @@ export default function TryWithoutAccount() {
     >
       <span>
         <span className="block text-[14px] font-semibold text-[#16161a]">Try it first, no account needed</span>
-        <span className="block text-[13px] text-[#6b6b75]">Start a visa interview now · 40 free answers</span>
+        <span className="block text-sm text-[#6b6b75]">Start a visa interview now · 40 free answers</span>
       </span>
       <ArrowRight size={18} className="shrink-0 text-[#16161a]" />
     </Link>

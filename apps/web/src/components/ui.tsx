@@ -39,7 +39,7 @@ export function AvatarStack({ people, size = 34, max = 3 }: { people: { id: stri
 }
 
 export function Pill({ children, className }: { children: ReactNode; className?: string }) {
-  return <span className={cn("inline-flex items-center rounded-full bg-white/70 px-2.5 py-1 text-xs font-medium text-ink", className)}>{children}</span>;
+  return <span className={cn("inline-flex items-center rounded-full bg-white/70 px-2.5 py-1 text-[13px] font-medium text-ink", className)}>{children}</span>;
 }
 
 export function Button({ dark = true, className, ...p }: React.ButtonHTMLAttributes<HTMLButtonElement> & { dark?: boolean }) {
@@ -47,7 +47,7 @@ export function Button({ dark = true, className, ...p }: React.ButtonHTMLAttribu
     <button
       {...p}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
         dark ? "bg-ink text-white hover:bg-black/80" : "border border-line bg-white text-ink hover:bg-black/5",
         className,
       )}
@@ -63,7 +63,7 @@ export function SectionTitle({ title, action }: { title: string; action?: ReactN
   return (
     <div className="mb-3 flex items-center justify-between">
       <h2 className="text-lg font-semibold">{title}</h2>
-      {action && <div className="text-sm text-muted">{action}</div>}
+      {action && <div className="flex min-h-11 items-center text-sm text-muted">{action}</div>}
     </div>
   );
 }
@@ -98,7 +98,7 @@ export function ErrorState({ error, onRetry, className }: { error?: unknown; onR
         <p className="font-semibold">Couldn't load this</p>
         <p className="text-muted">{msg}</p>
       </div>
-      {onRetry && <Button dark={false} onClick={onRetry} className="!px-3 !py-1.5 text-xs">Try again</Button>}
+      {onRetry && <Button dark={false} onClick={onRetry} className="!px-4 text-sm">Try again</Button>}
     </div>
   );
 }

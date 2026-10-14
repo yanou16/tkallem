@@ -48,7 +48,7 @@ export default function MessageList({ groupId, log, myId }: { groupId: number; l
       <div ref={box} onScroll={onScroll} className="max-h-[60vh] min-h-[240px] space-y-3 overflow-y-auto pr-1" aria-live="polite">
         {log.hasOlder && (
           <div className="flex justify-center">
-            <Button dark={false} onClick={() => older.mutate()} disabled={older.isPending} className="!py-1.5 text-xs">
+            <Button dark={false} onClick={() => older.mutate()} disabled={older.isPending} className="text-sm">
               {older.isPending ? "Loading…" : "Load earlier messages"}
             </Button>
           </div>
@@ -66,8 +66,8 @@ export default function MessageList({ groupId, log, myId }: { groupId: number; l
                   <div className="min-w-0 flex-1">
                     <p className="flex flex-wrap items-baseline gap-x-2">
                       <span className="font-semibold">{memberName(m.author, mine)}</span>
-                      {m.authorLeft && <span className="text-xs text-muted">former member</span>}
-                      <span className="text-xs text-muted">{timeAgo(m.createdAt)}</span>
+                      {m.authorLeft && <span className="text-sm text-muted">former member</span>}
+                      <span className="text-sm text-muted">{timeAgo(m.createdAt)}</span>
                     </p>
                     <p className="mt-1 whitespace-pre-wrap break-words">{m.body}</p>
                   </div>

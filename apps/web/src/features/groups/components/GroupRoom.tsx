@@ -97,7 +97,7 @@ export default function GroupRoom({ summary }: { summary: GroupSummary }) {
                   placeholder="Write in English… (Enter to send, Shift+Enter for a new line)"
                   className="w-full resize-none rounded-xl border border-line p-3 outline-none focus:border-ink" />
                 <div className="mt-2 flex items-center justify-between gap-3">
-                  <span className={cn("text-xs", text.length > MESSAGE_MAX ? "font-semibold text-[color:var(--bad)]" : "text-muted")}>{text.length}/{MESSAGE_MAX}</span>
+                  <span className={cn("text-sm", text.length > MESSAGE_MAX ? "font-semibold text-[color:var(--bad)]" : "text-muted")}>{text.length}/{MESSAGE_MAX}</span>
                   <Button type="submit" disabled={!canSend}><SendHorizontal size={16} /> {send.isPending ? "Sending…" : "Send"}</Button>
                 </div>
                 {send.error && <p role="alert" className="mt-3 rounded-2xl bg-bad-bg px-4 py-3 text-sm">{sendError(send.error)}</p>}
