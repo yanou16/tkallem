@@ -1,16 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { CALLOUTS, DEFAULTS, INITIAL_PLAN, PLAN_STEPS, REGIONS, TABS, planReducer, planView } from "./tour";
+import { CALLOUTS, DEFAULTS, INITIAL_PLAN, PAGES, PAGE_CALLOUTS, PAGE_REGIONS, PLAN_STEPS, REGIONS, TABS, calloutsFor, planReducer, planView } from "./tour";
 
 describe("tabs and captions", () => {
   it("has three tabs, each with captions on both sides", () => {
     expect(TABS.map((t) => t.id)).toEqual(["platform", "plan", "voice"]);
-    for (const t of TABS) expect(new Set(CALLOUTS[t.id].map((c) => c.side))).toEqual(new Set(["left", "right"]));
+    for (const t of TABS) for (const p of PAGES) expect(new Set(calloutsFor(t.id, p.id).map((c) => c.side))).toEqual(new Set(["left", "right"]));
   });
   it("points every caption at a part the preview renders, with unique ids per tab", () => {
-    for (const t of TABS) {
-      const ids = CALLOUTS[t.id].map((c) => c.id);
+    for (const t of ["plan", "voice"] as const) {
+      const ids = CALLOUTS[t].map((c) => c.id);
       expect(new Set(ids).size).toBe(ids.length);
-      for (const c of CALLOUTS[t.id]) expect(REGIONS[t.id]).toContain(c.region);
+      for (const c of CALLOUTS[t]) expect(REGIONS[t]).toContain(c.region);
+    }
+  });
+});
+
+describe("the platform sidebar", () => {
+  it("has the six pages of the app, Home first, each with its own captions", () => {
+    expect(PAGES.map((p) => p.label)).toEqual(["Home", "Practice", "AI Chat", "Groups", "Progress", "Profile"]);
+    for (const p of PAGES) expect(PAGE_CALLOUTS[p.id].length).toBeGreaterThanOrEqual(4);
+  });
+  it("points every caption of every page at a part that page renders, with unique ids", () => {
+    for (const p of PAGES) {
+      const ids = PAGE_CALLOUTS[p.id].map((c) => c.id);
+      expect(new Set(ids).size).toBe(ids.length);
+      for (const c of PAGE_CALLOUTS[p.id]) expect(PAGE_REGIONS[p.id]).toContain(c.region);
     }
   });
 });

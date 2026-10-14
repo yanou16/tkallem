@@ -15,18 +15,7 @@ export const TABS: { id: TourTab; label: string; title: string; text: string }[]
   { id: "voice", label: "Voice", title: "Say it out loud, hear the coach answer", text: "Tap the microphone and answer. The coach replies in a natural voice." },
 ];
 
-export const CALLOUTS: Record<TourTab, Callout[]> = {
-  platform: [
-    { id: "kpi", label: "Progress that is measured", detail: "Mistakes per 100 words, practice time and streak, from your own sessions.", side: "left", region: "kpi" },
-    { id: "plan", label: "Your plan, in order", detail: "The situations that match your goal come first.", side: "left", region: "plan" },
-    { id: "groups", label: "Groups of your level", detail: "Write in English with other students (needs an account).", side: "left", region: "groups" },
-    { id: "situations", label: "Real situations", detail: "Visa, Campus France, job, IELTS and everyday scenes like the taxi or the cafe.", side: "left", region: "situations" },
-    { id: "credits", label: "Free to try", detail: "Guests get 40 free answers. No account needed.", side: "right", region: "credits" },
-    { id: "goal", label: "Today's goal", detail: "Your daily minutes of speaking, as a ring.", side: "right", region: "goal" },
-    { id: "real", label: "Real interview mode", detail: "Nothing is corrected until the end, like the real one.", side: "right", region: "real" },
-    { id: "mistakes", label: "Your top mistakes", detail: "What to work on next, from your last sessions.", side: "right", region: "mistakes" },
-    { id: "recent", label: "Recent sessions", detail: "Continue where you stopped, or do it again.", side: "right", region: "recent" },
-  ],
+export const CALLOUTS: Record<Exclude<TourTab, "platform">, Callout[]> = {
   plan: [
     { id: "progress", label: "One at a time", detail: "A progress bar and a Back button. Nothing heavy.", side: "left", region: "progress" },
     { id: "question", label: "Five short questions", detail: "Goal, level, time, what is hardest, subjects you like.", side: "left", region: "question" },
@@ -44,11 +33,73 @@ export const CALLOUTS: Record<TourTab, Callout[]> = {
 };
 
 /** The parts each preview renders: a caption may only point at one of them (tested). */
-export const REGIONS: Record<TourTab, string[]> = {
-  platform: ["plan", "situations", "groups", "kpi", "credits", "real", "goal", "mistakes", "recent"],
+export const REGIONS: Record<Exclude<TourTab, "platform">, string[]> = {
   plan: ["question", "progress", "skip", "choices", "result", "order"],
   voice: ["mic", "state", "transcript", "backup"],
 };
+
+/* ---------- the platform tab: a sidebar that works, one set of captions per page ---------- */
+export type PlatformPage = "home" | "practice" | "chat" | "groups" | "progress" | "profile";
+export const PAGES: { id: PlatformPage; label: string }[] = [
+  { id: "home", label: "Home" }, { id: "practice", label: "Practice" }, { id: "chat", label: "AI Chat" },
+  { id: "groups", label: "Groups" }, { id: "progress", label: "Progress" }, { id: "profile", label: "Profile" },
+];
+const c = (id: string, label: string, detail: string, side: "left" | "right", region = id): Callout => ({ id, label, detail, side, region });
+export const PAGE_CALLOUTS: Record<PlatformPage, Callout[]> = {
+  home: [
+    c("nav", "Click the menu", "Every page of the app is live in this preview: try Practice, AI Chat, Groups, Progress.", "left"),
+    c("kpi", "Progress that is measured", "Mistakes per 100 words, practice time and streak, from your own sessions.", "left"),
+    c("plan", "Your plan, in order", "The situations that match your goal come first.", "left"),
+    c("situations", "Real situations", "Visa, Campus France, job, IELTS and everyday scenes like the taxi or the cafe.", "left"),
+    c("credits", "Free to try", "Guests get 40 free answers. No account needed.", "right"),
+    c("goal", "Today's goal", "Your daily minutes of speaking, as a ring.", "right"),
+    c("real", "Real interview mode", "Nothing is corrected until the end, like the real one.", "right"),
+    c("mistakes", "Your top mistakes", "What to work on next, from your last sessions.", "right"),
+    c("recent", "Recent sessions", "Continue where you stopped, or do it again.", "right"),
+  ],
+  practice: [
+    c("planlink", "Your plan, one tap away", "Redo the five questions whenever your goal changes.", "left"),
+    c("grid", "Ten real situations", "Interviews, exams and everyday scenes, in the order of your plan.", "left"),
+    c("real", "Practice or Real interview", "Every situation can be run as the real thing.", "right"),
+    c("recent", "Pick up where you left off", "Your recent sessions, one tap to continue or redo.", "right"),
+  ],
+  chat: [
+    c("mode", "Practice or Real interview", "Practice corrects after each answer. Real interview shows nothing until the end.", "left"),
+    c("question", "The real questions", "The coach plays the officer, the advisor or the recruiter.", "left"),
+    c("help", "Help me start", "Frozen? Get the first words, or say your idea in French or Darija and get it in English.", "left"),
+    c("feedback", "One good thing, one fix", "A true compliment first, then the correction that matters most.", "right"),
+    c("again", "Say it again", "Repeat the corrected sentence. The code checks it, not the AI.", "right"),
+    c("answer", "Type or speak", "Answer the way you prefer. Two free hints per question.", "right"),
+  ],
+  groups: [
+    c("theme", "A theme a week, a question a day", "The same for every group: you answer it in the chat.", "left"),
+    c("messages", "Up to 8 students of your level", "Write in English together, every day.", "left"),
+    c("check", "Check before you send", "The corrector runs on your draft. Only you see it.", "right"),
+    c("board", "A friendly leaderboard", "Minutes spoken this week, by members of your group.", "right"),
+  ],
+  progress: [
+    c("metrics", "Numbers, not feelings", "Mistakes, words per answer and hesitations, session after session.", "left"),
+    c("freeze", "Time before you speak", "The seconds between the question and your first word: the freeze, made visible.", "left"),
+    c("confidence", "How confident you feel", "You rate it before and after each session.", "right"),
+    c("top", "Your top mistakes", "The rules you break most often, with your own sentences.", "right"),
+  ],
+  profile: [
+    c("setup", "Your learning setup", "Level, goal, daily minutes and focus, filled by your plan.", "left"),
+    c("lang", "Explained in French", "Corrections come in French or simple English, as you prefer.", "left"),
+    c("focus", "What the coach keeps in mind", "The two things you said are hardest.", "right"),
+    c("badges", "Badges to unlock", "First session, a streak, a spoken session.", "right"),
+  ],
+};
+export const PAGE_REGIONS: Record<PlatformPage, string[]> = {
+  home: ["nav", "kpi", "plan", "situations", "credits", "goal", "real", "mistakes", "recent"],
+  practice: ["planlink", "grid", "real", "recent"],
+  chat: ["mode", "question", "help", "feedback", "again", "answer"],
+  groups: ["theme", "messages", "check", "board"],
+  progress: ["metrics", "freeze", "confidence", "top"],
+  profile: ["setup", "lang", "focus", "badges"],
+};
+/** The captions of what is on screen: the page for the platform tab, the tab otherwise. */
+export const calloutsFor = (tab: TourTab, page: PlatformPage): Callout[] => (tab === "platform" ? PAGE_CALLOUTS[page] : CALLOUTS[tab]);
 
 /** The situations as the API lists them (same ids, titles, minutes, levels and categories). */
 export const DEMO_SCENARIOS = [

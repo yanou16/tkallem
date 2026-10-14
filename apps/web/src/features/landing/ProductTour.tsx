@@ -1,34 +1,21 @@
 "use client";
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useReducer, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Check, Globe, Lightbulb, Lock, Mic, Zap } from "lucide-react";
-import { Icon } from "@/lib/icons";
+import { ArrowLeft, ArrowRight, Check, Globe, Lightbulb, Mic } from "lucide-react";
 import { scenarioTint } from "@/lib/tint";
 import { cn } from "@/lib/utils";
 import {
   FOCUS_CHOICES, GOALS, INTEREST_CHOICES, LEVEL_CHOICES, MAX_FOCUS, MINUTE_CHOICES,
 } from "@/features/plan/lib/plan";
+import Platform from "./PlatformPages";
+import { Browser, Lit, Pill, R } from "./TourParts";
 import {
-  CALLOUTS, INITIAL_PLAN, PLAN_STEPS, TABS, planReducer, planView,
-  type Callout, type PlanAction, type PlanDemo, type TourTab,
+  INITIAL_PLAN, PAGES, PLAN_STEPS, TABS, calloutsFor, planReducer, planView,
+  type Callout, type PlanAction, type PlanDemo, type PlatformPage, type TourTab,
 } from "./tour";
 
 const LIT_MS = 3200;
 const WIDE = 1024; // lg: captions on both sides with lines; under it, cards below the preview
-
-const Lit = createContext<string | null>(null);
-
-/** A part of the preview a caption can point at: lit when its caption is active, the rest fades. */
-function R({ id, className, children, as: Tag = "div" }: { id: string; className?: string; children: ReactNode; as?: "div" | "span" | "p" }) {
-  const active = useContext(Lit);
-  return (
-    <Tag data-region={id}
-      className={cn("transition-opacity duration-200", active && active !== id && "opacity-30",
-        active === id && "rounded-lg outline outline-2 outline-offset-[3px] outline-ink", className)}>
-      {children}
-    </Tag>
-  );
-}
 
 type Line = { id: string; x1: number; y1: number; x2: number; y2: number };
 
@@ -39,6 +26,7 @@ type Line = { id: string; x1: number; y1: number; x2: number; y2: number };
  */
 export default function ProductTour() {
   const [tab, setTab] = useState<TourTab>("platform");
+  const [page, setPage] = useState<PlatformPage>("home");
   const [active, setActive] = useState<string | null>(null);
   const [auto, setAuto] = useState(true);
   const [visible, setVisible] = useState(false);
@@ -46,7 +34,7 @@ export default function ProductTour() {
   const [plan, dispatch] = useReducer(planReducer, INITIAL_PLAN);
   const [lines, setLines] = useState<Line[]>([]);
   const stage = useRef<HTMLDivElement>(null);
-  const callouts = CALLOUTS[tab];
+  const callouts = calloutsFor(tab, page);
   const left = callouts.filter((c) => c.side === "left");
   const right = callouts.filter((c) => c.side === "right");
 
@@ -69,13 +57,23 @@ export default function ProductTour() {
     return () => io.disconnect();
   }, []);
 
-  // The tour: one caption after the other, until the visitor takes over.
+  // The tour: one caption after the other; the platform tab then moves to the next page of the menu, until the visitor takes over.
   const turn = useRef(0);
-  useEffect(() => { turn.current = 0; setActive(null); }, [tab]);
+  const now = useRef({ tab, page });
+  now.current = { tab, page };
+  useEffect(() => { turn.current = 0; setActive(null); }, [tab, page]);
   useEffect(() => {
     if (!auto || calm || !visible) return;
     const tick = () => {
-      const c = callouts[turn.current % callouts.length];
+      const { tab: t, page: p } = now.current;
+      const list = calloutsFor(t, p);
+      if (turn.current >= list.length) {
+        const next = PAGES[PAGES.findIndex((x) => x.id === p) + 1];
+        if (t === "platform" && next) setPage(next.id); // the effect above resets the turn
+        else { setAuto(false); setActive(null); }
+        return;
+      }
+      const c = list[turn.current];
       turn.current += 1;
       show(c.region);
     };
@@ -111,10 +109,10 @@ export default function ProductTour() {
     if (stage.current) ro.observe(stage.current);
     window.addEventListener("resize", measure);
     return () => { ro.disconnect(); window.removeEventListener("resize", measure); };
-  }, [measure, tab, plan.step]);
+  }, [measure, tab, page, plan.step]);
 
   const meta = TABS.find((t) => t.id === tab)!;
-  const choose = (t: TourTab) => { setTab(t); setActive(null); setAuto(true); };
+  const choose = (t: TourTab) => { setTab(t); setPage("home"); setActive(null); setAuto(true); };
   const caption = (c: Callout) => (
     <button key={c.id} type="button" data-callout={c.region} data-side={c.side}
       aria-pressed={active === c.region}
@@ -171,7 +169,7 @@ export default function ProductTour() {
               {left.map(caption)}
             </div>
             <div className="min-w-0 max-lg:order-1 max-lg:mx-auto max-lg:w-full max-lg:max-w-[720px]">
-              {tab === "platform" && <Platform plan={plan} />}
+              {tab === "platform" && <Platform plan={plan} page={page} onPage={(p) => { setAuto(false); setPage(p); }} />}
               {tab === "plan" && <PlanPreview plan={plan} act={act} />}
               {tab === "voice" && <VoicePreview />}
             </div>
@@ -190,88 +188,6 @@ export default function ProductTour() {
         <p className="text-sm text-slate">No account needed · 40 free answers</p>
       </div>
     </section>
-  );
-}
-
-/* ---------- frames ---------- */
-function Browser({ url, children }: { url: string; children: ReactNode }) {
-  return (
-    <div className="overflow-hidden rounded-[20px] border border-hairline bg-canvas shadow-[0_16px_48px_-8px_rgba(5,0,56,0.12)]">
-      <div className="flex items-center gap-3 border-b border-hairline-soft px-4 py-3">
-        <span className="flex gap-1.5" aria-hidden>{[0, 1, 2].map((i) => <i key={i} className="size-[11px] rounded-full bg-hairline" />)}</span>
-        <span className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-surface px-3 py-1 text-[13px] text-slate"><Lock size={12} aria-hidden /> {url}</span>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function Pill({ children, className }: { children: ReactNode; className?: string }) {
-  return <span className={cn("whitespace-nowrap rounded-full border border-hairline bg-canvas px-2.5 py-1 text-xs font-semibold", className)}>{children}</span>;
-}
-
-/* ---------- tab 1: the connected platform ---------- */
-const NAV = ["Home", "Practice", "AI Chat", "Groups", "Progress", "Profile"];
-
-function Ring({ done, goal }: { done: number; goal: number }) {
-  const r = 26, c = 2 * Math.PI * r;
-  return (
-    <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden>
-      <circle cx="32" cy="32" r={r} fill="none" stroke="var(--hairline-soft)" strokeWidth="8" />
-      <circle cx="32" cy="32" r={r} fill="none" stroke="var(--ink)" strokeWidth="8" strokeLinecap="round"
-        strokeDasharray={`${c * Math.min(done / goal, 1)} ${c}`} transform="rotate(-90 32 32)" />
-    </svg>
-  );
-}
-
-function Platform({ plan }: { plan: PlanDemo }) {
-  const v = planView(plan);
-  return (
-    <Browser url="tkallem.vercel.app/practice">
-      <div className="grid min-h-[480px] grid-cols-1 text-[13px] md:grid-cols-[132px_1fr]">
-        <aside className="hidden flex-col gap-1 border-r border-hairline-soft p-3 md:flex" aria-hidden>
-          <div className="mb-2 flex items-center gap-2 text-[15px] font-semibold"><b className="flex size-[26px] items-center justify-center rounded-lg bg-brand-yellow text-[13px]">T</b>Tkallem</div>
-          {NAV.map((n) => n === "Groups"
-            ? <R key={n} id="groups" className="rounded-full px-2.5 py-2 font-medium text-slate">{n}</R>
-            : <div key={n} className={cn("rounded-full px-2.5 py-2 font-medium", n === "Home" ? "bg-ink text-white" : "text-slate")}>{n}</div>)}
-        </aside>
-        <div className="min-w-0 p-4 md:p-5">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <span className="text-xs text-slate">Salam Amina · {v.level}</span>
-            <R id="credits" as="span"><Pill className="inline-flex items-center gap-1"><Zap size={12} aria-hidden /> 33 free answers</Pill></R>
-          </div>
-          <h3 className="mb-3 text-[22px] font-medium leading-tight tracking-tight">Ready for {v.minutes} minutes of speaking?</h3>
-          <R id="kpi" className="mb-3 grid grid-cols-3 gap-2">
-            {[["Mistakes per 100 words", "12.4", "↓ 3.1"], ["Practice this week", "42 min", ""], ["Streak", "3 days", ""]].map(([k, val, d]) => (
-              <div key={k} className="rounded-2xl border border-hairline p-2.5"><span className="block text-[11px] text-slate">{k}</span><b className="text-xl font-medium">{val}</b>{d && <em className="ml-1 text-[11px] font-semibold not-italic text-good">{d}</em>}</div>
-            ))}
-          </R>
-          <div className="grid gap-3 md:grid-cols-[1fr_180px]">
-            <div>
-              <R id="plan" className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate">Your plan, in order</R>
-              <R id="situations" className="grid grid-cols-2 gap-2">
-                {v.path.map((s, i) => (
-                  <div key={s.id} className={cn("flex min-h-[92px] flex-col gap-1.5 rounded-[18px] p-3", scenarioTint(s.category), s.category === "speaking" && "border border-hairline-soft")}>
-                    <span className="flex size-[22px] items-center justify-center rounded-full bg-canvas text-[11px] font-semibold">{i + 1}</span>
-                    <span className="flex items-start justify-between gap-1 text-sm font-semibold"><span>{s.title}</span><Icon name={s.icon} size={15} /></span>
-                    <small className="text-[11px] text-charcoal">{s.minutes} min · {s.level}</small>
-                    {i === 1 ? <R id="real" as="span" className="mt-auto text-[11px] font-semibold">Real interview →</R> : <span className="mt-auto text-[11px] font-semibold">Practice →</span>}
-                  </div>
-                ))}
-              </R>
-            </div>
-            <div className="space-y-2.5">
-              <R id="goal" className="rounded-2xl border border-hairline p-3"><h4 className="mb-2 text-[13px] font-semibold">Today&apos;s goal</h4>
-                <div className="flex items-center gap-2.5"><Ring done={6} goal={v.minutes} /><div><b className="text-base">6 / {v.minutes} min</b><div className="text-xs text-slate">Practice today</div></div></div></R>
-              <R id="mistakes" className="rounded-2xl border border-hairline p-3"><h4 className="mb-1 text-[13px] font-semibold">Your top mistakes</h4>
-                {[["Verb tense", "5×"], ["Articles", "3×"]].map(([k, n]) => <div key={k} className="flex justify-between border-t border-hairline-soft py-1.5 text-xs first:border-0">{k}<b className="text-slate">{n}</b></div>)}</R>
-              <R id="recent" className="rounded-2xl border border-hairline p-3"><h4 className="mb-1 text-[13px] font-semibold">Recent sessions</h4>
-                {[["Visa interview", "2 h ago"], ["At the airport", "Mon"]].map(([k, n]) => <div key={k} className="flex justify-between border-t border-hairline-soft py-1.5 text-xs first:border-0">{k}<b className="text-slate">{n}</b></div>)}</R>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Browser>
   );
 }
 
