@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { CALLOUTS, DEFAULTS, INITIAL_PLAN, PAGES, PAGE_CALLOUTS, PAGE_REGIONS, PLAN_STEPS, REGIONS, TABS, calloutsFor, planReducer, planView } from "./tour";
+import { CALLOUTS, DEFAULTS, INITIAL_PLAN, PAGES, PAGE_CALLOUTS, PAGE_ORDER, PAGE_REGIONS, PLAN_STEPS, REGIONS, TABS, calloutsFor, menuOf, planReducer, planView } from "./tour";
 
 describe("tabs and captions", () => {
   it("has three tabs, each with captions on both sides", () => {
     expect(TABS.map((t) => t.id)).toEqual(["platform", "plan", "voice"]);
+    for (const t of TABS) for (const p of PAGE_ORDER) expect(calloutsFor(t.id, p).length).toBeGreaterThan(0);
     for (const t of TABS) for (const p of PAGES) expect(new Set(calloutsFor(t.id, p.id).map((c) => c.side))).toEqual(new Set(["left", "right"]));
   });
   it("points every caption at a part the preview renders, with unique ids per tab", () => {
@@ -16,12 +17,15 @@ describe("tabs and captions", () => {
 });
 
 describe("the platform sidebar", () => {
-  it("has the six pages of the app, Home first, each with its own captions", () => {
-    expect(PAGES.map((p) => p.label)).toEqual(["Home", "Practice", "AI Chat", "Groups", "Progress", "Profile"]);
-    for (const p of PAGES) expect(PAGE_CALLOUTS[p.id].length).toBeGreaterThanOrEqual(4);
+  it("has the five entries of the real menu, Practice and AI Chat being one, and the conversation opens from Practice", () => {
+    expect(PAGES.map((p) => p.label)).toEqual(["Home", "Practice", "Groups", "Progress", "Profile"]);
+    expect(PAGE_ORDER).toEqual(["home", "practice", "chat", "groups", "progress", "profile"]);
+    expect(menuOf("chat")).toBe("practice");
+    expect(menuOf("home")).toBe("home");
+    for (const p of PAGE_ORDER) expect(PAGE_CALLOUTS[p].length).toBeGreaterThanOrEqual(4);
   });
   it("points every caption of every page at a part that page renders, with unique ids", () => {
-    for (const p of PAGES) {
+    for (const p of PAGE_ORDER.map((id) => ({ id }))) {
       const ids = PAGE_CALLOUTS[p.id].map((c) => c.id);
       expect(new Set(ids).size).toBe(ids.length);
       for (const c of PAGE_CALLOUTS[p.id]) expect(PAGE_REGIONS[p.id]).toContain(c.region);

@@ -6,7 +6,6 @@ import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useUpdateProfile } from "@/features/profile/hooks/useProfile";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
 import { startHref } from "@/components/cards";
-import { Icon } from "@/lib/icons";
 import { scenarioTint } from "@/lib/tint";
 import { cn } from "@/lib/utils";
 import {
@@ -161,7 +160,6 @@ function Summary({ a, saving, failed, retry, scenarios, level }: {
                 <span className="block font-semibold">{s.title}</span>
                 <span className="block text-sm">{s.minutes ? `${s.minutes} min` : ""}{s.level ? ` · ${s.level}` : ""}</span>
               </span>
-              <Icon name={s.icon ?? undefined} size={22} />
             </Link>
           </li>
         ))}
