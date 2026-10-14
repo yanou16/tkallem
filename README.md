@@ -34,7 +34,7 @@ A language model never decides alone what a student sees. Everything below is ch
 
 | The model proposes | The code decides |
 |---|---|
-| Mistakes to correct | Keeps at most 3; drops a fix that changes nothing, quotes words the student did not say, removes a name or a number, or rewrites far more than it replaces; merges fixes that touch the same words; the sentence colour comes from the fixes |
+| Mistakes to correct | Keeps at most 3; drops a fix that changes nothing, quotes words the student did not say, removes a name or a number, or rewrites far more than it replaces; merges fixes that touch the same words; the sentence color comes from the fixes |
 | A compliment | Kept only if it is short, only positive, quotes the student's own words, does not name anything absent from the answer and does not praise the mistake itself |
 | The coach's reply | The next question is added verbatim from the scenario; a question is repeated at most once; answered questions are skipped; nothing reopens after the closing line; in a real interview any praise is replaced by "Thank you." |
 | Sentence starters, translations | 12 words at most and stopping before the content (never a complete answer); a translation must keep every name and number, add none, and be a finished sentence; otherwise the scenario's own starter is used |
@@ -57,7 +57,7 @@ flowchart LR
   A --> D[(Postgres<br/>Neon, Frankfurt)]
 ```
 
-Each answer starts three things at once (the credit, the transcription, then the corrector and the coach in parallel), and
+Each answer starts three things at once (the answer count, the transcription, then the corrector and the coach in parallel), and
 the text and the voice stream back as soon as they exist. Every provider has a backup, so a rate limit during the judging
 week costs a second, not the session.
 
@@ -115,7 +115,7 @@ cd apps/web && npm run typecheck && npm test                            # web
 
 ## Cost and judging-week safety
 
-Every answer costs one credit (40 for a guest, more after sign-in, a few every day). `DAILY_SPEND_CAP` bounds what everyone
+Every answer uses one free answer (40 for a guest, 60 more after sign-in, then 15 every day). `DAILY_SPEND_CAP` bounds what everyone
 together can spend per day; at 80 % and at 100 % the API logs an alert and posts to a webhook if one is set. A spoken
 answer costs under half a cent today. Details: [`docs/CREDITS.md`](docs/CREDITS.md), [`docs/OPERATIONS.md`](docs/OPERATIONS.md),
 deployment: [`infra/azure/README.md`](infra/azure/README.md).
@@ -125,7 +125,7 @@ deployment: [`infra/azure/README.md`](infra/azure/README.md).
 Git history shows the real split (the same person sometimes commits under two names). `[TEAM: each person checks their own line]`
 
 - **Rayane Louzazna**: tech lead. The AI coach (agent, prompts, guardrails, evaluation sets), the voice pipeline and its
-  backups, credits and guest mode, deployment (Azure, Neon, Vercel), the CI/CD, the four improvements and the report.
+  backups, free answers and guest mode, deployment (Azure, Neon, Vercel), the CI/CD, the four improvements and the report.
 - **Zaki**: the API (sessions, profile, progress, achievements, database and migrations) and the first voice work.
 - **Akram (Wad2o)**: front-end screens and the profile pages. `[TEAM: Akram, add what else you did]`
 
@@ -150,10 +150,10 @@ Large parts of the code were written with Claude Code (an AI coding assistant), 
 
 ```
 apps/web/        Next.js app (screens, PWA, welcome page preview)
-apps/api/        FastAPI (routes, database, voice, credits, migrations)
+apps/api/        FastAPI (routes, database, voice, answer allowance, migrations)
 packages/agent/  the coach: LangGraph, prompts, scenarios, guardrails, evals
 packages/contracts/  OpenAPI and the agent turn schema, shared by the three
-docs/            design system, credits, testing, operations, impact, submission, what next
+docs/            design system, free answers, testing, operations, impact, submission, what next
 infra/azure/     deployment script and notes
 ```
 

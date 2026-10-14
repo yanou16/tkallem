@@ -18,7 +18,7 @@ export type PlanAnswers = {
 export const EMPTY_PLAN: PlanAnswers = { goal: null, level: null, minutes: null, focus: [], interests: [] };
 export const MAX_FOCUS = 2;
 
-/** `label` is what the profile stores in learning_goal, `first` the situations to practise first, in order. */
+/** `label` is what the profile stores in learning_goal, `first` the situations to practice first, in order. */
 export const GOALS: { id: GoalId; label: string; first: string[] }[] = [
   { id: "visa", label: "Pass a visa interview", first: ["visa-us", "visa-business", "airport", "taxi"] },
   { id: "study", label: "Study abroad (Campus France, university)", first: ["campus-france", "visa-us", "cafe", "free-talk"] },

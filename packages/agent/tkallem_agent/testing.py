@@ -47,7 +47,7 @@ class FakeChat:
     def invoke(self, prompt, config=None):  # plain text call: the report note
         with self.lock:
             self.calls["text"] += 1
-            out = self.text.pop(0) if self.text else "Good work. Keep practising."
+            out = self.text.pop(0) if self.text else "Good work. Keep practicing."
         if isinstance(out, Exception):
             raise out
         return SimpleNamespace(content=out)

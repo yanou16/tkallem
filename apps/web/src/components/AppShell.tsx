@@ -161,7 +161,7 @@ function GuestUnavailable() {
   return (
     <div className="mt-8 max-w-md rounded-2xl border border-line bg-white p-5">
       <p className="text-lg font-semibold">Please sign in to start</p>
-      <p className="mt-1 text-sm text-muted">Practice without an account is not available right now. Signing in is free and gives you credits to practise.</p>
+      <p className="mt-1 text-sm text-muted">Practice without an account is not available right now. Signing in is free and gives you answers to practice.</p>
       <Link href={ROUTES.signUp} className="mt-4 inline-block rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white">Create a free account</Link>
     </div>
   );

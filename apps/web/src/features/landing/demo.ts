@@ -18,7 +18,7 @@ export const CALLOUTS: Record<DemoTab, Callout[]> = {
     { id: "mode", label: "Practice or Real interview", detail: "Practice corrects after each answer. Real interview shows nothing until the end, like the real one.", side: "left", region: "mode" },
     { id: "question", label: "The real questions", detail: "The coach plays the visa officer, the advisor or the recruiter and asks questions from real interviews.", side: "left", region: "question" },
     { id: "help", label: "Help me start", detail: "Frozen? Get the first words of an answer, or say your idea in French or Darija and get it in English.", side: "left", region: "help" },
-    { id: "answer", label: "Type or speak", detail: "Answer the way you prefer. Two free hints per question, no credit spent.", side: "right", region: "answer" },
+    { id: "answer", label: "Type or speak", detail: "Answer the way you prefer. Two free hints per question, no answer used.", side: "right", region: "answer" },
     { id: "feedback", label: "One thing that was good, one fix", detail: "A true compliment first, then the correction that matters most. The other small fixes stay folded.", side: "right", region: "feedback" },
     { id: "again", label: "Say it again", detail: "Repeat the corrected sentence out loud. The code checks it, not the AI: Nailed it, or a gentle hint.", side: "right", region: "again" },
   ],

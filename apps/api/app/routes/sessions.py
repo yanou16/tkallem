@@ -438,7 +438,7 @@ def say_it_again(
 ) -> dict:
     """"Say it again": the student says the corrected version of answer number `turn` (0 = first answer) out loud. The
     code decides if it matches (tkallem_agent.repeat). Free, at most REPEAT_LIMIT tries per answer; the interview does
-    not move on, and it works after the session ended too (to practise from the report)."""
+    not move on, and it works after the session ended too (to practice from the report)."""
     with connect() as conn:
         session = get_session_for_user(conn, session_id, user["id"])
     if session is None:
@@ -454,7 +454,7 @@ def say_it_again(
     key = (session_id, turn)
     used = _repeat_calls.get(key, 0)
     if used >= REPEAT_LIMIT:
-        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "You tried 3 times: go on with the interview, you can practise it again later")
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "You tried 3 times: go on with the interview, you can practice it again later")
     if not _hourly_ok(_repeat_times, str(user["id"]), REPEATS_PER_HOUR, time.monotonic()):
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many tries in the last hour: take a break and come back")
     data = audio.file.read(settings.max_audio_bytes + 1)
