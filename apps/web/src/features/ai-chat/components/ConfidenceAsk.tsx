@@ -33,7 +33,7 @@ export default function ConfidenceAsk({ sessionId, when, question, value, onSkip
           </button>
         ))}
         {onSkip && picked === null && (
-          <button onClick={onSkip} className="ml-1 inline-flex min-h-11 items-center px-2 text-sm font-medium text-ink underline underline-offset-2">Skip</button>
+          <button onClick={onSkip} className="ml-1 inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-sm font-medium text-ink underline underline-offset-2">Skip</button>
         )}
       </div>
       <p role="status" className="mt-1 min-h-5 text-slate">

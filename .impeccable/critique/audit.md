@@ -39,3 +39,9 @@ Method: scripted pass with Chromium (phone viewport 375x812, device scale 2) on 
 
 ## Not verified
 VoiceOver/TalkBack, 200% zoom, keyboard-only walk-through of the chat, iPhone Safari, 320px width.
+
+## After the fixes (item 7, second scripted pass, same method)
+- Controls under 44px: Practice cards 10 to 0, Profile 9 to 0, Home 7 to 1, chat and report 6 to 2 (the "Skip" confidence link was 43px wide and the help close button 24px). The last 8 offenders (sign-in "Forgot password?" and "Create an account", sign-up "Sign in", forgot-password link, "Skip", "Close help", Home "View all scenarios") were fixed in the final commit of the same PR; that last change was type-checked and unit-tested but not measured by a third scripted pass.
+- Text under 14px: running text is now 14px or more everywhere in the app (explanations, timestamps, counters, hints, auth copy). What stays under 14px is deliberate: status chips and level badges at 13px (the caption token of docs/DESIGN.md), the bottom navigation labels at 12px, and the landing demo mock, which is an illustration of the interface at reduced size (30 items).
+- Contrast: the one real failure (steel on amber in the hero example) now uses slate.
+- Not verified: the chat step "answer after Help me start" timed out in the script (the input was disabled while the coach voice played); it works by hand.

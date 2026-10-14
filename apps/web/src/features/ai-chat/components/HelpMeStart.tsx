@@ -70,7 +70,7 @@ export default function HelpMeStart({ sessionId, questionKey, typing, recording,
     <section aria-label="Help me start" className="mx-4 mt-3 rounded-2xl border border-line bg-surface p-3 text-sm">
       <div className="flex items-start justify-between gap-2">
         <p className="font-semibold">Help me start</p>
-        <button onClick={close} aria-label="Close help" className="relative -m-1 rounded-full p-1 after:absolute after:-inset-2.5 after:content-['']">
+        <button onClick={close} aria-label="Close help" className="-my-2 -mr-2 flex size-11 items-center justify-center rounded-full">
           <X size={16} />
         </button>
       </div>

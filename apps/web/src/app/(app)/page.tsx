@@ -31,7 +31,7 @@ export default function HomePage() {
         </Async>
 
         <div className="mt-8">
-          <SectionTitle title="Practice a real situation" action={<Link href="/practice" className="inline-flex items-center gap-1">View all scenarios <ArrowRight size={14} /></Link>} />
+          <SectionTitle title="Practice a real situation" action={<Link href="/practice" className="inline-flex min-h-11 items-center gap-1">View all scenarios <ArrowRight size={14} /></Link>} />
           <Async
             query={useScenarios()}
             skeleton={<CardsSkeleton />}
@@ -148,7 +148,7 @@ function TopMistakesCard() {
               {p.topMistakes.map((m) => (
                 <li key={m.id} className="flex items-center justify-between py-3">
                   <div><p className="font-medium">{mistakeLabel(m.category)}</p><p className="text-sm text-muted">{m.original} → {m.correction}</p></div>
-                  <span className="rounded-full bg-black/5 px-2.5 py-1 text-xs font-medium">{m.count}×</span>
+                  <span className="rounded-full bg-black/5 px-2.5 py-1 text-[13px] font-medium">{m.count}×</span>
                 </li>
               ))}
             </ul>

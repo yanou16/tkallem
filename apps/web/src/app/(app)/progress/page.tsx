@@ -74,7 +74,7 @@ export default function ProgressPage() {
                       <p className="font-medium">{mistakeLabel(m.category)}</p>
                       <p className="text-sm text-muted">{m.original} → {m.correction}</p>
                     </div>
-                    <span className="rounded-full bg-black/5 px-2.5 py-1 text-xs font-medium">{m.count}×</span>
+                    <span className="rounded-full bg-black/5 px-2.5 py-1 text-[13px] font-medium">{m.count}×</span>
                   </li>
                 ))}
               </ul>

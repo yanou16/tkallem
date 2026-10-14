@@ -24,7 +24,7 @@ export default function Leaderboard({ query }: { query: Query }) {
                 <Avatar first={e.member.firstName ?? undefined} size={36} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate">{memberName(e.member, e.isMe)}</p>
-                  <p className="text-xs font-normal text-muted">Streak: {plural(e.streakDays, "day")}</p>
+                  <p className="text-sm font-normal text-muted">Streak: {plural(e.streakDays, "day")}</p>
                 </div>
                 <span className="text-sm">{formatMinutes(e.weekSeconds / 60)}</span>
               </li>
