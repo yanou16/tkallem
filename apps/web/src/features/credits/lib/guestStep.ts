@@ -1,5 +1,5 @@
 /** Routes a visitor may use without an account (must match the public routes of src/proxy.ts). */
-export const GUEST_ROUTES = ["/practice", "/ai-chat", "/plan"];
+export const GUEST_ROUTES = ["/practice", "/ai-chat", "/plan", "/groups"];
 
 /**
  * What the app does about the visitor's identity on this screen:

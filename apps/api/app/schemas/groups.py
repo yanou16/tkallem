@@ -37,6 +37,13 @@ class GroupSummary(BaseModel):
     theme: Theme  # the theme of the week, the same for every group
 
 
+class GroupPreview(BaseModel):
+    """What a visitor without an account may see: this week's theme, today's question, and groups of their level
+    (name, level, how many students). Never a member's name or a message."""
+    theme: ThemeOfTheDay
+    groups: list[GroupSummary]
+
+
 class GroupMember(BaseModel):
     id: int
     first_name: str | None

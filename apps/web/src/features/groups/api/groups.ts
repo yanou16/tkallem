@@ -10,6 +10,8 @@ import type {
   GroupMemberDto,
   GroupMessage,
   GroupMessageDto,
+  GroupPreview,
+  GroupPreviewDto,
   GroupSummary,
   GroupSummaryDto,
   LeaderboardEntry,
@@ -99,3 +101,6 @@ export const getLeaderboard = (id: number) =>
 /** The first name the other members see (PATCH /me first_name). */
 export const saveFirstName = (firstName: string) =>
   api.patch<MeDto>(endpoints.me, { first_name: firstName }).then(mapMe);
+
+export const mapGroupPreview = (p: GroupPreviewDto): GroupPreview => ({ theme: p.theme, groups: p.groups.map(mapGroupSummary) });
+export const getGroupPreview = () => api.get<GroupPreviewDto>(endpoints.groups.preview).then(mapGroupPreview);

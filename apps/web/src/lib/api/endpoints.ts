@@ -18,6 +18,8 @@ export const endpoints = {
   },
   groups: {
     mine: "/me/group",
+    /** The only group route a guest may call: theme, question of the day, a few groups (no names, no messages). */
+    preview: "/groups/preview",
     join: "/groups/join",
     detail: (id: number) => `/groups/${id}`,
     messages: (id: number) => `/groups/${id}/messages`,

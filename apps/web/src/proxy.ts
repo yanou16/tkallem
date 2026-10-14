@@ -14,6 +14,7 @@ const isPublicRoute = createRouteMatcher([
   "/practice(.*)",
   "/ai-chat(.*)",
   "/plan(.*)",
+  "/groups(.*)", // guests see a read-only preview; the API refuses everything else to them
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
