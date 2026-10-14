@@ -42,7 +42,7 @@ export default function ContinueSignUpPage() {
             <Link href="/sign-up" className="text-sm font-medium text-ink underline underline-offset-2">Back to sign up</Link>
           </div>
         ) : (
-          <p className="text-sm text-[#6b6b75]">Signing you in…</p>
+          <p className="text-sm text-slate">Signing you in…</p>
         )}
       </AuthCard>
     </AuthShell>

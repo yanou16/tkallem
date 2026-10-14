@@ -140,7 +140,7 @@ export default function ProductTour() {
         <div role="tablist" aria-label="Product preview" className="flex max-w-full gap-1 overflow-x-auto rounded-full bg-surface p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {TABS.map((t) => (
             <button key={t.id} role="tab" id={`tour-tab-${t.id}`} aria-selected={tab === t.id} aria-controls="tour-panel" onClick={() => choose(t.id)}
-              className={cn("min-h-12 shrink-0 rounded-full px-5 text-sm font-semibold sm:text-base", tab === t.id ? "bg-canvas text-ink shadow-sm" : "text-steel hover:text-ink")}>
+              className={cn("min-h-12 shrink-0 rounded-full px-5 text-sm font-semibold sm:text-base", tab === t.id ? "bg-canvas text-ink border border-hairline" : "text-steel hover:text-ink")}>
               {t.label}
             </button>
           ))}
@@ -224,8 +224,8 @@ function PlanPreview({ plan, act }: { plan: PlanDemo; act: (a: PlanAction) => vo
             <R id="order" className="grid grid-cols-2 gap-2">
               {v.path.slice(0, 4).map((s, i) => (
                 <div key={s.id} className={cn("flex min-h-[72px] items-center gap-2 rounded-[18px] p-3", scenarioTint(s.category), s.category === "speaking" && "border border-hairline-soft")}>
-                  <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-canvas text-[11px] font-semibold">{i + 1}</span>
-                  <span className="min-w-0 text-[13px] font-semibold">{s.title}<small className="block text-[11px] font-normal">{s.minutes} min · {s.level}</small></span>
+                  <span className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-canvas text-xs font-semibold">{i + 1}</span>
+                  <span className="min-w-0 text-[13px] font-semibold">{s.title}<small className="block text-xs font-normal">{s.minutes} min · {s.level}</small></span>
                 </div>
               ))}
             </R>

@@ -69,7 +69,7 @@ export default function ForgotPasswordPage() {
             <AuthField label="Email" type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
             <FormError message={error} />
             <PrimaryButton type="submit" loading={loading}>Send the code</PrimaryButton>
-            <p className="text-center text-sm text-[#6b6b75]">
+            <p className="text-center text-sm text-slate">
               Signed up with Google? <Link href="/sign-in" className="inline-flex min-h-11 items-center font-medium text-ink underline underline-offset-2">Use Continue with Google</Link>
             </p>
           </form>

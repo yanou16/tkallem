@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
-import { ArrowDown, ArrowRight, Check, Clock } from "lucide-react";
+import { ArrowRight, Check, Clock } from "lucide-react";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
 import { startHref } from "@/components/cards";
 import InstallButton from "@/components/InstallButton";
@@ -30,8 +30,8 @@ export default function WelcomePage() {
     <div className="min-h-screen bg-white text-ink">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 sm:px-8">
         <Link href="/welcome" className="flex min-h-11 items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-lg font-extrabold">T</span>
-          <span className="text-xl font-bold tracking-tight">Tkallem</span>
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-lg font-semibold">T</span>
+          <span className="text-xl font-semibold tracking-tight">Tkallem</span>
         </Link>
         <nav aria-label="Page" className="flex items-center gap-1 sm:gap-3">
           <a href="#how" className="hidden min-h-11 items-center rounded-full px-4 text-sm font-medium text-charcoal hover:bg-surface sm:inline-flex">How it works</a>
@@ -52,8 +52,8 @@ export default function WelcomePage() {
               For Algerian students: visa, Campus France, jobs, IELTS
             </p>
             <h1 className="mt-6 text-[2.5rem] font-medium leading-[1.05] tracking-tight sm:text-6xl">
-              You know English.<br />
-              <span className="text-steel">Stop freezing when you have to speak it.</span>
+              <span className="text-steel">You know English.</span><br />
+              Stop freezing when you have to speak it.
             </h1>
             <p className="mt-6 max-w-lg text-xl leading-relaxed text-charcoal">
               Rehearse the real interview out loud with an AI coach that corrects you kindly and explains every mistake in French.
@@ -62,16 +62,17 @@ export default function WelcomePage() {
               <Link href={primaryHref} className="inline-flex items-center justify-center gap-2 rounded-full bg-ink px-8 py-4 text-lg font-semibold text-white hover:bg-black/80">
                 {isSignedIn ? "Continue practicing" : "Build my speaking plan"} <ArrowRight size={20} />
               </Link>
-              <a href="#how" className="inline-flex min-h-11 items-center justify-center gap-2 px-2 text-base font-semibold underline underline-offset-4">
-                See how it works <ArrowDown size={16} aria-hidden />
-              </a>
+              {!isSignedIn && (
+                <Link href={startHref(FIRST_SCENARIO)} className="inline-flex items-center justify-center gap-2 rounded-full border border-hairline-strong px-8 py-4 text-lg font-semibold text-ink hover:bg-surface">
+                  Try a visa interview now
+                </Link>
+              )}
             </div>
             {!isSignedIn && (
               <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-charcoal">
                 {["No account needed", "40 free answers", "Works on your phone"].map((t) => (
                   <li key={t} className="flex items-center gap-1.5"><Check size={16} className="text-good" aria-hidden /> {t}</li>
                 ))}
-                <li><Link href={startHref(FIRST_SCENARIO)} className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4">Or try a visa interview right away</Link></li>
               </ul>
             )}
           </div>

@@ -176,7 +176,7 @@ export default function SignUpPage() {
               </PrimaryButton>
             </div>
 
-            <p className="pt-1 text-center text-sm text-[#6b6b75]">
+            <p className="pt-1 text-center text-sm text-slate">
               Already have an account?{" "}
               <Link href="/sign-in" className="inline-flex min-h-11 items-center px-1 font-medium text-ink underline underline-offset-2">
                 Sign in
