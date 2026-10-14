@@ -10,9 +10,9 @@ import type { Scenario, SessionSummary } from "@/features/practice/types/practic
 export const startHref = (scenarioId: string, mode: "practice" | "interview" = "practice") =>
   `/ai-chat?scenarioId=${encodeURIComponent(scenarioId)}${mode === "interview" ? "&mode=interview" : ""}`;
 
-export function StartButton({ href, label = "Start" }: { href: string; label?: string }) {
+export function StartButton({ href, label = "Start", aria }: { href: string; label?: string; aria?: string }) {
   return (
-    <Link href={href} className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-black/80">
+    <Link href={href} aria-label={aria} className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-black/80">
       {label} <ArrowRight size={14} />
     </Link>
   );
@@ -34,10 +34,10 @@ export function ScenarioCard({ s }: { s: Scenario }) {
           {s.minutes !== null && <><Clock size={14} /> {s.minutes} min</>}
           {s.level && <Pill>{s.level}</Pill>}
         </span>
-        <StartButton href={startHref(s.id)} label="Practice" />
+        <StartButton href={startHref(s.id)} label="Practice" aria={`Practice: ${s.title}`} />
       </div>
-      <Link href={startHref(s.id, "interview")} className="-mb-2 inline-flex min-h-11 items-center self-start text-sm font-medium text-ink underline underline-offset-2">
-        Real interview: no corrections until the end
+      <Link href={startHref(s.id, "interview")} aria-label={`Real interview: ${s.title}`} className="-mb-2 inline-flex min-h-11 items-center self-start text-sm font-medium text-ink underline underline-offset-2">
+        Real interview
       </Link>
     </article>
   );
