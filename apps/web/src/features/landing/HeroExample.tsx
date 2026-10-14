@@ -18,7 +18,7 @@ export default function HeroExample() {
           <div className="space-y-2 text-sm">
             <p className="flex items-start gap-1.5 rounded-xl bg-good-bg px-3 py-2 font-medium text-good"><Check size={16} className="mt-0.5 shrink-0" aria-hidden /> <span>{a.praise}</span></p>
             <div className="rounded-xl bg-warn-bg px-3 py-2">
-              <p className="text-base"><s className="text-slate">{a.fix.original}</s> → <span className="font-semibold text-good">{a.fix.fixed}</span></p>
+              <p className="text-base"><s className="text-charcoal">{a.fix.original}</s> → <span className="font-semibold text-good">{a.fix.fixed}</span></p>
               <p className="mt-0.5 text-sm text-charcoal">{a.fix.why}</p>
             </div>
           </div>

@@ -105,19 +105,14 @@ export default function ProfilePage() {
         <PageHeader title="Profile" />
 
         <div className="flex flex-wrap items-center gap-6">
-          <div className="relative">
-            <Avatar src={user.avatarUrl} first={user.firstName} last={user.lastName} size={96} />
-            <button onClick={openAccount} aria-label="Change photo" className="absolute -bottom-2 -right-2 flex h-11 w-11 items-center justify-center rounded-full bg-ink text-white hover:opacity-90">
-              <Camera size={18} />
-            </button>
-          </div>
+          <Avatar src={user.avatarUrl} first={user.firstName} last={user.lastName} size={96} />
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-2xl font-medium">{fullName}</h2>
               <Pen label="name" onClick={openAccount} />
             </div>
             {user.email && <p className="mt-1 text-muted">{user.email}</p>}
-            {user.level && <div className="mt-3"><Pill className="bg-surface px-4 py-2 text-sm">Learning English · {user.level}</Pill></div>}
+            {user.level && <div className="mt-3"><Pill className="border border-line bg-white px-4 py-2 text-sm">Learning English · {user.level}</Pill></div>}
           </div>
         </div>
 
@@ -125,13 +120,13 @@ export default function ProfilePage() {
         <div className="grid gap-4 md:grid-cols-2">
           <SetupCard icon="chart" title="English level" onEdit={() => open("level", user.level ?? "B1")}
             text={user.level ? `${user.level} · ${LEVEL_NAMES[user.level]}` : undefined} empty="Choose your level before your first session" />
-          <SetupCard icon="book" title="Explanation language" onEdit={() => open("explainLang", user.explainLang)}
+          <SetupCard icon="languages" title="Explanation language" onEdit={() => open("explainLang", user.explainLang)}
             text={EXPLAIN_LANGS[user.explainLang]} empty="Choose a language" />
-          <SetupCard icon="target" title="Learning goals" onEdit={() => open("goal", user.learningGoal ?? "")}
+          <SetupCard icon="book" title="Learning goals" onEdit={() => open("goal", user.learningGoal ?? "")}
             text={user.learningGoal ?? undefined} empty="Set a learning goal" />
           <SetupCard icon="laptop" title="Preferred practice mode" onEdit={() => open("mode", user.practiceMode ?? "text")}
             text={user.practiceMode ? PRACTICE_MODES[user.practiceMode] ?? user.practiceMode : undefined} empty="Choose how you like to practice" />
-          <SetupCard icon="chart" title="Daily goal" onEdit={() => open("daily", String(user.dailyGoalMinutes))}
+          <SetupCard icon="target" title="Daily goal" onEdit={() => open("daily", String(user.dailyGoalMinutes))}
             text={`${user.dailyGoalMinutes} minutes of speaking practice`} empty="Set a daily goal" />
           <SetupCard icon="star" title="Focus areas" onEdit={() => open("focus")}
             text={user.focusAreas.map((f) => FOCUS_NAMES[f]).join(", ") || undefined} empty="Pick what you want to improve" />

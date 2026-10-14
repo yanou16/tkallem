@@ -102,14 +102,15 @@ export const INTERVIEW_CATEGORIES = new Set(["travel", "study", "work", "exams"]
 
 /**
  * The Practice page in two groups: interviews and exams (what the student came for) first, everyday situations second.
- * The plan still orders each group; a plan whose first situation is an everyday one puts that group first.
- * Empty groups are left out.
+ * The plan still orders each group; a student whose plan starts with an everyday situation (the goal "daily life") gets that
+ * group first. Without a plan the list is in the API's order (alphabetical, which starts with an everyday scene): never
+ * reorder the groups then. Empty groups are left out.
  */
-export function groupSituations<T extends Orderable>(ordered: T[]): { title: string; list: T[] }[] {
+export function groupSituations<T extends Orderable>(ordered: T[], planned = false): { title: string; list: T[] }[] {
   const real = ordered.filter((s) => INTERVIEW_CATEGORIES.has(s.category ?? ""));
   const daily = ordered.filter((s) => !INTERVIEW_CATEGORIES.has(s.category ?? ""));
   const groups = [{ title: "Interviews and exams", list: real }, { title: "Everyday situations", list: daily }].filter((g) => g.list.length > 0);
-  if (groups.length === 2 && !INTERVIEW_CATEGORIES.has(ordered[0].category ?? "")) groups.reverse();
+  if (planned && groups.length === 2 && !INTERVIEW_CATEGORIES.has(ordered[0].category ?? "")) groups.reverse();
   return groups;
 }
 

@@ -106,6 +106,15 @@ export const PAGE_REGIONS: Record<PlatformPage, string[]> = {
 /** The captions of what is on screen: the page for the platform tab, the tab otherwise. */
 export const calloutsFor = (tab: TourTab, page: PlatformPage): Callout[] => (tab === "platform" ? PAGE_CALLOUTS[page] : CALLOUTS[tab]);
 
+/**
+ * The captions of what is on screen right now. In the plan preview the questions and the result are two different screens:
+ * once the plan is done only the captions of the result remain (the others would point at nothing).
+ */
+export function visibleCallouts(tab: TourTab, page: PlatformPage, planDone: boolean): Callout[] {
+  const all = calloutsFor(tab, page);
+  return tab === "plan" && planDone ? all.filter((c) => c.region === "result" || c.region === "order") : all;
+}
+
 /** The situations as the API lists them (same ids, titles, minutes, levels and categories). */
 export const DEMO_SCENARIOS = [
   { id: "airport", title: "At the airport", category: "speaking", mode: "guided" as const, minutes: 6, level: "B1" },

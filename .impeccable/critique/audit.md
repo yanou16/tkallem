@@ -45,3 +45,6 @@ VoiceOver/TalkBack, 200% zoom, keyboard-only walk-through of the chat, iPhone Sa
 - Text under 14px: running text is now 14px or more everywhere in the app (explanations, timestamps, counters, hints, auth copy). What stays under 14px is deliberate: status chips and level badges at 13px (the caption token of docs/DESIGN.md), the bottom navigation labels at 12px, and the landing demo mock, which is an illustration of the interface at reduced size (30 items).
 - Contrast: the one real failure (steel on amber in the hero example) now uses slate.
 - Not verified: the chat step "answer after Help me start" timed out in the script (the input was disabled while the coach voice played); it works by hand.
+
+## Pass 2 (15 October 2026): production, 375, 320 and 1280 px
+Scripted audit on https://tkallem.vercel.app (19 to 21 guest screens per width): no overflow, no control under 44px. Remaining text under 14px is deliberate (see pass2-summary.md). Home, Progress and Profile are audited on localhost with the same code. Details and scores: pass2-summary.md.

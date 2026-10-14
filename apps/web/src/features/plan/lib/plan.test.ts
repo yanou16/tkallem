@@ -58,8 +58,12 @@ describe("groupSituations", () => {
     expect(groups[0].list.map((s) => s.id)).toEqual(["visa-us", "campus-france", "job-remote", "ielts-part2", "airport"]);
     expect(groups[1].list.map((s) => s.id)).toEqual(["free-talk", "taxi", "shop", "cafe"]);
   });
+  it("without a plan keeps the interviews first even when the API's order starts with an everyday scene", () => {
+    const apiOrder = [S("airport", "travel"), S("cafe", "speaking"), S("campus-france", "study"), S("taxi", "speaking"), S("visa-us", "travel")];
+    expect(groupSituations([S("cafe", "speaking"), ...apiOrder.filter((s) => s.id !== "cafe")]).map((g) => g.title)[0]).toBe("Interviews and exams");
+  });
   it("starts with the everyday group when the plan starts with an everyday scene", () => {
-    const groups = groupSituations(planOrder(ALL, "daily", []));
+    const groups = groupSituations(planOrder(ALL, "daily", []), true);
     expect(groups.map((g) => g.title)).toEqual(["Everyday situations", "Interviews and exams"]);
     expect(groups[0].list.slice(0, 3).map((s) => s.id)).toEqual(["taxi", "shop", "cafe"]);
   });
