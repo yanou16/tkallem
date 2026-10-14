@@ -1,6 +1,6 @@
 """Text-to-speech. Two providers behind one function, chosen by `settings.tts_provider`:
 
-- `deepinfra`: Kokoro-82M (Apache licence), ~0.99 $ per million characters, one request per reply.
+- `deepinfra`: Kokoro-82M (Apache license), ~0.99 $ per million characters, one request per reply.
 - `groq`: Orpheus (Preview model), ~22 $ per million characters, under 200 characters per request: the reply is
   split into sentences, one request each (`Speech.parts`), so the first part can play while the others are made.
 

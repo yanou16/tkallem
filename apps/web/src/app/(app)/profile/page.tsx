@@ -227,7 +227,7 @@ export default function ProfilePage() {
   );
 }
 
-/** Locked badges are greyed out and say so in words (never color alone). */
+/** Locked badges are grayed out and say so in words (never color alone). */
 function Badge({ a, tone }: { a: Achievement; tone: number }) {
   const t = toneAt(tone + 1);
   return (

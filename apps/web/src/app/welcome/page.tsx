@@ -61,7 +61,7 @@ export default function WelcomePage() {
             </p>
             <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center">
               <Link href={primaryHref} className="inline-flex items-center justify-center gap-2 rounded-full bg-ink px-8 py-4 text-lg font-semibold text-white hover:bg-black/80">
-                {isSignedIn ? "Continue practising" : "Build my speaking plan"} <ArrowRight size={20} />
+                {isSignedIn ? "Continue practicing" : "Build my speaking plan"} <ArrowRight size={20} />
               </Link>
               <a href="#how" className="inline-flex min-h-11 items-center justify-center gap-2 px-2 text-base font-semibold underline underline-offset-4">
                 See how it works <ArrowDown size={16} aria-hidden />
@@ -111,7 +111,7 @@ export default function WelcomePage() {
           <p className="mx-auto mt-4 max-w-md text-lg text-white/75">Five minutes, your voice, nobody watching.</p>
           <div className="mt-8 flex flex-col items-center gap-4">
             <Link href={primaryHref} className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-lg font-semibold text-ink hover:bg-white/90">
-              {isSignedIn ? "Continue practising" : "Build my speaking plan"} <ArrowRight size={20} />
+              {isSignedIn ? "Continue practicing" : "Build my speaking plan"} <ArrowRight size={20} />
             </Link>
             <InstallButton className="[&_*]:!text-white" />
           </div>

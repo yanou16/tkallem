@@ -114,7 +114,7 @@ export default function SignUpPage() {
           </form>
         </AuthCard>
       ) : (
-        <AuthCard title="Create your account" subtitle="Practise real interviews with your AI coach.">
+        <AuthCard title="Create your account" subtitle="Practice real interviews with your AI coach.">
           <TryWithoutAccount />
           <form onSubmit={onSubmit} className="space-y-4">
             <GoogleButton onClick={onGoogle} loading={!isLoaded} label="Sign up with Google" />

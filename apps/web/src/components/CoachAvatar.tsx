@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 export type AvatarSpeech = { id: number; url: string; text: string };
 
 /** 3D coach that lip-syncs the audio our API already returns (TalkingHead, MIT). Experimental: the avatar file in
- *  /public/avatars is a sample from the library (non-commercial licence), to be replaced before production. */
+ *  /public/avatars is a sample from the library (non-commercial license), to be replaced before production. */
 export function CoachAvatar({ speech, onStart, onEnd, onBlocked, onUnavailable }: {
   speech: AvatarSpeech | null;
   onStart?: () => void;

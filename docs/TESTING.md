@@ -20,11 +20,11 @@ green (`.github/workflows/ci.yml`). After a merge, the API image is built, deplo
 
 | Feature | Tests |
 |---|---|
-| Corrections: at most 3, no invented or no-op fix, names and numbers kept, colour from the fixes | `packages/agent/tests/test_schemas.py`, `test_graph.py`; eval `evals/run_evals.py` (33 sentences) |
+| Corrections: at most 3, no invented or no-op fix, names and numbers kept, color from the fixes | `packages/agent/tests/test_schemas.py`, `test_graph.py`; eval `evals/run_evals.py` (33 sentences) |
 | Coach reply: one sentence at the level, next question verbatim, prompt injection | `test_graph.py`, `test_session.py`; eval `evals/injection.py` |
 | Question order: repeat an unanswered question once, skip answered ones, two goals in one answer, skippable questions | `test_session.py`, `test_graph.py`; eval `evals/goals.py` |
 | Backup language models | `test_session.py` |
-| Session report: metrics, colours, answer to redo, honest note | `test_report.py`, API `test_turn_routes.py` |
+| Session report: metrics, colors, answer to redo, honest note | `test_report.py`, API `test_turn_routes.py` |
 | Scenarios: files valid, cards, public list | `test_scenarios.py`, API `test_scenarios_routes.py` |
 | Answering (typed and spoken), saving a turn, reloading a session | API `test_turn_routes.py`, `test_sessions_db.py`, `test_sessions_routes.py` |
 | Streaming answer (transcript, reply, corrections, audio, done or error) | API `test_voice_routes.py`; front `features/ai-chat/api/ai.test.ts` |
@@ -39,7 +39,7 @@ green (`.github/workflows/ci.yml`). After a merge, the API image is built, deplo
 | Real interview mode: the coach stays neutral (prompt plus a code guard that replaces any praise), the mode survives a reload, corrections are still computed, old sessions are practice | `test_interview_mode.py`; API `test_interview_routes.py` (nothing sent during the session, JSON and stream, hints and Say it again closed, everything in the report) |
 | Confidence before and after (1 to 5, skippable): `before` only until the first answer, `after` only with the report, 1 to 5, owner only, summary of sessions with both | API `test_confidence_routes.py`; front `lib/confidence.test.ts` |
 | Welcome page tour: three tabs (platform, plan, voice); the platform has a working sidebar of six pages (Home, Practice, AI Chat, Groups, Progress, Profile), each with its own captions; every caption points at a part the preview renders, the plan preview runs the real ordering code (goal decides the first situations, four at most, no free talk), single choices move on, two focus areas at most, finish and reset | front `features/landing/tour.test.ts` (and `demo.test.ts` for the hero example) |
-| Credits: grants, daily refill, atomic debit (10 concurrent answers), refunds, budget cap and alert | API `test_credits.py` |
+| Free answers (credits): grants, daily refill, atomic debit (10 concurrent answers), refunds, budget cap and alert | API `test_credits.py` |
 | Your plan (5 questions, guests too): the answers set the level, the daily goal, the goal and focus in the profile; the goal and liked subjects only decide the order of the same situations | front `features/plan/lib/plan.test.ts` (order, path of 4, focus limit, what is saved), `guestStep.test.ts` (/plan creates a guest) |
 | Groups for guests: a guest sees the theme, today's question and a few groups of their level (no name, no message) and is told to log in; joining, writing, reading messages, checking stay refused (403) | API `test_groups_routes.py` (preview, level B1 by default, no member name, join and write refused); front `groups/api/groups.test.ts`, `guestStep.test.ts` |
 | Guest mode: token, address limits, claim at sign-in, unknown guest refused | API `test_credits_routes.py`; front `features/credits/lib/guestStep.test.ts` |

@@ -60,7 +60,7 @@ export default function PlanFlow() {
         </Question>
       )}
       {step === 2 && (
-        <Question title="How much time can you practise each day?" hint="This becomes your daily goal.">
+        <Question title="How much time can you practice each day?" hint="This becomes your daily goal.">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {MINUTE_CHOICES.map((m) => (
               <Choice key={m} selected={a.minutes === m} onClick={() => set({ minutes: m })} title={`${m} minutes`} centered />
@@ -151,7 +151,7 @@ function Summary({ a, saving, failed, retry, scenarios, level }: {
         {focus.length > 0 && <><dt className="text-slate">Working on</dt><dd className="font-medium">{focus.join(", ")}</dd></>}
       </dl>
 
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate">Practise in this order</h2>
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate">Practice in this order</h2>
       <ol className="flex flex-col gap-3">
         {path.map((s, i) => (
           <li key={s.id}>

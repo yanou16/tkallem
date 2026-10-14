@@ -548,7 +548,7 @@ function Bubble({ m, icon, tint, user, onListen, sayItAgain, nailed }: {
 function Fix({ c }: { c: Correction }) {
   return (
     <div className="mt-1.5">
-      {/* Red is kept for "Redo" (docs/JURY_BRIEF.md, improvement 4): a small mistake is struck in grey. */}
+      {/* Red is kept for "Redo" (docs/JURY_BRIEF.md, improvement 4): a small mistake is struck in gray. */}
       <p><s className="text-steel">{c.original}</s> → <span className="font-semibold text-[color:var(--good)]">{c.fixed}</span></p>
       <p className="text-xs text-muted">{c.why}</p>
     </div>

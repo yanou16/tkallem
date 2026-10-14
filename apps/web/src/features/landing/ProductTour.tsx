@@ -220,7 +220,7 @@ function PlanPreview({ plan, act }: { plan: PlanDemo; act: (a: PlanAction) => vo
                 <dt className="text-slate">Working on</dt><dd className="font-semibold">{FOCUS_CHOICES.filter((f) => v.focus.includes(f.id)).map((f) => f.label).join(", ")}</dd>
               </dl>
             </R>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate">Practise in this order</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate">Practice in this order</p>
             <R id="order" className="grid grid-cols-2 gap-2">
               {v.path.slice(0, 4).map((s, i) => (
                 <div key={s.id} className={cn("flex min-h-[72px] items-center gap-2 rounded-[18px] p-3", scenarioTint(s.category), s.category === "speaking" && "border border-hairline-soft")}>
@@ -242,7 +242,7 @@ function PlanPreview({ plan, act }: { plan: PlanDemo; act: (a: PlanAction) => vo
               <div className="h-1.5 overflow-hidden rounded-full bg-hairline"><div className="h-full rounded-full bg-ink transition-all" style={{ width: `${((plan.step + 1) / PLAN_STEPS) * 100}%` }} /></div>
             </R>
             <R id="question" className="mb-3">
-              <h3 className="text-[22px] font-medium leading-tight">{["Why do you need English?", "How is your English when you speak?", "How much time can you practise each day?", "What is hardest for you?", "Which subjects do you like?"][plan.step]}</h3>
+              <h3 className="text-[22px] font-medium leading-tight">{["Why do you need English?", "How is your English when you speak?", "How much time can you practice each day?", "What is hardest for you?", "Which subjects do you like?"][plan.step]}</h3>
               <p className="mt-1 text-[13px] text-slate">{["We start with the situations that match your goal.", "No test. It sets how the coach talks to you.", "This becomes your daily goal.", `Pick up to ${MAX_FOCUS}. The coach keeps them in mind.`, "Optional. They decide which situations come next."][plan.step]}</p>
             </R>
             <R id="choices">
