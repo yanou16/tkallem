@@ -297,6 +297,41 @@ paths:
         "404": { description: Session not found (or not this student's) }
         "409": { description: Too late for `before`, or the report is not ready for `after` }
         "422": { description: Value outside 1 to 5 }
+  /sessions/{id}/note:
+    post:
+      summary: The report's coach note, written again in the other language ("Explain in English / French")
+      description: |
+        Nothing is saved and no answer is spent. At most 10 an hour per student (429 after). The note is checked like the
+        original one (a number that is not in the facts is refused and a plain fallback is sent).
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [lang]
+              properties:
+                lang: { type: string, enum: [en, fr] }
+      responses:
+        "200":
+          description: The note
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [note, explain_lang]
+                properties:
+                  note: { type: string }
+                  explain_lang: { type: string, enum: [en, fr] }
+        "401": { description: Missing or invalid token }
+        "404": { description: Session not found (or not this student's) }
+        "409": { description: No answer yet }
+        "422": { description: Unknown language }
+        "429": { description: Too many requests }
+        "502": { description: The note could not be written }
   /sessions/{id}/turn:
     post:
       summary: Send one student turn (audio file or text)
@@ -318,6 +353,7 @@ paths:
               properties:
                 audio: { type: string, format: binary }
                 text: { type: string }
+                explain_lang: { type: string, enum: [en, fr], description: "\"Explain in English / French\": from this answer on, the explanations come in this language and the session keeps it. Any other value is ignored." }
                 think_seconds: { type: string, description: "Freeze meter: seconds before the student started to answer, measured by the app. A value that is not a number is ignored." }
       responses:
         "200":

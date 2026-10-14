@@ -5,7 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowDown, ChartNoAxesColumn, Check, ChevronDown, ChevronRight, CircleAlert, Lightbulb, MessageCircle, Mic, Send, Square, TrendingUp, UserRound, Volume2 } from "lucide-react";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
-import { useAiSession, useAnswer, useEndSession, useSpeakLastLine, useStartSession } from "@/features/ai-chat/hooks/useAiChat";
+import { useAiSession, useAnswer, useEndSession, useExplainNote, useSpeakLastLine, useStartSession } from "@/features/ai-chat/hooks/useAiChat";
+import { useUpdateProfile } from "@/features/profile/hooks/useProfile";
+import ExplainToggle from "@/features/ai-chat/components/ExplainToggle";
+import type { ExplainLang } from "@/features/auth/types/user";
 import { CoachAvatar } from "@/components/CoachAvatar";
 import InstallButton from "@/components/InstallButton";
 import VoiceState, { formatTime, type CoachState } from "@/features/ai-chat/components/VoiceState";
@@ -123,6 +126,13 @@ function Chat() {
   const feedbackMode = s?.feedbackMode ?? feedbackModeFrom(params.get("mode"));
   const interview = feedbackMode === "interview";
 
+  // "Explain in English / French": starts from the profile, applies from the next answer, and is kept for the next sessions.
+  const [explain, setExplain] = useState<ExplainLang>("fr");
+  const explainTouched = useRef(false);
+  const saveProfile = useUpdateProfile();
+  useEffect(() => { if (user && !explainTouched.current) setExplain(user.explainLang); }, [user]);
+  const chooseExplain = (lang: ExplainLang) => { explainTouched.current = true; setExplain(lang); saveProfile.mutate({ explainLang: lang }); };
+
   const [mode, setMode] = useState<"text" | "voice">(readMode);
   const [avatarOn, setAvatarOn] = useState(readAvatar);
   const toggleAvatar = () => {
@@ -190,13 +200,13 @@ function Chat() {
     setPending({ kind: "text", text: answer });
     // The answer shows in the chat at once, so the field empties; if it fails, it comes back to be sent again.
     setText("");
-    send.mutate({ text: answer, think: thinkSeconds(questionDone.current.at, began.current) }, { onError: () => setText((t) => t || answer), onSettled: () => setPending(null) });
+    send.mutate({ text: answer, explain, think: thinkSeconds(questionDone.current.at, began.current) }, { onError: () => setText((t) => t || answer), onSettled: () => setPending(null) });
   };
 
   function sendRecording(r: Recording) {
     lastRecording.current = r;
     setPending({ kind: "voice", seconds: r.seconds });
-    send.mutate({ audio: r.blob, think: thinkSeconds(questionDone.current.at, began.current) }, { onSuccess: () => { lastRecording.current = null; }, onSettled: () => setPending(null) });
+    send.mutate({ audio: r.blob, explain, think: thinkSeconds(questionDone.current.at, began.current) }, { onSuccess: () => { lastRecording.current = null; }, onSettled: () => setPending(null) });
   }
 
   async function toggleMic() {
@@ -240,7 +250,7 @@ function Chat() {
     if (!coachBusy && questionDone.current.at === null && lastLineId && !s?.finished) questionDone.current.at = Date.now();
   }, [lastLineId, coachBusy, s?.finished]);
 
-  if (s?.report) return <Report report={s.report} title={title} sessionId={sessionId} onRestart={() => restart()} />;
+  if (s?.report) return <Report report={s.report} title={title} sessionId={sessionId} explainDefault={explain} onRestart={() => restart()} />;
 
   const live = send.live;
   const coachState: CoachState = rec.isRecording ? "listening" : coach.speaking ? "speaking" : send.isPending || speakLast.isPending ? "thinking" : "idle";
@@ -294,12 +304,8 @@ function Chat() {
             <span className="truncate">{title}</span><span className="sr-only">, change scenario</span>
             <ChevronDown size={16} className="shrink-0" aria-hidden />
           </button>
-          <span className="hidden min-h-11 items-center gap-1 rounded-full bg-surface px-3 text-sm md:inline-flex">
-            <span className="text-slate">Level</span> <span className="font-semibold">{user?.level ?? "—"}</span>
-          </span>
-          <span className={cn("inline-flex min-h-11 items-center rounded-full px-3 text-sm font-semibold", interview ? "bg-ink text-white" : "bg-surface")}>
-            {MODE_LABEL[feedbackMode]}
-          </span>
+          {/* One toggle: how the student answers. The only status shown is the real interview (a state, not a control). */}
+          {interview && <span className="inline-flex min-h-11 items-center rounded-full bg-ink px-3 text-sm font-semibold text-white">{MODE_LABEL.interview}</span>}
           <div className="inline-flex rounded-full bg-black/[0.03] p-0.5" role="radiogroup" aria-label="Answer mode">
             {(["voice", "text"] as const).map((m) => (
               <button key={m} role="radio" aria-checked={mode === m} onClick={() => chooseMode(m)}
@@ -308,11 +314,6 @@ function Chat() {
               </button>
             ))}
           </div>
-          {mode === "voice" && (
-            <button onClick={toggleAvatar} className="hidden min-h-11 items-center rounded-full border border-line px-3 text-xs font-semibold md:inline-flex">
-              {avatarOn ? "Hide 3D coach" : "Show 3D coach"}
-            </button>
-          )}
           {menu && (
               <ul className="absolute left-0 top-full z-20 mt-2 max-h-72 w-full overflow-auto rounded-2xl border border-line bg-white p-1.5 shadow-soft">
                 {(scenarios.data ?? []).map((sc) => (
@@ -372,12 +373,19 @@ function Chat() {
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-line bg-white">
           {s && (
-            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-4 py-2 text-sm md:px-6 md:py-3">
-              <span className="text-muted">{plural(answers.length, "answer")}</span>
+            <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-2 text-sm md:px-6 md:py-3">
+              <span className="whitespace-nowrap text-muted">{plural(answers.length, "answer")}</span>
               {answers.length > 0 && !s.finished && (
-                <Button dark={false} onClick={finish} disabled={end.isPending} className="!px-4 !py-2">
+                <Button dark={false} onClick={finish} disabled={end.isPending} className="order-2 ml-auto !min-h-11 !px-4 !py-2 md:order-3 md:ml-0">
                   {end.isPending ? "Preparing your report…" : "End session"}
                 </Button>
+              )}
+              {/* On a phone the language toggle gets its own line under the count and the End button. */}
+              <ExplainToggle value={explain} onChange={chooseExplain} className="order-3 w-full md:order-2 md:ml-auto md:w-auto" />
+              {mode === "voice" && (
+                <button onClick={toggleAvatar} className="order-4 hidden min-h-11 items-center rounded-full px-2 text-sm font-medium text-steel underline underline-offset-2 md:inline-flex">
+                  {avatarOn ? "Hide 3D coach" : "Show 3D coach"}
+                </button>
               )}
             </div>
           )}
@@ -614,7 +622,15 @@ function SummaryRow({ icon, tone, title, sub }: { icon: React.ReactNode; tone: s
   );
 }
 
-function Report({ report, title, sessionId, onRestart }: { report: SessionReport; title?: string; sessionId?: string; onRestart: () => void }) {
+function Report({ report, title, sessionId, explainDefault, onRestart }: { report: SessionReport; title?: string; sessionId?: string; explainDefault: ExplainLang; onRestart: () => void }) {
+  // The note comes in the language of the session; the other one is written on demand (nothing is saved, nothing is spent).
+  const [lang, setLang] = useState<ExplainLang>(explainDefault);
+  const [notes, setNotes] = useState<Partial<Record<ExplainLang, string>>>({ [explainDefault]: report.note });
+  const explainNote = useExplainNote(sessionId);
+  const changeLang = (l: ExplainLang) => {
+    setLang(l);
+    if (!notes[l] && sessionId) explainNote.mutate(l, { onSuccess: (r) => setNotes((n) => ({ ...n, [l]: r.note })) });
+  };
   const metrics = [
     { label: "Mistakes per 100 words", value: report.metrics.mistakesPer100, level: report.levels.mistakesPer100, missing: "Not available" },
     { label: "Words per answer", value: report.metrics.wordsPerAnswer, level: report.levels.wordsPerAnswer, missing: "Not available" },
@@ -631,8 +647,14 @@ function Report({ report, title, sessionId, onRestart }: { report: SessionReport
         </p>
       )}
       <Card>
-        <h2 className="text-lg font-semibold">Your coach's note</h2>
-        <p className="mt-2 whitespace-pre-wrap">{report.note}</p>
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+          <h2 className="text-lg font-semibold">Your coach&apos;s note</h2>
+          {sessionId && <ExplainToggle value={lang} onChange={changeLang} label="Explain in" disabled={explainNote.isPending} />}
+        </div>
+        <p className="mt-2 whitespace-pre-wrap">{notes[lang] ?? (explainNote.isPending ? "Writing the note…" : report.note)}</p>
+        {explainNote.isError && !notes[lang] && (
+          <p role="alert" className="mt-2 text-sm text-bad">The note could not be written in {lang === "en" ? "English" : "French"}. Pick the language again to retry.</p>
+        )}
       </Card>
 
       <div className="mt-4 grid gap-4 md:grid-cols-3">
@@ -666,12 +688,12 @@ function Report({ report, title, sessionId, onRestart }: { report: SessionReport
 
       <Card className="mt-4">
         <h2 className="text-lg font-semibold">Your answers</h2>
-        <ol className="mt-3 space-y-3">
+        <ol className="mt-1 divide-y divide-line">
           {report.lines.map((line, i) =>
             line.role === "coach" ? (
-              <li key={i} className="rounded-2xl bg-black/[0.04] px-4 py-3 text-sm">{line.text}</li>
+              <li key={i} className="py-3 text-sm text-slate">{line.text}</li>
             ) : (
-              <li key={i} className={cn("flex gap-3 rounded-2xl border p-3", i === report.redoIndex ? "border-ink" : "border-line")}>
+              <li key={i} className="flex gap-3 py-4">
                 <span aria-hidden className={cn("w-1 shrink-0 rounded-full", line.status ? STATUS_BAR[line.status] : "bg-line")} />
                 <div className="min-w-0 flex-1 space-y-2">
                   <div className="flex flex-wrap items-start justify-between gap-2">
@@ -680,11 +702,10 @@ function Report({ report, title, sessionId, onRestart }: { report: SessionReport
                   </div>
                   {i === report.redoIndex && <p className="text-sm font-semibold">Redo this answer first</p>}
                   {line.corrections.map((c, j) => (
-                    <div key={j} className="rounded-2xl border border-line p-3 text-sm">
-                      <p><s className="text-steel">{c.original}</s></p>
-                      <p className="font-semibold text-[color:var(--good)]">{c.fixed}</p>
-                      <p className="text-muted">{c.why}</p>
-                    </div>
+                    <p key={j} className="text-sm">
+                      <s className="text-steel">{c.original}</s> → <span className="font-semibold text-[color:var(--good)]">{c.fixed}</span>
+                      <span className="mt-0.5 block text-slate">{c.why}</span>
+                    </p>
                   ))}
                 </div>
               </li>
