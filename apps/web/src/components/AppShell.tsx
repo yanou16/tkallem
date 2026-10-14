@@ -30,9 +30,9 @@ export const isActive = (path: string | null, href: string, also: string[] = [])
 function Logo() {
   return (
     <Link href="/" className="flex min-h-11 shrink-0 items-center gap-3 px-2">
-      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-lg font-extrabold">T</span>
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-lg font-semibold">T</span>
       {/* Under 360 px the mark alone leaves room for the credits and "Sign in"; the name stays for screen readers. */}
-      <span className="text-2xl font-bold tracking-tight max-[359px]:sr-only">Tkallem</span>
+      <span className="text-2xl font-semibold tracking-tight max-[359px]:sr-only">Tkallem</span>
     </Link>
   );
 }

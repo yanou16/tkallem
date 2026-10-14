@@ -15,7 +15,7 @@ export default function InstallButton({ className }: { className?: string }) {
     );
   }
   return (
-    <button onClick={() => install()} className={cn("inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm font-semibold", className)}>
+    <button onClick={() => install()} className={cn("inline-flex min-h-11 items-center gap-2 rounded-full border border-line px-4 py-2 text-sm font-semibold", className)}>
       <Download size={16} aria-hidden /> Install the app
     </button>
   );
