@@ -9,6 +9,7 @@ import { NUDGE_AFTER_MS, hintView, remainingText, shouldNudge, type HintView } f
 type Props = {
   sessionId: string;
   questionKey: string; // changes with each coach line: a new question resets the panel
+  question?: string; // the coach's line, repeated in the open panel (on a small phone the conversation above it is tiny)
   typing: boolean;
   recording: boolean;
   busy: boolean; // the coach is thinking or speaking
@@ -18,7 +19,7 @@ type Props = {
 /** "Help me start" (docs/JURY_BRIEF.md, improvement 1): the first words of an answer, or the student's idea said in
  *  French or Darija turned into English. Always under the question; highlighted when the student has not started
  *  5 seconds after it. Free, 2 per question. */
-export default function HelpMeStart({ sessionId, questionKey, typing, recording, busy, onUse }: Props) {
+export default function HelpMeStart({ sessionId, questionKey, question, typing, recording, busy, onUse }: Props) {
   const hint = useHint(sessionId);
   const [open, setOpen] = useState(false);
   const [translating, setTranslating] = useState(false);
@@ -69,7 +70,7 @@ export default function HelpMeStart({ sessionId, questionKey, typing, recording,
   return (
     <section aria-label="Help me start" className="mx-4 mt-3 rounded-2xl border border-line bg-surface p-3 text-sm">
       <div className="flex items-start justify-between gap-2">
-        <p className="font-semibold">Help me start</p>
+        <div className="min-w-0"><p className="font-semibold">Help me start</p>{question && <p className="mt-0.5 truncate text-slate">{question}</p>}</div>
         <button onClick={close} aria-label="Close help" className="-my-2 -mr-2 flex size-11 items-center justify-center rounded-full">
           <X size={16} />
         </button>
