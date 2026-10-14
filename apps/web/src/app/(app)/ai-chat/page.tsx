@@ -179,7 +179,17 @@ function Chat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlScenarioId, sessionId]);
 
-  useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth" }); }, [s?.messages.length, pending, send.live?.reply]);
+  // The first question stays at the top; while an answer is processed the log follows it; once the coach has replied the
+  // log shows the student's answer first (its compliment and its fix), not the end of the page.
+  const logRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const log = logRef.current;
+    if (!log) return;
+    if ((s?.messages.length ?? 0) <= 1 && !pending) { log.scrollTo({ top: 0 }); return; }
+    if (pending || send.live) { bottom.current?.scrollIntoView({ behavior: "smooth" }); return; }
+    const mine = log.querySelectorAll<HTMLElement>('[data-role="user"]');
+    mine[mine.length - 1]?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [s?.messages.length, pending, send.live]);
 
   /** A new session for this scenario, or for another one. */
   const restart = (id = scenarioId) => {
@@ -297,20 +307,19 @@ function Chat() {
         {s ? (
           <>
         {/* During an interview the settings shrink to one line, so the question and the answer field fit a phone. */}
-        <div className="relative mb-2 flex shrink-0 flex-wrap items-center gap-2 md:mb-3">
+        <div className="relative mb-2 flex shrink-0 flex-nowrap items-center gap-2 md:mb-3 md:flex-wrap">
           <button onClick={() => setMenu((m) => !m)} aria-expanded={menu}
-            className={cn("inline-flex min-h-11 max-w-full items-center gap-2 rounded-full py-1.5 pl-1.5 pr-3 text-sm font-semibold", tint)}>
+            className={cn("inline-flex min-h-11 min-w-0 shrink items-center gap-2 rounded-full py-1.5 pl-1.5 pr-3 text-sm font-semibold", tint)}>
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/70"><Icon name={icon ?? "briefcase"} size={16} /></span>
             <span className="truncate">{title}</span><span className="sr-only">, change scenario</span>
             <ChevronDown size={16} className="shrink-0" aria-hidden />
           </button>
           {/* One toggle: how the student answers. The only status shown is the real interview (a state, not a control). */}
-          {interview && <span className="inline-flex min-h-11 items-center rounded-full bg-ink px-3 text-sm font-semibold text-white">{MODE_LABEL.interview}</span>}
-          <div className="inline-flex rounded-full bg-black/[0.03] p-0.5" role="radiogroup" aria-label="Answer mode">
+          <div className="ml-auto inline-flex shrink-0 rounded-full bg-surface p-0.5" role="radiogroup" aria-label="Answer mode">
             {(["voice", "text"] as const).map((m) => (
               <button key={m} role="radio" aria-checked={mode === m} onClick={() => chooseMode(m)}
                 className={cn("inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-semibold capitalize", mode === m ? "bg-ink text-white" : "text-muted")}>
-                {m === "text" ? <MessageCircle size={15} aria-hidden /> : <Mic size={15} aria-hidden />} {m}
+                <span className="hidden sm:inline-flex">{m === "text" ? <MessageCircle size={15} aria-hidden /> : <Mic size={15} aria-hidden />}</span> {m}
               </button>
             ))}
           </div>
@@ -323,7 +332,7 @@ function Chat() {
               </ul>
             )}
         </div>
-        {interview && <p className="-mt-1 mb-3 text-sm text-charcoal">{modeHint("interview")}</p>}
+        {interview && <p className="-mt-1 mb-3 shrink-0 text-sm text-charcoal"><span className="font-semibold">{MODE_LABEL.interview}.</span> {modeHint("interview")}</p>}
         {mode === "voice" && avatarOn && <div className="mb-4"><CoachAvatar {...coach.avatarProps} /></div>}
 
           </>
@@ -374,14 +383,14 @@ function Chat() {
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-line bg-white">
           {s && (
             <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-2 text-sm md:px-6 md:py-3">
-              <span className="whitespace-nowrap text-muted">{plural(answers.length, "answer")}</span>
+              <span className="hidden whitespace-nowrap text-muted md:inline">{plural(answers.length, "answer")}</span>
               {answers.length > 0 && !s.finished && (
                 <Button dark={false} onClick={finish} disabled={end.isPending} className="order-2 ml-auto !min-h-11 !px-4 !py-2 md:order-3 md:ml-0">
                   {end.isPending ? "Preparing your report…" : "End session"}
                 </Button>
               )}
               {/* On a phone the language toggle gets its own line under the count and the End button. */}
-              <ExplainToggle value={explain} onChange={chooseExplain} className="order-3 w-full md:order-2 md:ml-auto md:w-auto" />
+              <ExplainToggle value={explain} onChange={chooseExplain} className="order-1 md:order-2 md:ml-auto" />
               {mode === "voice" && (
                 <button onClick={toggleAvatar} className="order-4 hidden min-h-11 items-center rounded-full px-2 text-sm font-medium text-steel underline underline-offset-2 md:inline-flex">
                   {avatarOn ? "Hide 3D coach" : "Show 3D coach"}
@@ -390,7 +399,7 @@ function Chat() {
             </div>
           )}
 
-          <div role="log" aria-label="Conversation" className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
+          <div ref={logRef} role="log" aria-label="Conversation" className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
             {body}
             {sessionId && s && shouldAskBefore(answers.length, skippedConfidence) && !pending && (
               <ConfidenceAsk sessionId={sessionId} when="before" question="How confident do you feel about this interview?"
@@ -449,7 +458,7 @@ function Chat() {
                 </div>
               )}
               {sessionId && s && !interview && (
-                <HelpMeStart sessionId={sessionId} questionKey={lastCoachLine?.id ?? "start"} typing={text.trim().length > 0}
+                <HelpMeStart sessionId={sessionId} question={lastCoachLine?.content} questionKey={lastCoachLine?.id ?? "start"} typing={text.trim().length > 0}
                   recording={rec.isRecording} busy={coachState === "thinking" || coachState === "speaking" || !!pending}
                   onUse={(t) => { setText(t); answerField.current?.focus(); }} />
               )}
@@ -482,7 +491,7 @@ function Chat() {
       <aside className={cn("hidden space-y-4", interview ? "" : "xl:block")}>
         <Card className="space-y-3">
           <div className="flex items-center justify-between"><h2 className="text-xl font-semibold">Live corrections</h2>
-            {s && !s.finished && <span className="flex items-center gap-2 text-sm"><span className="h-2.5 w-2.5 rounded-full bg-success" /> Active</span>}</div>
+            {s && !s.finished && <span className="flex items-center gap-2 text-sm"><span className="h-2.5 w-2.5 rounded-full bg-good" /> Active</span>}</div>
           {!last ? (
             <EmptyState title="No corrections yet" text="Send an answer and your coach will suggest improvements here." />
           ) : last.corrections?.length ? (
@@ -522,7 +531,7 @@ function Bubble({ m, icon, tint, user, onListen, sayItAgain, nailed }: {
   const { isGuest: guest } = useCurrentUser(); // a guest has no name: a neutral icon, not "GU"
   const time = m.createdAt && new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   return (
-    <div className={cn("flex items-start gap-3", mine && "justify-end")}>
+    <div data-role={m.role} className={cn("flex items-start gap-3", mine && "justify-end")}>
       {!mine && <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full", tint ?? "bg-surface")}><Icon name={icon ?? "briefcase"} /></span>}
       <div className={cn("max-w-[75%]", mine && "text-right")}>
         <p className={cn("whitespace-pre-wrap rounded-3xl px-5 py-4 text-left", mine ? "bg-ink text-white" : "bg-black/[0.05]", m.pending && "flex items-center gap-2 italic text-white/70")}>
@@ -634,8 +643,10 @@ function Report({ report, title, sessionId, explainDefault, onRestart }: { repor
   const metrics = [
     { label: "Mistakes per 100 words", value: report.metrics.mistakesPer100, level: report.levels.mistakesPer100, missing: "Not available" },
     { label: "Words per answer", value: report.metrics.wordsPerAnswer, level: report.levels.wordsPerAnswer, missing: "Not available" },
-    { label: "Hesitations per minute", value: report.metrics.hesitationsPerMin, level: report.levels.hesitationsPerMin, missing: "Voice sessions only" },
+    // Hesitations exist only for spoken answers: no empty card for a typed session.
+    ...(report.metrics.hesitationsPerMin === null ? [] : [{ label: "Hesitations per minute", value: report.metrics.hesitationsPerMin, level: report.levels.hesitationsPerMin, missing: "" }]),
   ];
+  const redo = report.redoIndex !== null ? report.lines[report.redoIndex] : undefined;
   const speaking = report.metrics.speakingSeconds;
 
   return (
@@ -656,6 +667,13 @@ function Report({ report, title, sessionId, explainDefault, onRestart }: { repor
           <p role="alert" className="mt-2 text-sm text-bad">The note could not be written in {lang === "en" ? "English" : "French"}. Pick the language again to retry.</p>
         )}
       </Card>
+
+      {redo && (
+        <p className="mt-4 rounded-2xl bg-surface px-4 py-3">
+          <span className="font-semibold">Redo this one first: </span>
+          <a href="#redo-answer" className="inline-block break-words py-3 underline underline-offset-2">“{redo.text}”</a>
+        </p>
+      )}
 
       <div className="mt-4 grid gap-4 md:grid-cols-3">
         {metrics.map((m) => (
@@ -693,16 +711,16 @@ function Report({ report, title, sessionId, explainDefault, onRestart }: { repor
             line.role === "coach" ? (
               <li key={i} className="py-3 text-sm text-slate">{line.text}</li>
             ) : (
-              <li key={i} className="flex gap-3 py-4">
+              <li key={i} id={i === report.redoIndex ? "redo-answer" : undefined} className="flex scroll-mt-4 gap-3 py-4">
                 <span aria-hidden className={cn("w-1 shrink-0 rounded-full", line.status ? STATUS_BAR[line.status] : "bg-line")} />
                 <div className="min-w-0 flex-1 space-y-2">
                   <div className="flex flex-wrap items-start justify-between gap-2">
-                    <p>{line.text}</p>
+                    <p className="break-words">{line.text}</p>
                     {line.status && <StatusPill status={line.status} label={answerLabel(line.status, line.corrections.length)} />}
                   </div>
                   {i === report.redoIndex && <p className="text-sm font-semibold">Redo this answer first</p>}
                   {line.corrections.map((c, j) => (
-                    <p key={j} className="text-sm">
+                    <p key={j} className="break-words text-sm">
                       <s className="text-steel">{c.original}</s> → <span className="font-semibold text-[color:var(--good)]">{c.fixed}</span>
                       <span className="mt-0.5 block text-slate">{c.why}</span>
                     </p>
@@ -714,7 +732,8 @@ function Report({ report, title, sessionId, explainDefault, onRestart }: { repor
         </ol>
       </Card>
 
-      <div className="mt-6 flex flex-wrap gap-3">
+      <p className="mt-6 text-slate">You finished one interview. Five minutes tomorrow keeps it going.</p>
+      <div className="mt-3 flex flex-wrap gap-3">
         <Button onClick={onRestart}>Practice again</Button>
         <Link href="/practice" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-black/5">
           Back to practice
