@@ -7,7 +7,6 @@ import { startHref } from "@/components/cards";
 import InstallButton from "@/components/InstallButton";
 import HeroExample from "@/features/landing/HeroExample";
 import ProductTour from "@/features/landing/ProductTour";
-import { Icon } from "@/lib/icons";
 import { scenarioTint } from "@/lib/tint";
 import { cn } from "@/lib/utils";
 
@@ -89,8 +88,7 @@ export default function WelcomePage() {
             {list.map((s) => (
               <li key={s.id}>
                 <Link href={startHref(s.id)} className={cn("group flex h-full min-h-44 flex-col justify-between gap-6 rounded-[28px] p-6 hover:opacity-90", scenarioTint(s.category))}>
-                  <span className="flex items-center justify-between">
-                    <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/70"><Icon name={s.icon ?? undefined} size={24} /></span>
+                  <span className="flex justify-end">
                     <span className="flex h-11 w-11 items-center justify-center rounded-full bg-ink text-white" aria-hidden><ArrowRight size={18} /></span>
                   </span>
                   <span>

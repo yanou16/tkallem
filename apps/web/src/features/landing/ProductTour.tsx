@@ -10,7 +10,7 @@ import {
 import Platform from "./PlatformPages";
 import { Browser, Lit, Pill, R } from "./TourParts";
 import {
-  INITIAL_PLAN, PAGES, PLAN_STEPS, TABS, calloutsFor, planReducer, planView,
+  INITIAL_PLAN, PAGE_ORDER, PLAN_STEPS, TABS, calloutsFor, planReducer, planView,
   type Callout, type PlanAction, type PlanDemo, type PlatformPage, type TourTab,
 } from "./tour";
 
@@ -68,8 +68,8 @@ export default function ProductTour() {
       const { tab: t, page: p } = now.current;
       const list = calloutsFor(t, p);
       if (turn.current >= list.length) {
-        const next = PAGES[PAGES.findIndex((x) => x.id === p) + 1];
-        if (t === "platform" && next) setPage(next.id); // the effect above resets the turn
+        const next = PAGE_ORDER[PAGE_ORDER.indexOf(p) + 1];
+        if (t === "platform" && next) setPage(next); // the effect above resets the turn
         else { setAuto(false); setActive(null); }
         return;
       }

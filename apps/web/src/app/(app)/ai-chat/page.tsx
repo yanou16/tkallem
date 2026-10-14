@@ -291,7 +291,7 @@ function Chat() {
       <div className={cn("flex flex-col md:min-h-[calc(100vh-110px)]",
         s && "max-md:-mb-[120px] max-md:h-[calc(100dvh-135px-env(safe-area-inset-bottom))]")}>
         <div className={s ? "hidden md:block" : undefined}>
-          <PageHeader title="AI Chat" subtitle={s ? undefined : "Answer by voice or by typing. Your coach corrects each answer and explains why."} />
+          <PageHeader title="Practice session" subtitle={s ? undefined : "Answer by voice or by typing. Your coach corrects each answer and explains why."} />
         </div>
 
         {s ? (

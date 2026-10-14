@@ -1,12 +1,11 @@
 "use client";
 import { useState } from "react";
 import { Check, Lightbulb, Lock, Mic, Zap } from "lucide-react";
-import { Icon } from "@/lib/icons";
 import { scenarioTint } from "@/lib/tint";
 import { cn } from "@/lib/utils";
 import { FOCUS_CHOICES, GOALS, planOrder } from "@/features/plan/lib/plan";
 import { Browser, Pill, R } from "./TourParts";
-import { DEMO_SCENARIOS, PAGES, planView, type DemoScenario, type PlanDemo, type PlatformPage } from "./tour";
+import { DEMO_SCENARIOS, PAGES, menuOf, planView, type DemoScenario, type PlanDemo, type PlatformPage } from "./tour";
 
 const URL: Record<PlatformPage, string> = {
   home: "tkallem.vercel.app", practice: "tkallem.vercel.app/practice", chat: "tkallem.vercel.app/ai-chat",
@@ -30,19 +29,21 @@ const Head = ({ eyebrow, title }: { eyebrow: string; title: string }) => (
   <div className="mb-3"><span className="text-xs text-slate">{eyebrow}</span><h3 className="text-[22px] font-medium leading-tight tracking-tight">{title}</h3></div>
 );
 
-function Card({ s, i, real }: { s: DemoScenario; i?: number; real?: boolean }) {
+function Card({ s, i, real, onOpen }: { s: DemoScenario; i?: number; real?: boolean; onOpen: () => void }) {
   return (
     <div className={cn("flex min-h-[92px] flex-col gap-1.5 rounded-[18px] p-3", scenarioTint(s.category), s.category === "speaking" && "border border-hairline-soft")}>
       {i !== undefined && <span className="flex size-[22px] items-center justify-center rounded-full bg-canvas text-[11px] font-semibold">{i + 1}</span>}
-      <span className="flex items-start justify-between gap-1 text-sm font-semibold"><span>{s.title}</span><Icon name={s.icon} size={15} /></span>
+      <span className="text-sm font-semibold">{s.title}</span>
       <small className="text-[11px] text-charcoal">{s.minutes} min · {s.level}</small>
-      {real ? <R id="real" as="span" className="mt-auto text-[11px] font-semibold">Real interview →</R> : <span className="mt-auto text-[11px] font-semibold">Practice →</span>}
+      <button type="button" onClick={onOpen} className="mt-auto min-h-11 self-start text-left text-[11px] font-semibold underline-offset-2 hover:underline">
+        {real ? <R id="real" as="span">Real interview →</R> : "Practice →"}
+      </button>
     </div>
   );
 }
 
 /* ---------- the pages ---------- */
-function Home({ plan }: { plan: PlanDemo }) {
+function Home({ plan, open }: { plan: PlanDemo; open: () => void }) {
   const v = planView(plan);
   return (
     <>
@@ -59,7 +60,7 @@ function Home({ plan }: { plan: PlanDemo }) {
       <div className="grid gap-3 md:grid-cols-[1fr_180px]">
         <div>
           <R id="plan" className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate">Your plan, in order</R>
-          <R id="situations" className="grid grid-cols-2 gap-2">{v.path.map((s, i) => <Card key={s.id} s={s} i={i} real={i === 1} />)}</R>
+          <R id="situations" className="grid grid-cols-2 gap-2">{v.path.map((s, i) => <Card key={s.id} s={s} i={i} real={i === 1} onOpen={open} />)}</R>
         </div>
         <div className="space-y-2.5">
           <R id="goal"><Box><h4 className="mb-2 text-[13px] font-semibold">Today&apos;s goal</h4>
@@ -72,7 +73,7 @@ function Home({ plan }: { plan: PlanDemo }) {
   );
 }
 
-function Practice({ plan }: { plan: PlanDemo }) {
+function Practice({ plan, open }: { plan: PlanDemo; open: () => void }) {
   const v = planView(plan);
   const all = planOrder(DEMO_SCENARIOS, v.goal, plan.interests).slice(0, 6);
   return (
@@ -82,7 +83,7 @@ function Practice({ plan }: { plan: PlanDemo }) {
         <R id="planlink" as="span" className="mt-1 whitespace-nowrap text-xs font-semibold underline">Your plan</R>
       </div>
       <div className="grid gap-3 md:grid-cols-[1fr_170px]">
-        <R id="grid" className="grid grid-cols-2 gap-2">{all.map((s, i) => <Card key={s.id} s={s} real={i === 0 ? true : undefined} />)}</R>
+        <R id="grid" className="grid grid-cols-2 gap-2">{all.map((s, i) => <Card key={s.id} s={s} real={i === 0 ? true : undefined} onOpen={open} />)}</R>
         <R id="recent"><Box><h4 className="mb-1 text-[13px] font-semibold">Recent sessions</h4><Row k="Visa interview" v="2 h ago" /><Row k="At the airport" v="Mon" /><Row k="Taking a taxi" v="Sun" /></Box></R>
       </div>
     </>
@@ -211,20 +212,20 @@ export default function Platform({ plan, page, onPage }: { plan: PlanDemo; page:
           <div className="mb-2 flex items-center gap-2 text-[15px] font-semibold" aria-hidden><b className="flex size-[26px] items-center justify-center rounded-lg bg-brand-yellow text-[13px]">T</b>Tkallem</div>
           <R id="nav" className="flex flex-col gap-1" >
             {PAGES.map((p) => (
-              <button key={p.id} type="button" onClick={() => onPage(p.id)} aria-current={page === p.id ? "page" : undefined}
-                className={cn("min-h-10 rounded-full px-2.5 text-left font-medium", page === p.id ? "bg-ink text-white" : "text-slate hover:bg-surface")}>{p.label}</button>
+              <button key={p.id} type="button" onClick={() => onPage(p.id)} aria-current={menuOf(page) === p.id ? "page" : undefined}
+                className={cn("min-h-10 rounded-full px-2.5 text-left font-medium", menuOf(page) === p.id ? "bg-ink text-white" : "text-slate hover:bg-surface")}>{p.label}</button>
             ))}
           </R>
         </aside>
         <div className="min-w-0 p-4 md:p-5">
           <nav aria-label="Pages" className="mb-3 flex gap-1 overflow-x-auto md:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {PAGES.map((p) => (
-              <button key={p.id} type="button" onClick={() => onPage(p.id)} aria-current={page === p.id ? "page" : undefined}
-                className={cn("min-h-11 shrink-0 rounded-full px-3.5 text-sm font-semibold", page === p.id ? "bg-ink text-white" : "bg-surface text-slate")}>{p.label}</button>
+              <button key={p.id} type="button" onClick={() => onPage(p.id)} aria-current={menuOf(page) === p.id ? "page" : undefined}
+                className={cn("min-h-11 shrink-0 rounded-full px-3.5 text-sm font-semibold", menuOf(page) === p.id ? "bg-ink text-white" : "bg-surface text-slate")}>{p.label}</button>
             ))}
           </nav>
-          {page === "home" && <Home plan={plan} />}
-          {page === "practice" && <Practice plan={plan} />}
+          {page === "home" && <Home plan={plan} open={() => onPage("chat")} />}
+          {page === "practice" && <Practice plan={plan} open={() => onPage("chat")} />}
           {page === "chat" && <Chat />}
           {page === "groups" && <Groups />}
           {page === "progress" && <Progress />}
