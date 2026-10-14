@@ -3,7 +3,7 @@ import { useClerk, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { Bell, ChevronDown, House, MessageCircle, Mic, Users, ChartNoAxesColumn, UserRound, LogOut } from "lucide-react";
+import { Bell, ChevronDown, House, Mic, Users, ChartNoAxesColumn, UserRound, LogOut } from "lucide-react";
 import { Avatar, ErrorState, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/lib/config";
@@ -14,14 +14,18 @@ import ChooseLevel from "@/components/ChooseLevel";
 import { useIdentity } from "@/features/credits/hooks/useCredits";
 import { FEATURES } from "@/lib/features";
 
-const NAV = [
+/** One entry for practice: the list of situations (/practice) and the conversation (/ai-chat) are two steps of the same thing. */
+const NAV: { href: string; label: string; icon: typeof House; also?: string[] }[] = [
   { href: "/", label: "Home", icon: House },
-  { href: "/practice", label: "Practice", icon: MessageCircle },
-  { href: "/ai-chat", label: "AI Chat", icon: Mic }, // DESIGN.md: no sparkle icons
+  { href: "/practice", label: "Practice", icon: Mic, also: ["/ai-chat"] }, // DESIGN.md: no sparkle icons
   ...(FEATURES.groups ? [{ href: "/groups", label: "Groups", icon: Users }] : []),
   { href: "/progress", label: "Progress", icon: ChartNoAxesColumn },
   { href: "/profile", label: "Profile", icon: UserRound },
 ];
+
+/** "/" only matches itself; the others also match their sub-routes and the routes listed in `also`. */
+export const isActive = (path: string | null, href: string, also: string[] = []) =>
+  href === "/" ? path === "/" : [href, ...also].some((p) => (path ?? "").startsWith(p));
 
 function Logo() {
   return (
@@ -34,7 +38,7 @@ function Logo() {
 }
 
 /** A visitor without account only sees the screens that work without one. */
-const GUEST_NAV = NAV.filter((n) => n.href === "/practice" || n.href === "/ai-chat" || n.href === "/groups");
+const GUEST_NAV = NAV.filter((n) => n.href === "/practice" || n.href === "/groups");
 function useNav() {
   return useIdentity().isGuest ? GUEST_NAV : NAV;
 }
@@ -46,8 +50,8 @@ function Sidebar() {
     <aside className="sticky top-0 hidden h-screen w-[260px] shrink-0 flex-col gap-8 border-r border-line bg-white/60 p-5 md:flex">
       <Logo />
       <nav className="flex flex-col gap-1.5" aria-label="Main">
-        {nav.map(({ href, label, icon: I }) => {
-          const active = href === "/" ? path === "/" : path.startsWith(href);
+        {nav.map(({ href, label, icon: I, also }) => {
+          const active = isActive(path, href, also);
           return (
             <Link key={href} href={href} aria-current={active ? "page" : undefined}
               className={cn("flex items-center gap-4 rounded-full px-5 py-3.5 text-[15px] font-medium transition",
@@ -66,8 +70,8 @@ function MobileNav() {
   const nav = useNav();
   return (
     <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-line bg-white/95 py-2 md:hidden">
-      {nav.map(({ href, label, icon: I }) => {
-        const active = href === "/" ? path === "/" : path.startsWith(href);
+      {nav.map(({ href, label, icon: I, also }) => {
+        const active = isActive(path, href, also);
         return (
           <Link key={href} href={href} className={cn("flex min-h-11 flex-col items-center justify-center gap-0.5 px-2 text-[11px]", active ? "font-semibold text-ink" : "text-muted")}>
             <I size={20} /> {label}

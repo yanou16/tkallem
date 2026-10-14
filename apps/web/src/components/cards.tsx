@@ -1,23 +1,14 @@
 "use client";
 import Link from "next/link";
 import { ArrowRight, Clock } from "lucide-react";
-import { Icon } from "@/lib/icons";
 import { scenarioTint } from "@/lib/tint";
-import { Pill, Skeleton, toneDeep, type Tone } from "@/components/ui";
+import { Pill, Skeleton } from "@/components/ui";
 import { cn, plural, timeAgo } from "@/lib/utils";
 import type { Scenario, SessionSummary } from "@/features/practice/types/practice";
 
 /** Practice by default; `mode: "interview"` opens the same scenario as a real interview (no feedback until the report). */
 export const startHref = (scenarioId: string, mode: "practice" | "interview" = "practice") =>
   `/ai-chat?scenarioId=${encodeURIComponent(scenarioId)}${mode === "interview" ? "&mode=interview" : ""}`;
-
-export function IconBadge({ name, tone, size = 44 }: { name?: string; tone: Tone; size?: number }) {
-  return (
-    <span style={{ width: size, height: size }} className={cn("flex shrink-0 items-center justify-center rounded-2xl", toneDeep[tone])}>
-      <Icon name={name} size={size * 0.5} />
-    </span>
-  );
-}
 
 export function StartButton({ href, label = "Start" }: { href: string; label?: string }) {
   return (
@@ -31,17 +22,11 @@ export function StartButton({ href, label = "Start" }: { href: string; label?: s
 export function ScenarioCard({ s }: { s: Scenario }) {
   return (
     <article className={cn("flex flex-col justify-between gap-4 rounded-card p-5", scenarioTint(s.category))}>
-      <div className="flex gap-4">
-        {/* The API sends no icon yet: lib/icons.tsx maps the scenario id instead. */}
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/70">
-          <Icon name={s.icon ?? s.id} size={22} />
-        </span>
-        <div className="min-w-0">
-          <h3 className="font-semibold leading-tight">{s.title}</h3>
-          <p className="text-sm text-charcoal">
-            {s.mode === "free" ? "Free conversation" : s.totalQuestions ? plural(s.totalQuestions, "question") : "Guided questions"}
-          </p>
-        </div>
+      <div className="min-w-0">
+        <h3 className="font-semibold leading-tight">{s.title}</h3>
+        <p className="text-sm text-charcoal">
+          {s.mode === "free" ? "Free conversation" : s.totalQuestions ? plural(s.totalQuestions, "question") : "Guided questions"}
+        </p>
       </div>
       {s.description && <p className="text-sm text-charcoal">{s.description}</p>}
       <div className="flex items-center justify-between">

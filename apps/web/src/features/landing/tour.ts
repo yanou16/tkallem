@@ -40,14 +40,19 @@ export const REGIONS: Record<Exclude<TourTab, "platform">, string[]> = {
 
 /* ---------- the platform tab: a sidebar that works, one set of captions per page ---------- */
 export type PlatformPage = "home" | "practice" | "chat" | "groups" | "progress" | "profile";
-export const PAGES: { id: PlatformPage; label: string }[] = [
-  { id: "home", label: "Home" }, { id: "practice", label: "Practice" }, { id: "chat", label: "AI Chat" },
+/** The sidebar. The conversation ("chat") is not an entry: like the real app, it opens from Practice. */
+export const PAGES: { id: Exclude<PlatformPage, "chat">; label: string }[] = [
+  { id: "home", label: "Home" }, { id: "practice", label: "Practice" },
   { id: "groups", label: "Groups" }, { id: "progress", label: "Progress" }, { id: "profile", label: "Profile" },
 ];
+/** The order the automatic tour visits the pages in. */
+export const PAGE_ORDER: PlatformPage[] = ["home", "practice", "chat", "groups", "progress", "profile"];
+/** The sidebar entry lit for a page. */
+export const menuOf = (p: PlatformPage): Exclude<PlatformPage, "chat"> => (p === "chat" ? "practice" : p);
 const c = (id: string, label: string, detail: string, side: "left" | "right", region = id): Callout => ({ id, label, detail, side, region });
 export const PAGE_CALLOUTS: Record<PlatformPage, Callout[]> = {
   home: [
-    c("nav", "Click the menu", "Every page of the app is live in this preview: try Practice, AI Chat, Groups, Progress.", "left"),
+    c("nav", "Click the menu", "Every page of the app is live in this preview: try Practice, Groups, Progress, Profile.", "left"),
     c("kpi", "Progress that is measured", "Mistakes per 100 words, practice time and streak, from your own sessions.", "left"),
     c("plan", "Your plan, in order", "The situations that match your goal come first.", "left"),
     c("situations", "Real situations", "Visa, Campus France, job, IELTS and everyday scenes like the taxi or the cafe.", "left"),
@@ -59,7 +64,7 @@ export const PAGE_CALLOUTS: Record<PlatformPage, Callout[]> = {
   ],
   practice: [
     c("planlink", "Your plan, one tap away", "Redo the five questions whenever your goal changes.", "left"),
-    c("grid", "Ten real situations", "Interviews, exams and everyday scenes, in the order of your plan.", "left"),
+    c("grid", "Ten real situations", "Interviews, exams and everyday scenes, in the order of your plan. Tap a card: the conversation opens.", "left"),
     c("real", "Practice or Real interview", "Every situation can be run as the real thing.", "right"),
     c("recent", "Pick up where you left off", "Your recent sessions, one tap to continue or redo.", "right"),
   ],
@@ -103,16 +108,16 @@ export const calloutsFor = (tab: TourTab, page: PlatformPage): Callout[] => (tab
 
 /** The situations as the API lists them (same ids, titles, minutes, levels and categories). */
 export const DEMO_SCENARIOS = [
-  { id: "airport", icon: "airport", title: "At the airport", category: "speaking", mode: "guided" as const, minutes: 6, level: "B1" },
-  { id: "cafe", icon: "cafe", title: "Ordering at a cafe", category: "speaking", mode: "guided" as const, minutes: 5, level: "A2" },
-  { id: "campus-france", icon: "university", title: "Campus France interview", category: "study", mode: "guided" as const, minutes: 8, level: "B2" },
-  { id: "free-talk", icon: "chat", title: "Free talk", category: "speaking", mode: "free" as const, minutes: 10, level: "B1" },
-  { id: "ielts-part2", icon: "mic", title: "IELTS Speaking, part 2", category: "exams", mode: "guided" as const, minutes: 6, level: "B2" },
-  { id: "job-remote", icon: "laptop", title: "Remote job interview", category: "work", mode: "guided" as const, minutes: 10, level: "B2" },
-  { id: "shop", icon: "shop", title: "In a clothes shop", category: "speaking", mode: "guided" as const, minutes: 5, level: "A2" },
-  { id: "taxi", icon: "taxi", title: "Taking a taxi", category: "speaking", mode: "guided" as const, minutes: 5, level: "A2" },
-  { id: "visa-business", icon: "plane", title: "Business or tourist visa", category: "travel", mode: "guided" as const, minutes: 8, level: "B1" },
-  { id: "visa-us", icon: "plane", title: "Visa interview", category: "travel", mode: "guided" as const, minutes: 8, level: "B1" },
+  { id: "airport", title: "At the airport", category: "speaking", mode: "guided" as const, minutes: 6, level: "B1" },
+  { id: "cafe", title: "Ordering at a cafe", category: "speaking", mode: "guided" as const, minutes: 5, level: "A2" },
+  { id: "campus-france", title: "Campus France interview", category: "study", mode: "guided" as const, minutes: 8, level: "B2" },
+  { id: "free-talk", title: "Free talk", category: "speaking", mode: "free" as const, minutes: 10, level: "B1" },
+  { id: "ielts-part2", title: "IELTS Speaking, part 2", category: "exams", mode: "guided" as const, minutes: 6, level: "B2" },
+  { id: "job-remote", title: "Remote job interview", category: "work", mode: "guided" as const, minutes: 10, level: "B2" },
+  { id: "shop", title: "In a clothes shop", category: "speaking", mode: "guided" as const, minutes: 5, level: "A2" },
+  { id: "taxi", title: "Taking a taxi", category: "speaking", mode: "guided" as const, minutes: 5, level: "A2" },
+  { id: "visa-business", title: "Business or tourist visa", category: "travel", mode: "guided" as const, minutes: 8, level: "B1" },
+  { id: "visa-us", title: "Visa interview", category: "travel", mode: "guided" as const, minutes: 8, level: "B1" },
 ];
 export type DemoScenario = (typeof DEMO_SCENARIOS)[number];
 
