@@ -47,9 +47,9 @@ export default function ChooseLevel() {
         </div>
       </fieldset>
 
-      {update.error && <p role="alert" className="mt-4 text-sm text-red-600">Could not save: {(update.error as Error).message}. Try again.</p>}
+      {update.error && <p role="alert" className="mt-4 text-sm text-bad">Could not save: {(update.error as Error).message}. Try again.</p>}
       <Button className="mt-6 w-full" disabled={update.isPending} onClick={() => update.mutate({ level, explainLang: lang })}>
-        {update.isPending ? "Saving…" : "Start practising"}
+        {update.isPending ? "Saving…" : "Start practicing"}
       </Button>
     </Card>
   );

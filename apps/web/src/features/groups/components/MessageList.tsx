@@ -55,7 +55,7 @@ export default function MessageList({ groupId, log, myId }: { groupId: number; l
       <div ref={box} onScroll={onScroll} className="max-h-[60vh] min-h-[240px] space-y-3 overflow-y-auto pr-1" aria-live="polite">
         {log.hasOlder && (
           <div className="flex justify-center">
-            <Button dark={false} onClick={() => older.mutate()} disabled={older.isPending} className="!py-1.5 text-xs">
+            <Button dark={false} onClick={() => older.mutate()} disabled={older.isPending} className="text-sm">
               {older.isPending ? "Loading…" : "Load earlier messages"}
             </Button>
           </div>
@@ -67,7 +67,7 @@ export default function MessageList({ groupId, log, myId }: { groupId: number; l
           <ul className="space-y-4">
             {groupMessages(messages).map((g) => g.author.id === myId ? (
               <li key={g.messages[0].id} className="flex flex-col items-end gap-1">
-                <p className="px-1 text-xs text-muted"><span className="sr-only">You · </span>{clock(g.startedAt)}</p>
+                <p className="px-1 text-sm text-muted"><span className="sr-only">You · </span>{clock(g.startedAt)}</p>
                 {g.messages.map((m) => (
                   <p key={m.id} className={cn(BUBBLE, "rounded-br-input bg-ink text-white")}>{m.body}</p>
                 ))}
@@ -77,7 +77,7 @@ export default function MessageList({ groupId, log, myId }: { groupId: number; l
                 {/* A former member: "?" on light grey (Avatar's own background), like a member without a first name. */}
                 <Avatar first={g.authorLeft ? undefined : g.author.firstName ?? undefined} size={32} className="shrink-0" />
                 <div className="min-w-0 flex-1 space-y-1">
-                  <p className="px-1 text-xs text-muted">
+                  <p className="px-1 text-sm text-muted">
                     {g.authorLeft ? "Former member" : <span className="font-medium text-ink">{memberName(g.author)}</span>} · {clock(g.startedAt)}
                   </p>
                   {g.messages.map((m) => (

@@ -6,11 +6,6 @@ import { cn, initials } from "@/lib/utils";
 import { ApiError } from "@/lib/api/client";
 
 /* ---------- pastel tones (visual only; assigned by position, never from data) ---------- */
-export const TONES = ["mint", "butter", "peach", "rose", "lilac"] as const;
-export type Tone = (typeof TONES)[number];
-export const toneAt = (i: number): Tone => TONES[i % TONES.length];
-export const toneBg: Record<Tone, string> = { mint: "bg-mint", butter: "bg-butter", peach: "bg-peach", rose: "bg-rose", lilac: "bg-lilac" };
-export const toneDeep: Record<Tone, string> = { mint: "bg-mint-deep", butter: "bg-butter-deep", peach: "bg-peach-deep", rose: "bg-rose-deep", lilac: "bg-lilac-deep" };
 
 /* ---------- primitives ---------- */
 export function Skeleton({ className }: { className?: string }) {
@@ -39,7 +34,7 @@ export function AvatarStack({ people, size = 34, max = 3 }: { people: { id: stri
 }
 
 export function Pill({ children, className }: { children: ReactNode; className?: string }) {
-  return <span className={cn("inline-flex items-center rounded-full bg-white/70 px-2.5 py-1 text-xs font-medium text-ink", className)}>{children}</span>;
+  return <span className={cn("inline-flex items-center rounded-full bg-white/70 px-2.5 py-1 text-[13px] font-medium text-ink", className)}>{children}</span>;
 }
 
 export function Button({ dark = true, className, ...p }: React.ButtonHTMLAttributes<HTMLButtonElement> & { dark?: boolean }) {
@@ -47,7 +42,7 @@ export function Button({ dark = true, className, ...p }: React.ButtonHTMLAttribu
     <button
       {...p}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
         dark ? "bg-ink text-white hover:bg-black/80" : "border border-line bg-white text-ink hover:bg-black/5",
         className,
       )}
@@ -56,14 +51,14 @@ export function Button({ dark = true, className, ...p }: React.ButtonHTMLAttribu
 }
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <section className={cn("rounded-card border border-line bg-white p-5 shadow-soft", className)}>{children}</section>;
+  return <section className={cn("rounded-card border border-line bg-white p-5", className)}>{children}</section>;
 }
 
 export function SectionTitle({ title, action }: { title: string; action?: ReactNode }) {
   return (
     <div className="mb-3 flex items-center justify-between">
       <h2 className="text-lg font-semibold">{title}</h2>
-      {action && <div className="text-sm text-muted">{action}</div>}
+      {action && <div className="flex min-h-11 items-center text-sm text-muted">{action}</div>}
     </div>
   );
 }
@@ -72,8 +67,8 @@ export function PageHeader({ eyebrow, title, subtitle }: { eyebrow?: ReactNode; 
   return (
     <header className="mb-6">
       {eyebrow && <p className="mb-1 text-sm text-muted">{eyebrow}</p>}
-      <h1 className="text-4xl font-medium tracking-tight md:text-5xl">{title}</h1>
-      {subtitle && <p className="mt-2 text-lg text-muted">{subtitle}</p>}
+      <h1 className="text-[28px] font-medium leading-tight tracking-tight md:text-5xl">{title}</h1>
+      {subtitle && <p className="mt-2 text-base text-muted md:text-lg">{subtitle}</p>}
     </header>
   );
 }
@@ -92,13 +87,13 @@ export function EmptyState({ title, text, action, className }: { title: string; 
 export function ErrorState({ error, onRetry, className }: { error?: unknown; onRetry?: () => void; className?: string }) {
   const msg = error instanceof ApiError ? error.message : "Something went wrong while loading this section.";
   return (
-    <div role="alert" className={cn("flex items-start gap-3 rounded-2xl border border-rose-deep bg-rose/50 p-4", className)}>
+    <div role="alert" className={cn("flex items-start gap-3 rounded-2xl border border-bad bg-bad-bg p-4", className)}>
       <AlertCircle className="mt-0.5 shrink-0" size={18} />
       <div className="flex-1 text-sm">
         <p className="font-semibold">Couldn't load this</p>
         <p className="text-muted">{msg}</p>
       </div>
-      {onRetry && <Button dark={false} onClick={onRetry} className="!px-3 !py-1.5 text-xs">Try again</Button>}
+      {onRetry && <Button dark={false} onClick={onRetry} className="!px-4 text-sm">Try again</Button>}
     </div>
   );
 }
@@ -160,8 +155,8 @@ export function ProgressRing({ value, max, size = 120, stroke = 12, children }: 
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="#ececf0" strokeWidth={stroke} fill="none" />
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="#1DB87E" strokeWidth={stroke} fill="none" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} />
+        <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--hairline-soft)" strokeWidth={stroke} fill="none" />
+        <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--ink)" strokeWidth={stroke} fill="none" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">{children}</div>
     </div>
@@ -171,8 +166,7 @@ export function ProgressRing({ value, max, size = 120, stroke = 12, children }: 
 export function GoalHint({ goal, done }: { goal: number; done: number }) {
   const left = Math.max(0, goal - done);
   return (
-    <div className="flex items-center gap-3 rounded-2xl bg-success/10 p-3 text-sm text-muted">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-success/15 text-success">✿</span>
+    <div className="rounded-2xl bg-good-bg p-3 text-sm font-medium text-good">
       {left > 0 ? <p>You're {left} minute{left === 1 ? "" : "s"} away from your daily goal!</p> : <p>Daily goal reached. Nice work!</p>}
     </div>
   );

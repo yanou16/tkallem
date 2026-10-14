@@ -22,10 +22,10 @@
   --brand-yellow: #ffd02f;
 
   /* Scenario tints */
-  --tint-visa: #c3faf5;
-  --tint-campus: #fff4c4;
-  --tint-job: #ffe6cd;
-  --tint-ielts: #ffc6c6;
+  --tint-visa: #ddf4f1;
+  --tint-campus: #f7f0d4;
+  --tint-job: #fae8d8;
+  --tint-ielts: #f6dcdc;
 
   /* Feedback */
   --good: #0a7a4b;
@@ -63,10 +63,10 @@
 
   --brand-yellow: #ffd02f;
 
-  --tint-visa: #c3faf5;
-  --tint-campus: #fff4c4;
-  --tint-job: #ffe6cd;
-  --tint-ielts: #ffc6c6;
+  --tint-visa: #ddf4f1;
+  --tint-campus: #f7f0d4;
+  --tint-job: #fae8d8;
+  --tint-ielts: #f6dcdc;
 
   --good: #0a7a4b;
   --good-bg: #d9f5e9;
@@ -87,9 +87,10 @@
   --shadow-pop: 0 16px 48px -8px rgba(5, 0, 56, 0.12);
 }
 }
-html, body { background: #fdfdfb; color: #111; }
+html, body { background: var(--canvas); color: var(--ink); }
 body { -webkit-font-smoothing: antialiased; }
-:focus-visible { outline: 2px solid #111; outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+::placeholder { color: var(--steel); opacity: 1; } /* 5.0:1 on white (the old grey was 2.6:1) */
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
 /* Voice state indicator (DESIGN.md "State indicator"): listening bars, thinking dots, speaking circle.
@@ -104,3 +105,5 @@ body { -webkit-font-smoothing: antialiased; }
 /* Correction under the student's answer (DESIGN.md "Correction"): fade + 8px upward slide, 200ms. */
 @keyframes tk-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .tk-in { animation: tk-in 200ms ease-out both; }
+
+@keyframes tour-wave { 0%, 100% { height: 6px; } 50% { height: 24px; } }

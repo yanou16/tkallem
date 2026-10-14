@@ -1,0 +1,49 @@
+{
+  "id": "airport",
+  "title": "At the airport",
+  "description": "Check in, answer the agent's questions and find your gate, step by step.",
+  "icon": "airport",
+  "minutes": 6,
+  "level": "B1",
+  "coach_role": "A check-in agent at an airport desk: polite, efficient, short questions.",
+  "questions": [
+    "Good morning! Where are you flying today?",
+    "Do you have any bags to check in?",
+    "Did you pack your bags yourself?",
+    "Would you prefer a window seat or an aisle seat?",
+    "Your gate is B12 and boarding starts in 30 minutes. Do you have any questions?",
+    "Have a nice flight! Do you need help finding your gate?"
+  ],
+  "goals": [
+    "destination",
+    "bags",
+    "packed",
+    "seat",
+    "questions",
+    "gate_help"
+  ],
+  "useful_words": [
+    "boarding pass",
+    "carry-on",
+    "luggage",
+    "passport",
+    "delay",
+    "gate",
+    "window seat",
+    "aisle"
+  ],
+  "skippable": [
+    "packed",
+    "seat"
+  ],
+  "starters": [
+    "I am flying to",
+    "Yes, I have",
+    "Yes, I packed them because",
+    "I would prefer a window seat because",
+    "Yes, I would like to know if",
+    "Yes, I need help to"
+  ],
+  "category": "speaking",
+  "mode": "guided"
+}

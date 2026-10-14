@@ -27,12 +27,14 @@ Inspiration from Miro's structure, not its identity: never use the word "Miro", 
 
 ### Scenario tints (one meaning each, never decorative elsewhere)
 
+Calmed on 14 October 2026 (same hues, less saturation, one lightness band) so that no pastel shouts and every text on them passes AA: charcoal 11 to 12:1, slate 5.3 to 6:1. **Steel and stone text never go on a tint** (steel is 3.9 to 4.4:1 there). The everyday scenes have no tint: they sit on `surface`. No other pastel exists: the retired mint, butter, peach, rose and lilac tokens are gone (a test guards it).
+
 | Token | Hex | Scenario |
 |---|---|---|
-| tint-visa | #C3FAF5 | Visa interview |
-| tint-campus | #FFF4C4 | Campus France interview |
-| tint-job | #FFE6CD | Remote job interview |
-| tint-ielts | #FFC6C6 | IELTS Speaking |
+| tint-visa | #DDF4F1 | Visa interview |
+| tint-campus | #F7F0D4 | Campus France interview |
+| tint-job | #FAE8D8 | Remote job interview |
+| tint-ielts | #F6DCDC | IELTS Speaking |
 
 ### Feedback colors (traffic light, fixed meaning)
 

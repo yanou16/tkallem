@@ -1,0 +1,49 @@
+{
+  "id": "taxi",
+  "title": "Taking a taxi",
+  "description": "Tell a taxi driver where you are going, ask the price and talk about the trip.",
+  "icon": "taxi",
+  "minutes": 5,
+  "level": "A2",
+  "coach_role": "A friendly taxi driver in a big English-speaking city: short, natural questions.",
+  "questions": [
+    "Hi! Where are you going today?",
+    "Is it your first time in this city?",
+    "Do you prefer the fast road or the quiet road?",
+    "We are almost there. Where exactly should I stop?",
+    "That is 18 dollars. How would you like to pay?",
+    "Thank you. Do you want me to wait or to come back later?"
+  ],
+  "goals": [
+    "destination",
+    "first_time",
+    "route",
+    "stop_place",
+    "payment",
+    "wait"
+  ],
+  "useful_words": [
+    "airport",
+    "address",
+    "how long",
+    "traffic",
+    "fare",
+    "change",
+    "receipt",
+    "drop me off"
+  ],
+  "skippable": [
+    "first_time",
+    "route"
+  ],
+  "starters": [
+    "I would like to go to",
+    "Yes, it is my first time because",
+    "I prefer the fast road because",
+    "Please stop at",
+    "I would like to pay by",
+    "Please wait for me because"
+  ],
+  "category": "speaking",
+  "mode": "guided"
+}

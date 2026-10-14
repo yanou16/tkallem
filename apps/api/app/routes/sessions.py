@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from psycopg import Connection
 from tkallem_agent import AgentError, CoachSession, HintError, ScenarioNotFound, freeze_compare, freeze_summary, match_repeat
 
-from app import credits
+from app import credits, rate_limit
 from app.config import settings
 from app.db.connection import ConnFactory, get_conn, get_conn_factory
 from app.db.sessions import (
@@ -28,7 +28,7 @@ from app.db.sessions import (
 from app.dependencies import get_current_user, user_for_claims
 from app.progress_line import progress_line
 from app.schemas.sessions import (
-    ConfidenceAnswer, HintRequest, HintResult, RepeatResult, SessionCreate, SessionDetail, SessionReport, SessionStarted, Spoken,
+    ConfidenceAnswer, HintRequest, HintResult, NoteRequest, NoteResult, RepeatResult, SessionCreate, SessionDetail, SessionReport, SessionStarted, Spoken,
     TurnResult,
 )
 from app.security import ClerkClaims, get_clerk_claims
@@ -438,7 +438,7 @@ def say_it_again(
 ) -> dict:
     """"Say it again": the student says the corrected version of answer number `turn` (0 = first answer) out loud. The
     code decides if it matches (tkallem_agent.repeat). Free, at most REPEAT_LIMIT tries per answer; the interview does
-    not move on, and it works after the session ended too (to practise from the report)."""
+    not move on, and it works after the session ended too (to practice from the report)."""
     with connect() as conn:
         session = get_session_for_user(conn, session_id, user["id"])
     if session is None:
@@ -454,7 +454,7 @@ def say_it_again(
     key = (session_id, turn)
     used = _repeat_calls.get(key, 0)
     if used >= REPEAT_LIMIT:
-        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "You tried 3 times: go on with the interview, you can practise it again later")
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "You tried 3 times: go on with the interview, you can practice it again later")
     if not _hourly_ok(_repeat_times, str(user["id"]), REPEATS_PER_HOUR, time.monotonic()):
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many tries in the last hour: take a break and come back")
     data = audio.file.read(settings.max_audio_bytes + 1)
@@ -473,6 +473,7 @@ def send_turn(
     text: str | None = Form(None),
     audio: UploadFile | None = File(None),
     think_seconds: str | None = Form(None),
+    explain_lang: str | None = Form(None),
     claims: ClerkClaims = Depends(get_clerk_claims),
     connect: ConnFactory = Depends(get_conn_factory),
     llm=Depends(get_llm),
@@ -488,6 +489,9 @@ def send_turn(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
     if session["ended_at"] is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
+    if explain_lang in ("en", "fr") and session["state"].get("explain_lang") != explain_lang:
+        # "Explain in English / French": from this answer on, the explanations come in that language (and stay saved so)
+        session = {**session, "state": {**session["state"], "explain_lang": explain_lang}}
     data = None
     if audio is not None:
         data = audio.file.read(settings.max_audio_bytes + 1)
@@ -522,6 +526,33 @@ def send_turn(
         raise
     answer["credits"] = wallet.as_dict()
     return answer
+
+
+@router.post("/{session_id}/note", response_model=NoteResult)
+def explain_note(
+    session_id: UUID,
+    body: NoteRequest,
+    claims: ClerkClaims = Depends(get_clerk_claims),
+    connect: ConnFactory = Depends(get_conn_factory),
+    llm=Depends(get_llm),
+) -> dict:
+    """The coach's note of the report, written again in `lang`. Nothing is saved or spent; 10 an hour per student."""
+    with connect() as conn:
+        user = user_for_claims(conn, claims)
+        session = get_session_for_user(conn, session_id, user["id"])
+    if session is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    if not session["state"]["turns"]:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Answer at least one question first")
+    if not rate_limit.explain_notes.allow(str(user["id"])):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "You asked for the note in another language too often: try again in an hour")
+    coach = CoachSession.from_state({**session["state"], "explain_lang": body.lang}, llm=llm, max_text_chars=settings.max_text_chars)
+    try:
+        report = coach.end()
+    except AgentError:
+        logger.exception("Note failed on session %s", session_id)
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "The note could not be written, try again")
+    return {"note": report.note, "explain_lang": body.lang}
 
 
 @router.post("/{session_id}/end", response_model=SessionReport)

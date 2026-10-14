@@ -12,17 +12,18 @@ a coach asks the real questions, listens, and shows what was good and the one th
 
 ## What a student can do
 
-1. **Pick a situation**: visa interview, Campus France, remote job interview, IELTS Speaking, or free talk. Each runs 5 to
+1. **Build your plan (1 minute, optional)**: five questions (why English, how you speak, time per day, what is hardest, subjects you like) set the level, the daily goal and the order of the situations. The situations themselves are the same for everyone.
+2. **Pick a situation**: visa interview, Campus France, remote job interview, IELTS Speaking, or free talk. Each runs 5 to
    10 minutes and ends with a report.
-2. **Choose a mode**: *Practice* (corrections after each answer, hints, "Say it again") or *Real interview* (the coach
+3. **Choose a mode**: *Practice* (corrections after each answer, hints, "Say it again") or *Real interview* (the coach
    plays the officer, nothing is shown until the report, like the real one).
-3. **Answer out loud or by typing.** The coach replies in text and in a natural voice.
-4. **Get feedback that reassures before it corrects**: one true compliment about the answer, then the single correction
+4. **Answer out loud or by typing.** The coach replies in text and in a natural voice.
+5. **Get feedback that reassures before it corrects**: one true compliment about the answer, then the single correction
    that matters most (the other small fixes stay folded), explained in French or simple English.
-5. **When frozen, press "Help me start"**: the first words of an answer, or the student's idea written in French or
+6. **When frozen, press "Help me start"**: the first words of an answer, or the student's idea written in French or
    Darija turned into English to read aloud. Free, two per question.
-6. **Say the corrected sentence again**: the code checks it (not the AI): "Nailed it", or a gentle hint.
-7. **Read the report**: progress since the last interview, **how long they waited before starting to speak** (the freeze,
+7. **Say the corrected sentence again**: the code checks it (not the AI): "Nailed it", or a gentle hint.
+8. **Read the report**: progress since the last interview, **how long they waited before starting to speak** (the freeze,
    made visible), mistakes per 100 words, the answer to redo, and how confident they feel before and after (1 to 5).
 
 It installs on a phone like an app (PWA), works in a browser, and guests can finish a whole interview without an account.
@@ -33,7 +34,7 @@ A language model never decides alone what a student sees. Everything below is ch
 
 | The model proposes | The code decides |
 |---|---|
-| Mistakes to correct | Keeps at most 3; drops a fix that changes nothing, quotes words the student did not say, removes a name or a number, or rewrites far more than it replaces; merges fixes that touch the same words; the sentence colour comes from the fixes |
+| Mistakes to correct | Keeps at most 3; drops a fix that changes nothing, quotes words the student did not say, removes a name or a number, or rewrites far more than it replaces; merges fixes that touch the same words; the sentence color comes from the fixes |
 | A compliment | Kept only if it is short, only positive, quotes the student's own words, does not name anything absent from the answer and does not praise the mistake itself |
 | The coach's reply | The next question is added verbatim from the scenario; a question is repeated at most once; answered questions are skipped; nothing reopens after the closing line; in a real interview any praise is replaced by "Thank you." |
 | Sentence starters, translations | 12 words at most and stopping before the content (never a complete answer); a translation must keep every name and number, add none, and be a finished sentence; otherwise the scenario's own starter is used |
@@ -56,7 +57,7 @@ flowchart LR
   A --> D[(Postgres<br/>Neon, Frankfurt)]
 ```
 
-Each answer starts three things at once (the credit, the transcription, then the corrector and the coach in parallel), and
+Each answer starts three things at once (the answer count, the transcription, then the corrector and the coach in parallel), and
 the text and the voice stream back as soon as they exist. Every provider has a backup, so a rate limit during the judging
 week costs a second, not the session.
 
@@ -114,7 +115,7 @@ cd apps/web && npm run typecheck && npm test                            # web
 
 ## Cost and judging-week safety
 
-Every answer costs one credit (40 for a guest, more after sign-in, a few every day). `DAILY_SPEND_CAP` bounds what everyone
+Every answer uses one free answer (40 for a guest, 60 more after sign-in, then 15 every day). `DAILY_SPEND_CAP` bounds what everyone
 together can spend per day; at 80 % and at 100 % the API logs an alert and posts to a webhook if one is set. A spoken
 answer costs under half a cent today. Details: [`docs/CREDITS.md`](docs/CREDITS.md), [`docs/OPERATIONS.md`](docs/OPERATIONS.md),
 deployment: [`infra/azure/README.md`](infra/azure/README.md).
@@ -124,7 +125,7 @@ deployment: [`infra/azure/README.md`](infra/azure/README.md).
 Git history shows the real split (the same person sometimes commits under two names). `[TEAM: each person checks their own line]`
 
 - **Rayane Louzazna**: tech lead. The AI coach (agent, prompts, guardrails, evaluation sets), the voice pipeline and its
-  backups, credits and guest mode, deployment (Azure, Neon, Vercel), the CI/CD, the four improvements and the report.
+  backups, free answers and guest mode, deployment (Azure, Neon, Vercel), the CI/CD, the four improvements and the report.
 - **Zaki**: the API (sessions, profile, progress, achievements, database and migrations) and the first voice work.
 - **Akram (Wad2o)**: front-end screens and the profile pages. `[TEAM: Akram, add what else you did]`
 
@@ -138,7 +139,7 @@ Large parts of the code were written with Claude Code (an AI coding assistant), 
   regressions; they do not prove the coach is right about every sentence. A correction can still be wrong or miss something.
 - **Darija translation depends on the model** and on how the student writes it; a translation the code refuses falls back to a generic starter.
 - **Confidence and its change are self-reported**, from few sessions, with no control group (see [`docs/IMPACT.md`](docs/IMPACT.md)).
-- **Scenarios are fixed and few** (six). A real Campus France interview is in French; ours trains the English version of it.
+- **Scenarios are fixed and few** (ten: six interviews and exams, four everyday ones). A real Campus France interview is in French; ours trains the English version of it.
 - **Rate limits for hints and repeats are kept in memory**, per server process: fine for one instance, not for several.
 - **Sign-in uses a Clerk development instance** and one language for the interface (English).
 - **The sample 3D avatar is optional and off by default**: it comes from the TalkingHead project, whose sample avatars are for non-commercial use.
@@ -149,12 +150,12 @@ Large parts of the code were written with Claude Code (an AI coding assistant), 
 
 ```
 apps/web/        Next.js app (screens, PWA, welcome page preview)
-  src/app/           the routes: (app)/ for the app screens (home, practice, AI chat, progress, profile, groups), welcome, sign-in and sign-up
+  src/app/           the routes: (app)/ for the app screens (home, plan, practice, AI chat, progress, profile, groups), welcome, sign-in and sign-up
   src/features/      one folder per feature (ai-chat, practice, progress, profile, groups…): api, hooks, components, lib, types
   src/components/    shared UI (app shell, cards, buttons, dialogs)
   src/lib/           API client and endpoints, configuration, feature flags
   public/            icons, service worker, offline page
-apps/api/        FastAPI (routes, database, voice, credits, migrations)
+apps/api/        FastAPI (routes, database, voice, answer allowance, migrations)
   app/               routes/, db/ (raw SQL), schemas/, voice/, realtime and rate limits of the groups
   alembic/versions/  database migrations
   tests/             pytest, against a real Postgres
@@ -163,7 +164,7 @@ packages/agent/  the coach: LangGraph, prompts, scenarios, guardrails, evals
   evals/             evaluation sets and the AI gate run in CI
   tests/             pytest
 packages/contracts/  OpenAPI and the agent turn schema, shared by the three
-docs/            design system, credits, testing, operations, impact, submission, what next
+docs/            design system, free answers, testing, operations, impact, submission, what next
 infra/azure/     deployment script and notes
 .github/workflows/   CI (tests, web build, AI gate) and the API image (build, deploy to Azure, smoke test)
 .githooks/       pre-push hook: no direct push to main, quick checks (enable with git config core.hooksPath .githooks)

@@ -1,6 +1,7 @@
 import { ApiError, api, apiStream } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
 import { mapMetrics } from "@/features/progress/api/progress";
+import type { ExplainLang } from "@/features/auth/types/user";
 import type {
   AiSession, ChatMessage, FeedbackMode, HintDto, HintRequestDto, RepeatDto, ReportLine, ReportLineDto, SessionDetailDto, SessionReport, SessionReportDto, SessionStarted,
   SessionStartedDto, SpokenDto, StartSessionDto, Turn, TurnDto,
@@ -98,7 +99,8 @@ export const endSession = (sessionId: string) =>
   api.post<SessionReportDto>(endpoints.ai.end(sessionId)).then(mapReport);
 
 /** `think`: seconds before the student started (freeze meter), when it could be measured. */
-export type AnswerInput = ({ text: string } | { audio: Blob }) & { think?: number };
+/** `explain`: "Explain in English / French", sent with every answer so a change applies at once. */
+export type AnswerInput = ({ text: string } | { audio: Blob }) & { think?: number; explain?: ExplainLang };
 
 /** What is known so far about an answer being processed (Server-Sent Events from POST /turn). */
 export type LiveTurn = {
@@ -120,6 +122,7 @@ export async function streamAnswer(
   if ("text" in input) form.append("text", input.text);
   else form.append("audio", input.audio, "recording.webm");
   if (input.think !== undefined) form.append("think_seconds", String(input.think));
+  if (input.explain) form.append("explain_lang", input.explain);
   let reply = "";
   let audioUrl: string | null = null;
   let done: TurnDto | null = null;
@@ -152,3 +155,7 @@ export const repeatAnswer = (sessionId: string, turn: number, audio: Blob) => {
 /** "How confident do you feel?", 1 to 5, before the first answer or after the report. */
 export const answerConfidence = (sessionId: string, when: "before" | "after", value: number) =>
   api.post<void>(endpoints.ai.confidence(sessionId), { when, value });
+
+/** The report's coach note written again in `lang` (nothing is saved, nothing is spent). */
+export const explainNote = (sessionId: string, lang: ExplainLang) =>
+  api.post<{ note: string; explain_lang: ExplainLang }>(endpoints.ai.note(sessionId), { lang });

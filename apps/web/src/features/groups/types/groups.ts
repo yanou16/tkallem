@@ -14,6 +14,9 @@ export type GroupSummaryDto = {
   theme: ThemeDto;
 };
 
+/** GET /groups/preview: for guests and students. */
+export type GroupPreviewDto = { theme: ThemeDto & { question: string }; groups: GroupSummaryDto[] };
+
 export type GroupMemberDto = { id: number; first_name: string | null };
 
 /** GET /groups/{id}, members only. */
@@ -116,3 +119,6 @@ export type LeaderboardEntry = {
   streakDays: number;
   isMe: boolean;
 };
+
+/** What a visitor without an account sees. */
+export type GroupPreview = { theme: GroupDetail["theme"]; groups: GroupSummary[] };

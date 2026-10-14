@@ -15,9 +15,12 @@ export const endpoints = {
     hint: (id: string) => `/sessions/${id}/hint`,
     repeat: (id: string) => `/sessions/${id}/repeat`,
     confidence: (id: string) => `/sessions/${id}/confidence`,
+    note: (id: string) => `/sessions/${id}/note`,
   },
   groups: {
     mine: "/me/group",
+    /** The only group route a guest may call: theme, question of the day, a few groups (no names, no messages). */
+    preview: "/groups/preview",
     join: "/groups/join",
     detail: (id: number) => `/groups/${id}`,
     messages: (id: number) => `/groups/${id}/messages`,

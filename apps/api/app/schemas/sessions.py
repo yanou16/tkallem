@@ -27,6 +27,18 @@ class Spoken(BaseModel):
     audio_url: str | None = None  # None when every voice provider failed: the app uses the browser's voice
 
 
+class NoteRequest(BaseModel):
+    """The report's coach note, written again in the other language ("Explain in English / French")."""
+    model_config = ConfigDict(extra="forbid")
+
+    lang: ExplainLang
+
+
+class NoteResult(BaseModel):
+    note: str
+    explain_lang: ExplainLang
+
+
 class HintRequest(BaseModel):
     """"Help me start" (docs/JURY_BRIEF.md, improvement 1). `text`: the student's idea in French or Darija, for
     `translate` only."""

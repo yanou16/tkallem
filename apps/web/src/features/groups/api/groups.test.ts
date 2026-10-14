@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { checkDraft, getMessages, getMyGroup, joinAGroup, leaveGroup, mapMessage, reportMessage, saveFirstName } from "./groups";
+import { checkDraft, getMessages, getMyGroup, joinAGroup, leaveGroup, mapGroupPreview, mapMessage, reportMessage, saveFirstName } from "./groups";
 import type { GroupMessageDto, GroupSummaryDto } from "../types/groups";
 
 const GROUP: GroupSummaryDto = {
@@ -99,5 +99,15 @@ describe("groups API", () => {
     expect((await saveFirstName("Amina")).firstName).toBe("Amina");
     expect(sent(f)).toMatchObject({ method: "PATCH" });
     expect(JSON.parse(sent(f).body as string)).toEqual({ first_name: "Amina" });
+  });
+});
+
+describe("mapGroupPreview", () => {
+  it("keeps the theme and question and maps the groups, with no member in it", () => {
+    const theme = { id: "work", title: "Work and jobs", category: "work" as const, question: "Office or home?" };
+    const preview = mapGroupPreview({ theme, groups: [{ id: 3, name: "English B1 Club #1", level: "B1", member_count: 2, last_activity: null, theme }] });
+    expect(preview.theme.question).toBe("Office or home?");
+    expect(preview.groups).toEqual([expect.objectContaining({ id: 3, level: "B1", memberCount: 2, lastActivity: null })]);
+    expect(JSON.stringify(preview)).not.toContain("first_name");
   });
 });

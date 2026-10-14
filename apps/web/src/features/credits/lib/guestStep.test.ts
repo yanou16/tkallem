@@ -5,6 +5,8 @@ describe("guestStep", () => {
   it("creates a guest when a visitor starts practising", () => {
     expect(guestStep(false, null, "/ai-chat")).toBe("create");
     expect(guestStep(false, null, "/practice")).toBe("create");
+    expect(guestStep(false, null, "/plan")).toBe("create");
+    expect(guestStep(false, null, "/groups")).toBe("create");
   });
   it("creates nobody on the welcome or sign-in pages", () => {
     expect(guestStep(false, null, "/welcome")).toBe("none");
