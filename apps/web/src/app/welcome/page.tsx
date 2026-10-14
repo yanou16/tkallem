@@ -51,19 +51,19 @@ export default function WelcomePage() {
             <p className="inline-flex rounded-full bg-surface px-4 py-2 text-sm font-medium text-charcoal">
               For Algerian students: visa, Campus France, jobs, IELTS
             </p>
-            <h1 className="mt-6 text-[2.5rem] font-medium leading-[1.05] tracking-tight sm:text-6xl">
+            <h1 className="mt-6 text-[2.125rem] font-medium leading-[1.08] tracking-tight min-[400px]:text-[2.5rem] sm:text-6xl">
               <span className="text-steel">You know English.</span><br />
               Stop freezing when you have to speak it.
             </h1>
-            <p className="mt-6 max-w-lg text-xl leading-relaxed text-charcoal">
+            <p className="mt-5 max-w-lg text-lg leading-relaxed text-charcoal sm:mt-6 sm:text-xl">
               Rehearse the real interview out loud with an AI coach that corrects you kindly and explains every mistake in French.
             </p>
             <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center">
-              <Link href={primaryHref} className="inline-flex items-center justify-center gap-2 rounded-full bg-ink px-8 py-4 text-lg font-semibold text-white hover:bg-black/80">
+              <Link href={primaryHref} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full bg-ink px-6 py-4 text-base font-semibold text-white hover:bg-black/80 sm:text-lg">
                 {isSignedIn ? "Continue practicing" : "Build my speaking plan"} <ArrowRight size={20} />
               </Link>
               {!isSignedIn && (
-                <Link href={startHref(FIRST_SCENARIO)} className="inline-flex items-center justify-center gap-2 rounded-full border border-hairline-strong px-8 py-4 text-lg font-semibold text-ink hover:bg-surface">
+                <Link href={startHref(FIRST_SCENARIO)} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border border-hairline-strong px-6 py-4 text-base font-semibold text-ink hover:bg-surface sm:text-lg">
                   Try a visa interview now
                 </Link>
               )}

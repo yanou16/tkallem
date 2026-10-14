@@ -294,11 +294,11 @@ function Chat() {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
       {/* On a phone, once the session runs, the chat is one screen between the app header and the bottom bar: only the
           conversation scrolls, the header, the settings and the answer field stay where they are. (66 px header + 8 px
           padding above, 61 px bar below; the paddings the shell keeps under the page are cancelled by -mb.) */}
-      <div className={cn("flex flex-col md:min-h-[calc(100vh-110px)]",
+      <div className={cn("flex min-w-0 flex-col md:min-h-[calc(100vh-110px)]",
         s && "max-md:-mb-[120px] max-md:h-[calc(100dvh-135px-env(safe-area-inset-bottom))]")}>
         <div className={s ? "hidden md:block" : undefined}>
           <PageHeader title="Practice session" subtitle={s ? undefined : "Answer by voice or by typing. Your coach corrects each answer and explains why."} />
@@ -385,8 +385,8 @@ function Chat() {
             <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-2 text-sm md:px-6 md:py-3">
               <span className="hidden whitespace-nowrap text-muted md:inline">{plural(answers.length, "answer")}</span>
               {answers.length > 0 && !s.finished && (
-                <Button dark={false} onClick={finish} disabled={end.isPending} className="order-2 ml-auto !min-h-11 !px-4 !py-2 md:order-3 md:ml-0">
-                  {end.isPending ? "Preparing your report…" : "End session"}
+                <Button dark={false} onClick={finish} disabled={end.isPending} aria-label="End session" className="order-2 ml-auto !min-h-11 !px-4 !py-2 md:order-3 md:ml-0">
+                  {end.isPending ? "Preparing your report…" : <><span className="max-[359px]:hidden">End session</span><span className="hidden max-[359px]:inline">End</span></>}
                 </Button>
               )}
               {/* On a phone the language toggle gets its own line under the count and the End button. */}
@@ -477,7 +477,7 @@ function Chat() {
                     <input ref={answerField} value={text} maxLength={MAX} onChange={(e) => { if (e.target.value && began.current === null) began.current = Date.now(); setText(e.target.value); }} onKeyDown={(e) => e.key === "Enter" && submit()}
                       disabled={!s || send.isPending} aria-label="Your answer" placeholder="Type here"
                       className="w-full rounded-full border border-line px-3.5 py-3.5 outline-none focus:border-ink disabled:bg-black/[0.03]" />
-                    <p className="mt-1 text-right text-sm text-muted">{text.length} / {MAX}</p>
+                    <p className={cn("mt-1 text-right text-sm text-muted", text.length < 400 && "max-md:hidden")}>{text.length} / {MAX}</p>
                   </div>
                 )}
                 <button onClick={submit} disabled={!text.trim() || !s || send.isPending || rec.isRecording} aria-label="Send"
@@ -532,9 +532,9 @@ function Bubble({ m, icon, tint, user, onListen, sayItAgain, nailed }: {
   const time = m.createdAt && new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   return (
     <div data-role={m.role} className={cn("flex items-start gap-3", mine && "justify-end")}>
-      {!mine && <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full", tint ?? "bg-surface")}><Icon name={icon ?? "briefcase"} /></span>}
-      <div className={cn("max-w-[75%]", mine && "text-right")}>
-        <p className={cn("whitespace-pre-wrap rounded-3xl px-5 py-4 text-left", mine ? "bg-ink text-white" : "bg-black/[0.05]", m.pending && "flex items-center gap-2 italic text-white/70")}>
+      {!mine && <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full max-sm:hidden", tint ?? "bg-surface")}><Icon name={icon ?? "briefcase"} /></span>}
+      <div className={cn("max-w-[90%] sm:max-w-[75%]", mine && "text-right")}>
+        <p className={cn("whitespace-pre-wrap rounded-3xl px-4 py-3 text-left sm:px-5 sm:py-4", mine ? "bg-ink text-white" : "bg-black/[0.05]", m.pending && "flex items-center gap-2 italic text-white/70")}>
           {m.pending && <Mic size={16} aria-hidden />}{m.content}
         </p>
         {mine && !m.pending && ((m.corrections?.length ?? 0) > 0 || m.praise) && (
@@ -554,8 +554,8 @@ function Bubble({ m, icon, tint, user, onListen, sayItAgain, nailed }: {
         </div>
       </div>
       {mine && (guest
-        ? <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black/[0.06]" aria-hidden><UserRound size={20} /></span>
-        : <Avatar src={user?.avatarUrl} first={user?.firstName} last={user?.lastName} size={44} />)}
+        ? <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-black/[0.06] max-sm:hidden" aria-hidden><UserRound size={20} /></span>
+        : <span className="max-sm:hidden"><Avatar src={user?.avatarUrl} first={user?.firstName} last={user?.lastName} size={44} /></span>)}
     </div>
   );
 }
@@ -670,10 +670,21 @@ function Report({ report, title, sessionId, explainDefault, onRestart }: { repor
 
       {redo && (
         <p className="mt-4 rounded-2xl bg-surface px-4 py-3">
-          <span className="font-semibold">Redo this one first: </span>
+          <span className="font-semibold">Work on this one first: </span>
           <a href="#redo-answer" className="inline-block break-words py-3 underline underline-offset-2">“{redo.text}”</a>
         </p>
       )}
+
+      {report.freeze && (() => {
+        const v = freezeView(report.freeze);
+        return (
+          <Card className="mt-4">
+            <p className="text-sm text-muted">{v.title}</p>
+            <p className="mt-2 text-3xl font-semibold">{v.value}</p>
+            {v.note && <p className="mt-2 text-sm text-charcoal">{v.note}</p>}
+          </Card>
+        );
+      })()}
 
       <div className="mt-4 grid gap-4 md:grid-cols-3">
         {metrics.map((m) => (
@@ -688,20 +699,13 @@ function Report({ report, title, sessionId, explainDefault, onRestart }: { repor
       </div>
       {sessionId && (
         <div className="mt-4 space-y-2">
-          {confidenceLine(report.confidence) && <p className="rounded-2xl bg-good-bg px-4 py-3 font-medium text-good">{confidenceLine(report.confidence)}</p>}
+          {confidenceLine(report.confidence) && (
+            // Green only when the student really feels more confident: a drop is told neutrally.
+            <p className={cn("rounded-2xl px-4 py-3 font-medium", (report.confidence.after ?? 0) > (report.confidence.before ?? 0) ? "bg-good-bg text-good" : "bg-surface text-charcoal")}>{confidenceLine(report.confidence)}</p>
+          )}
           <ConfidenceAsk sessionId={sessionId} when="after" question="How confident do you feel now?" value={report.confidence.after} />
         </div>
       )}
-      {report.freeze && (() => {
-        const v = freezeView(report.freeze);
-        return (
-          <Card className="mt-4">
-            <p className="text-sm text-muted">{v.title}</p>
-            <p className="mt-2 text-3xl font-semibold">{v.value}</p>
-            {v.note && <p className="mt-2 text-sm text-charcoal">{v.note}</p>}
-          </Card>
-        );
-      })()}
       {speaking !== null && <p className="mt-3 text-sm text-muted">Speaking time: {formatMinutes(speaking / 60)}</p>}
 
       <Card className="mt-4">
@@ -718,7 +722,7 @@ function Report({ report, title, sessionId, explainDefault, onRestart }: { repor
                     <p className="break-words">{line.text}</p>
                     {line.status && <StatusPill status={line.status} label={answerLabel(line.status, line.corrections.length)} />}
                   </div>
-                  {i === report.redoIndex && <p className="text-sm font-semibold">Redo this answer first</p>}
+                  {i === report.redoIndex && <p className="text-sm font-semibold">Work on this answer first</p>}
                   {line.corrections.map((c, j) => (
                     <p key={j} className="break-words text-sm">
                       <s className="text-steel">{c.original}</s> → <span className="font-semibold text-[color:var(--good)]">{c.fixed}</span>

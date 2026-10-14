@@ -7,6 +7,7 @@ import { mistakeLabel, type Progress } from "@/features/progress/types/progress"
 import { useMySessions, useScenarios } from "@/features/practice/hooks/usePractice";
 import { Async, Card, EmptyState, GoalHint, PageHeader, ProgressRing, SectionTitle, Skeleton } from "@/components/ui";
 import { CardsSkeleton, ScenarioCard, SessionList } from "@/components/cards";
+import { groupSituations } from "@/features/plan/lib/plan";
 import { usePlanOrder } from "@/features/plan/usePlanOrder";
 import type { Scenario } from "@/features/practice/types/practice";
 import { Icon } from "@/lib/icons";
@@ -23,7 +24,7 @@ export default function HomePage() {
         <PageHeader
           eyebrow={user && <>Salam{user.firstName && user.firstName !== "Guest" ? ` ${user.firstName}` : ""}{user.level ? ` · ${user.level}` : ""}</>}
           title={goal ? `Ready for ${goal} minutes of speaking?` : "Ready to speak?"}
-          subtitle="Choose a situation and answer out loud. Five minutes is enough."
+          subtitle="Choose a situation and answer out loud."
         />
 
         <Async query={progress} skeleton={<CardsSkeleton n={3} h="h-28" cols="md:grid-cols-3" />}>
@@ -55,11 +56,13 @@ export default function HomePage() {
 }
 
 function HomeScenarios({ list }: { list: Scenario[] }) {
-  const { list: ordered } = usePlanOrder(list);
+  const { list: ordered, hasPlan } = usePlanOrder(list);
+  // Same order as the Practice page: interviews and exams first unless the plan starts with an everyday scene.
+  const shown = groupSituations(ordered, hasPlan).flatMap((g) => g.list).filter((s) => s.mode === "guided").slice(0, 4);
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      {/* Real situations only (free talk is on the practice page), in the order of the student's plan. */}
-      {ordered.filter((s) => s.mode === "guided").slice(0, 4).map((s) => <ScenarioCard key={s.id} s={s} />)}
+      {/* Real situations only (free talk is on the practice page). */}
+      {shown.map((s) => <ScenarioCard key={s.id} s={s} />)}
     </div>
   );
 }
@@ -105,7 +108,7 @@ function DailyGoalCard() {
   const q = useProgress();
   return (
     <Card>
-      <div className="flex items-center justify-between"><h2 className="text-lg font-semibold">Today's goal</h2><span className="text-sm text-muted">Keep going!</span></div>
+      <div className="flex items-center justify-between"><h2 className="text-lg font-semibold">Today's goal</h2></div>
       <Async query={q} skeleton={<Skeleton className="mt-4 h-36" />}>
         {(p) => {
           const goal = Math.round(p.dailyGoalSeconds / 60);
@@ -171,7 +174,7 @@ function RecentSessionsCard() {
         isEmpty={(d) => d.length === 0}
         empty={<EmptyState className="mt-3" title="No sessions yet" text="Pick a situation and start speaking." />}
       >
-        {(list) => <SessionList sessions={list} />}
+        {(list) => <SessionList sessions={list} actions />}
       </Async>
     </Card>
   );

@@ -137,10 +137,10 @@ export function Dialog({ open, title, onClose, children }: { open: boolean; titl
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
-      <div role="dialog" aria-modal aria-label={title} onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-card bg-white p-6 shadow-xl">
+      <div role="dialog" aria-modal aria-label={title} onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-card bg-white p-6 shadow-soft">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold">{title}</h3>
-          <button onClick={onClose} aria-label="Close" className="rounded-full p-1 hover:bg-black/5"><X size={18} /></button>
+          <button onClick={onClose} aria-label="Close" className="-mr-2 flex size-11 items-center justify-center rounded-full hover:bg-black/5"><X size={18} /></button>
         </div>
         {children}
       </div>
@@ -166,7 +166,7 @@ export function ProgressRing({ value, max, size = 120, stroke = 12, children }: 
 export function GoalHint({ goal, done }: { goal: number; done: number }) {
   const left = Math.max(0, goal - done);
   return (
-    <div className="rounded-2xl bg-good-bg p-3 text-sm font-medium text-good">
+    <div className={cn("rounded-2xl p-3 text-sm font-medium", left > 0 ? "bg-surface text-charcoal" : "bg-good-bg text-good")}>
       {left > 0 ? <p>You're {left} minute{left === 1 ? "" : "s"} away from your daily goal!</p> : <p>Daily goal reached. Nice work!</p>}
     </div>
   );

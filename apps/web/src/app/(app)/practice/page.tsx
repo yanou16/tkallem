@@ -47,8 +47,8 @@ export default function PracticePage() {
 
 /** In the order of the student's plan when there is one; the same situations for everyone. */
 function ScenarioGrid({ list }: { list: Scenario[] }) {
-  const { list: ordered } = usePlanOrder(list);
-  const groups = groupSituations(ordered);
+  const { list: ordered, hasPlan } = usePlanOrder(list);
+  const groups = groupSituations(ordered, hasPlan);
   return (
     <div className="space-y-8">
       {groups.map((g) => (
