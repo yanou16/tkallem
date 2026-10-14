@@ -21,9 +21,9 @@ export default function HomePage() {
     <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div>
         <PageHeader
-          eyebrow={user && <>Salam {user.firstName}{user.level ? ` · ${user.level}` : ""}</>}
+          eyebrow={user && <>Salam{user.firstName && user.firstName !== "Guest" ? ` ${user.firstName}` : ""}{user.level ? ` · ${user.level}` : ""}</>}
           title={goal ? `Ready for ${goal} minutes of speaking?` : "Ready to speak?"}
-          subtitle="A little practice today makes a big difference. Choose a situation, or continue your journey."
+          subtitle="Choose a situation and answer out loud. Five minutes is enough."
         />
 
         <Async query={progress} skeleton={<CardsSkeleton n={3} h="h-28" cols="md:grid-cols-3" />}>
@@ -68,14 +68,14 @@ function StatCards({ p }: { p: Progress }) {
   const mistakes = p.current.mistakesPer100;
   const change = p.mistakesChange;
   return (
-    <div className="grid gap-4 md:grid-cols-3">
-      <div className="rounded-card bg-ink p-5 text-white">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
+      <div className="col-span-2 rounded-card bg-ink p-5 text-white md:col-span-1">
         <p className="text-sm text-white/70">Mistakes per 100 words</p>
         <div className="mt-2 flex items-center gap-3">
           <span className="text-5xl font-medium">{formatNumber(mistakes)}</span>
           {change !== null && (
-            <span className={cn("rounded-full px-3 py-1 text-sm font-semibold", change <= 0 ? "bg-success" : "bg-red-500")}>
-              {change > 0 ? "+" : ""}{formatNumber(change)}
+            <span className={cn("rounded-full px-3 py-1 text-sm font-semibold", change <= 0 ? "bg-good-bg text-good" : "bg-bad-bg text-bad")}>
+              {change > 0 ? "+" : ""}{formatNumber(change)} {change <= 0 ? "better" : "worse"}
             </span>
           )}
         </div>
@@ -83,18 +83,18 @@ function StatCards({ p }: { p: Progress }) {
           {mistakes === null ? "Finish a session to see this number" : change === null ? "No comparison yet" : "Since your first sessions"}
         </p>
       </div>
-      <div className="rounded-card bg-mint p-5">
-        <p className="text-sm text-muted">Practice this week</p>
+      <div className="rounded-card border border-line bg-surface p-4 md:p-5">
+        <p className="text-sm text-slate">Practice this week</p>
         <div className="mt-2 flex items-end justify-between">
-          <span className="text-4xl font-medium">{formatMinutes(p.weekSpeakingSeconds / 60)}</span>
-          <ChartNoAxesColumn className="text-success" size={36} />
+          <span className="text-3xl font-medium md:text-4xl">{formatMinutes(p.weekSpeakingSeconds / 60)}</span>
+          <ChartNoAxesColumn className="text-slate" size={32} aria-hidden />
         </div>
       </div>
-      <div className="rounded-card bg-butter p-5">
-        <p className="text-sm text-muted">Streak</p>
+      <div className="rounded-card border border-line bg-surface p-4 md:p-5">
+        <p className="text-sm text-slate">Streak</p>
         <div className="mt-2 flex items-end justify-between">
-          <span className="text-4xl font-medium">{plural(p.streakDays, "day")}</span>
-          <Flame className="text-orange-500" size={36} />
+          <span className="text-3xl font-medium md:text-4xl">{plural(p.streakDays, "day")}</span>
+          <Flame className="text-slate" size={32} aria-hidden />
         </div>
       </div>
     </div>
@@ -152,7 +152,7 @@ function TopMistakesCard() {
                 </li>
               ))}
             </ul>
-            <Link href="/practice" className="mt-4 flex items-center justify-center gap-2 rounded-full bg-ink py-3 text-sm font-semibold text-white">Practice my weak points <ArrowRight size={14} /></Link>
+            <Link href="/practice" className="mt-4 flex min-h-11 items-center justify-center gap-2 rounded-full border border-hairline-strong py-3 text-sm font-semibold text-ink hover:bg-surface">Choose a situation to practice <ArrowRight size={14} /></Link>
           </>
         )}
       </Async>
