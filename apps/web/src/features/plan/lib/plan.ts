@@ -97,6 +97,22 @@ export function planOrder<T extends Orderable>(list: T[], goal: GoalId | null, i
 export const planPath = <T extends Orderable & { mode: "guided" | "free" }>(list: T[], goal: GoalId | null, interests: Interest[]) =>
   planOrder(list, goal, interests).filter((s) => s.mode === "guided").slice(0, 4);
 
+/** The four tinted meanings of docs/DESIGN.md: an interview or an exam. Everything else is an everyday situation. */
+export const INTERVIEW_CATEGORIES = new Set(["travel", "study", "work", "exams"]);
+
+/**
+ * The Practice page in two groups: interviews and exams (what the student came for) first, everyday situations second.
+ * The plan still orders each group; a plan whose first situation is an everyday one puts that group first.
+ * Empty groups are left out.
+ */
+export function groupSituations<T extends Orderable>(ordered: T[]): { title: string; list: T[] }[] {
+  const real = ordered.filter((s) => INTERVIEW_CATEGORIES.has(s.category ?? ""));
+  const daily = ordered.filter((s) => !INTERVIEW_CATEGORIES.has(s.category ?? ""));
+  const groups = [{ title: "Interviews and exams", list: real }, { title: "Everyday situations", list: daily }].filter((g) => g.list.length > 0);
+  if (groups.length === 2 && !INTERVIEW_CATEGORIES.has(ordered[0].category ?? "")) groups.reverse();
+  return groups;
+}
+
 const KEY = "tkallem.plan.interests";
 export const readInterests = (): Interest[] => {
   try {
