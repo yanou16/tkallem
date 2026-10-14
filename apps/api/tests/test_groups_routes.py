@@ -101,6 +101,52 @@ def test_guests_cannot_use_groups(students, client, method, path, body):
     assert "account" in response.json()["detail"]
 
 
+# ---------- GET /groups/preview (the one route a guest may call) ----------
+
+def new_guest(db, level: str | None = None) -> dict:
+    user = get_or_create_by_clerk_id(db, guests.clerk_id(uuid4().hex))
+    return update_profile(db, user["id"], {"level": level}) if level else user
+
+
+def test_preview_needs_a_token():
+    assert TestClient(app).get("/groups/preview").status_code == 401
+
+
+def test_a_guest_sees_the_theme_and_groups_of_their_level_without_names(students, client, db):
+    group = new_group(db, "A2")
+    member(students, group, first_name="Secret", level="A2")
+    send_as = students.current
+    students.current = new_guest(db, "A2")["clerk_user_id"]
+
+    response = client.get("/groups/preview")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body["theme"]) == {"id", "title", "category", "question"}
+    assert group in [g["id"] for g in body["groups"]]
+    assert len(body["groups"]) <= 3
+    assert "Secret" not in response.text  # no member name, no message
+    assert send_as != students.current
+
+
+def test_a_guest_without_level_sees_b1_groups(students, client, db):
+    group = new_group(db, "B1")
+    member(students, group)
+    students.current = new_guest(db)["clerk_user_id"]
+
+    body = client.get("/groups/preview").json()
+
+    assert all(g["level"] == "B1" for g in body["groups"])
+
+
+def test_a_guest_still_cannot_join_or_write(students, client, db):
+    group = new_group(db)
+    students.current = new_guest(db, "B1")["clerk_user_id"]
+
+    assert client.post(f"/groups/{group}/join").status_code == 403
+    assert send(client, group).status_code == 403
+
+
 # ---------- GET /groups/recommended ----------
 
 def test_recommended_needs_a_level(students, client):

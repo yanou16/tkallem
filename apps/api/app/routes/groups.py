@@ -38,6 +38,7 @@ from app.schemas.groups import (
     CheckRequest,
     GroupDetail,
     GroupMessage,
+    GroupPreview,
     GroupSummary,
     GroupThemeFile,
     LeaderboardEntry,
@@ -96,6 +97,11 @@ def get_student(claims: ClerkClaims = Depends(student_claims), conn: Connection 
     return user_for_claims(conn, claims)
 
 
+def get_viewer(claims: ClerkClaims = Depends(get_clerk_claims), conn: Connection = Depends(get_conn)) -> dict:
+    """A student or a guest: the only group route a guest may call is the read-only preview."""
+    return user_for_claims(conn, claims)
+
+
 def _require_level(user: dict) -> str:
     if user["level"] is None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Choose your level first (PATCH /me)")
@@ -151,6 +157,18 @@ async def _publish(group_id: int, event: dict) -> None:
 
 
 # ---------- routes (static paths before /groups/{group_id}) ----------
+
+PREVIEW_GROUPS = 3
+
+
+@router.get("/groups/preview", response_model=GroupPreview)
+def read_groups_preview(viewer: dict = Depends(get_viewer), conn: Connection = Depends(get_conn)) -> dict:
+    """For guests and students alike: the theme and question of the day, and a few groups of the visitor's level
+    (B1 when none is set). Counts only: names and messages stay between members."""
+    today = algiers_today(conn)
+    groups = recommended_groups(conn, viewer["level"] or "B1", limit=PREVIEW_GROUPS)
+    return {"theme": theme_of_the_day(today), "groups": [_summary(group, today) for group in groups]}
+
 
 @router.get("/groups/recommended", response_model=list[GroupSummary])
 def read_recommended_groups(student: dict = Depends(get_student), conn: Connection = Depends(get_conn)) -> list[dict]:

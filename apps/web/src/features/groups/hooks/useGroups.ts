@@ -19,6 +19,7 @@ const leaderboardKey = (id: number) => ["group-leaderboard", id] as const;
 /** Catching up after a reconnection asks for the largest page the API gives. */
 const CATCH_UP_PAGE = 100;
 
+export const useGroupPreview = () => useQuery({ queryKey: ["group-preview"], queryFn: g.getGroupPreview });
 export const useMyGroup = () => useQuery({ queryKey: MY_GROUP_KEY, queryFn: g.getMyGroup });
 export const useGroup = (id: number) => useQuery({ queryKey: groupKey(id), queryFn: () => g.getGroup(id) });
 export const useLeaderboard = (id: number) => useQuery({ queryKey: leaderboardKey(id), queryFn: () => g.getLeaderboard(id) });
