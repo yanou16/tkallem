@@ -93,7 +93,7 @@ function HeaderBar() {
   const displayName = appUser?.firstName || user?.firstName || user?.primaryEmailAddress?.emailAddress;
 
   return (
-    <div className="flex items-center justify-between gap-3 px-5 pt-5 md:justify-end md:px-10">
+    <div className="sticky top-0 z-30 flex items-center justify-between gap-3 bg-[color:var(--canvas)] px-5 pt-5 md:justify-end md:px-10">
       <div className="md:hidden"><Logo /></div>
       <div className="flex items-center gap-3">
         <CreditsPill />
