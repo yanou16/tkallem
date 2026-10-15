@@ -1,5 +1,20 @@
 # Tkallem
 
+[![tests](https://img.shields.io/github/actions/workflow/status/yanou16/tkallem/ci.yml?branch=main&label=tests&logo=github)](https://github.com/yanou16/tkallem/actions/workflows/ci.yml)
+[![deploy](https://img.shields.io/github/actions/workflow/status/yanou16/tkallem/api-image.yml?branch=main&label=deploy&logo=microsoftazure)](https://github.com/yanou16/tkallem/actions/workflows/api-image.yml)
+[![AI gate](https://img.shields.io/badge/AI%20gate-29%2F29%20mistakes%20%C2%B7%209%2F9%20attacks-brightgreen)](packages/agent/evals/gate.py)
+
+**[Demo](https://tkallem.vercel.app)** · **[API](https://[TEAM-APP-NAME].azurewebsites.net/docs)** `[TEAM: put the Azure app name in this link]`
+
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-4169E1?logo=postgresql&logoColor=white)
+![LangGraph](https://img.shields.io/badge/LangGraph-agent-1C3C3C?logo=langchain&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![Docker](https://img.shields.io/badge/Docker-Azure%20App%20Service-2496ED?logo=docker&logoColor=white)
+![Clerk](https://img.shields.io/badge/Auth-Clerk-6C47FF?logo=clerk&logoColor=white)
+
 **An AI coach that lets Algerian students rehearse real English interviews out loud, and explains every mistake in French.**
 
 Many Algerian students understand English but freeze when they have to speak it in a decisive moment: a US visa interview,
@@ -8,7 +23,7 @@ a coach asks the real questions, listens, and shows what was good and the one th
 
 - **Live app:** https://tkallem.vercel.app (open it, then "Try a visa interview now": no account needed, 40 free answers)
 - **Demo video (2 to 4 min):** `[TEAM: link]`
-- **Submission texts** (summary, description, stack, what next): [`docs/SUBMISSION.md`](docs/SUBMISSION.md)
+- **Submission texts** (summary, description, stack, what next): [`docs/SUBMISSION.md`](docs/SUBMISSION.md) `[TEAM: this file is not in the repository yet: add it or remove this line]`
 
 ## What a student can do
 
@@ -71,6 +86,39 @@ week costs a second, not the session.
 - **Quality:** pytest (agent and API, with a real Postgres in CI), Vitest, an AI evaluation gate, GitHub Actions, Langfuse tracing (off unless configured).
 - **AI tools used to build it:** Claude Code (coding assistant). `[TEAM: add the tools each of you used]`
 
+## Backend
+
+The API (`apps/api`) is a FastAPI service that owns everything the student cannot be trusted with: identity, answers
+left, sessions, progress and the calls to the coach. Full reference (routes, environment variables, migrations, the
+groups WebSocket): [`apps/api/README.md`](apps/api/README.md).
+
+**How an answer is handled**
+
+1. **Who is it?** A Clerk token (`Authorization: Bearer`) or a signed guest token (`Authorization: Guest`) is checked
+   before anything else; the user row is created on the first call.
+2. **Can they answer?** One answer is taken from the wallet in a single conditional `UPDATE` (`balance - 1 >= 0`), so
+   two answers sent at the same moment can never spend the same credit; a failed turn gives it back.
+3. **What did they say?** The recording (5 MB max) is transcribed while the coach is prepared; the text is capped.
+4. **The coach answers** (`packages/agent`), then the code checks the result (see "The model talks, the code decides").
+5. **The turn is stored** and streamed back to the browser (Server-Sent Events): text first, then the voice.
+
+**Choices that matter**
+
+| Choice | Why |
+|---|---|
+| Raw SQL with psycopg 3 and a connection pool, no ORM | Every query is visible and reviewed; values are always bound parameters (`%s`), never pasted into the SQL |
+| The database enforces the rules too | `CHECK`, `UNIQUE` and foreign keys with `ON DELETE CASCADE`: a bug in Python cannot store a 600-character message, a sixth confidence level or a student in two groups |
+| Concurrency handled in Postgres | Conditional `UPDATE` for answers, `SELECT … FOR UPDATE` and `pg_advisory_xact_lock` so that two students joining at the same instant never make a group of 9; tested with real parallel connections |
+| Idempotent grants | Starting answers and daily refills carry a unique `ref`: replaying a request cannot give answers twice |
+| Alembic migrations, run by the container at start | Production is always at the schema of its code; one linear history (one head), and a migration already applied on a shared database is never edited |
+| One uvicorn process | Rate limits, the groups' live connections and the provider back-off are kept in memory; a shared store (Redis) is the next step before running several instances |
+| Slow work off the event loop | Model and voice calls run in threads, every provider has a timeout and a backup; the groups' check releases its database connection before calling the model |
+
+**Practice groups (built, hidden for the competition)**: groups of up to 8 students of the same level, a weekly theme
+and a question of the day, a chat (REST to send, a WebSocket `/ws/groups/{id}` to receive live), a private "Check my
+message" that runs the coach's corrector on a draft, reports (a message is hidden after 3), and a 7-day leaderboard.
+The screen only shows when the web app is built with `NEXT_PUBLIC_FEATURE_GROUPS=1`.
+
 ## Run it locally
 
 You need Node 20+, Python 3.12, a Postgres database (a free Neon project works) and API keys for a language model and a
@@ -113,6 +161,31 @@ cd apps/api && TEST_DATABASE_URL=<a scratch database> .venv/bin/pytest -q   # AP
 cd apps/web && npm run typecheck && npm test                            # web
 ```
 
+## Security
+
+What protects the students, the data and the bill. Each line points to the code that does it.
+
+| Risk | What the code does | Where |
+|---|---|---|
+| Someone pretends to be another student | Clerk tokens are verified on every request: RS256 signature against Clerk's public keys, issuer, expiry and the origin that requested the token (`azp`) must match | `apps/api/app/security.py` |
+| A guest invents or changes an identity | Guest tokens are `g1.<id>.<HMAC-SHA256>` signed with `GUEST_SECRET` (32+ characters), compared in constant time; sent in a header, never a cookie | `apps/api/app/guests.py` |
+| Reading or changing another student's data | Every route first loads the session, message or group through an owner or membership check (`WHERE id = %s AND user_id = %s`, members only, 403 or 404 otherwise); guests are refused from everything in groups except the read-only preview | `apps/api/app/db/`, `apps/api/app/routes/` |
+| SQL injection | Values are always bound parameters; the only names built into SQL come from fixed lists in the code, never from a request | `apps/api/app/db/` |
+| Another website calling the API | CORS allows only the front's origins (`FRONTEND_ORIGIN`). WebSockets ignore CORS, so the groups socket checks the `Origin` itself and closes with 1008 | `apps/api/app/main.py`, `apps/api/app/routes/group_ws.py` |
+| A token leaking through logs | The WebSocket token is sent in the first message, within 5 seconds, never in the URL (URLs end up in server logs) | `apps/api/app/routes/group_ws.py` |
+| Oversized or malformed input | Pydantic limits on every body (text length, 1-to-5 values, at most 3 corrections), recordings over 5 MB refused with 413, messages 1 to 500 characters in the API and in the database | `apps/api/app/schemas/`, `apps/api/app/config.py`, migrations |
+| Prompt injection ("ignore your rules", hidden JSON) | The student's words are framed as data in the prompt; the code then validates every field the model returns; 9 of 9 attacks handled in the evaluation gate, which blocks a merge when the agent changes | `packages/agent/tkallem_agent/graph.py`, `schemas.py`, `evals/injection.py` |
+| Flooding and abuse | Answers come from a wallet (40 for a guest, then daily refills); guest accounts are capped per network address and per day; hints, replays, group messages (20 per minute) and private checks (30 per 24 h) are rate limited; reported messages are hidden after 3 reports | `apps/api/app/credits.py`, `rate_limit.py`, `routes/` |
+| An unbounded bill | `DAILY_SPEND_CAP` stops the free practice for everyone for the day, with an alert at 80 % and 100 % | `apps/api/app/credits.py`, [`docs/CREDITS.md`](docs/CREDITS.md) |
+| Personal data | A guest's network address is stored only as a keyed hash (enough to count, useless to recover it); real learner recordings and test data are git-ignored | `apps/api/app/guests.py`, `.gitignore` |
+| Secrets in the repository or the image | Keys live in `.env` files and in GitHub, Azure and Vercel settings, all ignored by Git; `.dockerignore` keeps every `.env` out of the image; CI builds with a fake Clerk key | `.gitignore`, `.dockerignore`, `.github/workflows/` |
+| A compromised container | The image runs as a non-root user (uid 10001); Azure serves HTTPS only | `apps/api/Dockerfile`, [`infra/azure/README.md`](infra/azure/README.md) |
+| Unreviewed code reaching production | `main` only takes pull requests whose **CI ok** check is green; a pre-push hook refuses direct pushes to `main`; every deploy is smoke-tested on `/health` | `.github/workflows/`, `.githooks/pre-push` |
+
+**Not done yet** (we would rather say it): no Content-Security-Policy or HSTS headers on the web app yet; rate limits
+are in memory (one process); no automatic dependency scanning (Dependabot); sign-in still uses a Clerk development
+instance. `[TEAM: confirm before submission]`
+
 ## Cost and judging-week safety
 
 Every answer uses one free answer (40 for a guest, 60 more after sign-in, then 15 every day). `DAILY_SPEND_CAP` bounds what everyone
@@ -126,7 +199,9 @@ Git history shows the real split (the same person sometimes commits under two na
 
 - **Rayane Louzazna**: tech lead. The AI coach (agent, prompts, guardrails, evaluation sets), the voice pipeline and its
   backups, free answers and guest mode, deployment (Azure, Neon, Vercel), the CI/CD, the four improvements and the report.
-- **Zaki**: the API (sessions, profile, progress, achievements, database and migrations) and the first voice work.
+- **Zaki**: the API (sessions, profile, progress, achievements, database and migrations), the practice groups end to
+  end (database, REST routes, the live WebSocket, the private check with the coach's corrector, the leaderboard and
+  the groups screen), the API documentation, and the first voice work. `[TEAM: Zaki, confirm]`
 - **Akram (Wad2o)**: front-end screens and the profile pages. `[TEAM: Akram, add what else you did]`
 
 Large parts of the code were written with Claude Code (an AI coding assistant), then reviewed and tested by the team. `[TEAM: confirm]`
@@ -141,6 +216,7 @@ Large parts of the code were written with Claude Code (an AI coding assistant), 
 - **Confidence and its change are self-reported**, from few sessions, with no control group (see [`docs/IMPACT.md`](docs/IMPACT.md)).
 - **Scenarios are fixed and few** (ten: six interviews and exams, four everyday ones). A real Campus France interview is in French; ours trains the English version of it.
 - **Rate limits for hints and repeats are kept in memory**, per server process: fine for one instance, not for several.
+  The same goes for the groups' live connections: a second API instance would need Redis before groups can be shown.
 - **Sign-in uses a Clerk development instance** and one language for the interface (English).
 - **The sample 3D avatar is optional and off by default**: it comes from the TalkingHead project, whose sample avatars are for non-commercial use.
 - Voice quality and latency depend on the speech providers' free daily quotas; backups exist, but a long outage degrades to the browser's voice.
