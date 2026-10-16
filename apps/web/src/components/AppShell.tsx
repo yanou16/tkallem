@@ -33,7 +33,7 @@ function Logo() {
 }
 
 /** A visitor without account only sees the screens that work without one. */
-const GUEST_NAV = NAV.filter((n) => n.href === "/practice" || n.href === "/ai-chat");
+const GUEST_NAV = NAV.filter((n) => n.href === "/practice" || n.href === "/ai-chat" || n.href === "/groups");
 function useNav() {
   return useIdentity().isGuest ? GUEST_NAV : NAV;
 }
