@@ -20,7 +20,7 @@ const WIDE = 1024; // lg: captions on both sides with lines; under it, cards bel
 type Line = { id: string; x1: number; y1: number; x2: number; y2: number };
 
 /**
- * "See how it works" (welcome page): a preview of the app with captions on both sides. Point at a caption (or tap it)
+ * "Look inside the app" (welcome page): a preview of the app with captions on both sides. Point at a caption (or tap it)
  * and the part of the preview it talks about lights up; a thin line links them on wide screens. The tour plays by itself
  * until the visitor touches it. Example data only: no API call, no credit.
  */
@@ -137,7 +137,7 @@ export default function ProductTour() {
   return (
     <section aria-labelledby="tour-title">
       <div className="text-center">
-        <h2 id="tour-title" className="text-2xl font-semibold sm:text-3xl">See how it works</h2>
+        <h2 id="tour-title" className="text-2xl font-semibold sm:text-3xl">Look inside the app</h2>
         <p className="mx-auto mt-2 max-w-xl text-lg text-charcoal">Point at a label, or tap it: the part of the app it talks about lights up.</p>
       </div>
 
