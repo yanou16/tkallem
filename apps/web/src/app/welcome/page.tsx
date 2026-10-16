@@ -8,7 +8,7 @@ import { Icon } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 
 /** One tint per kind of situation (DESIGN.md: a pastel always carries a scenario meaning). */
-const TINT: Record<string, string> = { travel: "bg-mint", study: "bg-butter", work: "bg-peach", exams: "bg-rose" };
+const TINT: Record<string, string> = { travel: "bg-tint-visa", study: "bg-tint-campus", work: "bg-tint-job", exams: "bg-tint-ielts" };
 const FIRST_SCENARIO = "visa-us";
 
 /**
@@ -25,8 +25,8 @@ export default function WelcomePage() {
     <div className="min-h-screen bg-white text-ink">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5 sm:px-6">
         <Link href="/welcome" className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-lg font-extrabold">T</span>
-          <span className="text-xl font-bold tracking-tight">Tkallem</span>
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-lg font-semibold text-ink">T</span>
+          <span className="text-xl font-semibold tracking-tight">Tkallem</span>
         </Link>
         {isSignedIn ? (
           <Link href="/" className="rounded-full border border-black/15 px-4 py-2 text-sm font-medium">My dashboard</Link>

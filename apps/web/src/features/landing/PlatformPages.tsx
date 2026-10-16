@@ -209,7 +209,7 @@ export default function Platform({ plan, page, onPage }: { plan: PlanDemo; page:
     <Browser url={URL[page]}>
       <div className="grid min-h-[600px] grid-cols-1 text-[13px] md:grid-cols-[132px_1fr]">
         <aside className="hidden flex-col gap-1 border-r border-hairline-soft p-3 md:flex">
-          <div className="mb-2 flex items-center gap-2 text-[15px] font-semibold" aria-hidden><b className="flex size-[26px] items-center justify-center rounded-lg bg-brand-yellow text-[13px]">T</b>Tkallem</div>
+          <div className="mb-2 flex items-center gap-2 text-[15px] font-semibold" aria-hidden><b className="flex size-[26px] items-center justify-center rounded-lg bg-brand text-[13px] text-ink">T</b>Tkallem</div>
           <R id="nav" className="flex flex-col gap-1" >
             {PAGES.map((p) => (
               <button key={p.id} type="button" onClick={() => onPage(p.id)} aria-current={menuOf(page) === p.id ? "page" : undefined}

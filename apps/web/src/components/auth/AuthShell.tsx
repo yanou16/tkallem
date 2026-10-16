@@ -56,16 +56,16 @@ export function AuthField({ label, hint, password, id, className = "", ...props 
 
   return (
     <div className={className}>
-      <label htmlFor={fieldId} className="mb-1.5 block text-[13px] font-medium text-[#16161a]">
+      <label htmlFor={fieldId} className="mb-1.5 block text-[13px] font-medium text-ink">
         {label}
-        {hint && <span className="ml-1 text-[11px] font-normal text-[#8a8a93]">({hint})</span>}
+        {hint && <span className="ml-1 text-[11px] font-normal text-muted">({hint})</span>}
       </label>
       <div className="relative">
         <input
           id={fieldId}
           {...props}
           type={password ? (shown ? "text" : "password") : props.type}
-          className={`h-11 w-full rounded-lg border border-[#e4e4e7] bg-white px-3.5 text-[14px] text-[#16161a] outline-none transition placeholder:text-[#a1a1aa] focus:border-[#16161a] focus:ring-2 focus:ring-[#16161a]/10 ${
+          className={`h-11 w-full rounded-lg border border-hairline bg-white px-3.5 text-[14px] text-ink outline-none transition placeholder:text-stone focus:border-ink focus:ring-2 focus:ring-ink/10 ${
             password ? "pr-11" : ""
           }`}
         />
@@ -74,7 +74,7 @@ export function AuthField({ label, hint, password, id, className = "", ...props 
             type="button"
             onClick={() => setShown((s) => !s)}
             aria-label={shown ? "Hide password" : "Show password"}
-            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-[#6b6b75] hover:text-[#16161a]"
+            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-muted hover:text-ink"
           >
             <EyeIcon off={shown} />
           </button>
@@ -89,7 +89,7 @@ export function PrimaryButton({ children, loading, ...props }: React.ButtonHTMLA
     <button
       {...props}
       disabled={loading || props.disabled}
-      className="h-12 w-full rounded-full bg-[#16161a] text-[14px] font-semibold text-white transition hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16161a] disabled:opacity-60"
+      className="h-12 w-full rounded-full bg-[#16161a] text-[14px] font-semibold text-white transition hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-60"
     >
       {loading ? "Please wait…" : children}
     </button>
@@ -102,7 +102,7 @@ export function GoogleButton({ onClick, loading, label = "Continue with Google" 
       type="button"
       onClick={onClick}
       disabled={loading}
-      className="flex h-12 w-full items-center justify-center gap-3 rounded-full border border-[#e4e4e7] bg-white text-[14px] font-medium text-[#16161a] transition hover:bg-[#f7f7f8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#16161a] disabled:opacity-60"
+      className="flex h-12 w-full items-center justify-center gap-3 rounded-full border border-hairline bg-white text-[14px] font-medium text-ink transition hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-60"
     >
       <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden>
         <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z" />
@@ -117,10 +117,10 @@ export function GoogleButton({ onClick, loading, label = "Continue with Google" 
 
 export function OrDivider() {
   return (
-    <div className="flex items-center gap-3 py-1 text-[12px] text-[#8a8a93]">
-      <span className="h-px flex-1 bg-[#ececef]" />
+    <div className="flex items-center gap-3 py-1 text-[12px] text-muted">
+      <span className="h-px flex-1 bg-hairline" />
       or
-      <span className="h-px flex-1 bg-[#ececef]" />
+      <span className="h-px flex-1 bg-hairline" />
     </div>
   );
 }
@@ -134,8 +134,8 @@ function FeatureCard({ icon, title, text }: { icon: ReactNode; title: string; te
     <div className="relative z-10 flex w-full max-w-[340px] items-center gap-3 rounded-2xl border border-black/5 bg-white px-4 py-3 shadow-[0_6px_20px_rgba(20,20,30,0.06)]">
       {icon}
       <div>
-        <p className="text-[13px] font-semibold text-[#16161a]">{title}</p>
-        <p className="text-[12px] text-[#6b6b75]">{text}</p>
+        <p className="text-[13px] font-semibold text-ink">{title}</p>
+        <p className="text-[12px] text-muted">{text}</p>
       </div>
     </div>
   );
@@ -145,9 +145,9 @@ function SignUpVisual() {
   return (
     <div className="relative mt-8 flex flex-col gap-3">
       {/* blobs derrière les cartes */}
-      <div className="absolute -top-2 left-[250px] h-24 w-24 rounded-full bg-[#e7e0fb]" />
-      <div className="absolute top-[78px] left-[300px] h-24 w-24 rounded-full bg-[#fbd9dc]" />
-      <div className="absolute top-[150px] left-[330px] h-24 w-24 rounded-full bg-[#c9f2e6]" />
+      <div className="absolute -top-2 left-[250px] h-24 w-24 rounded-full bg-surface/80" />
+      <div className="absolute top-[78px] left-[300px] h-24 w-24 rounded-full bg-surface/60" />
+      <div className="absolute top-[150px] left-[330px] h-24 w-24 rounded-full bg-surface/40" />
 
       <FeatureCard
         icon={<Avatar size={40} bg="#f7d9a8" hair="#1d1718" skin="#e9b890" long />}
@@ -166,7 +166,7 @@ function SignUpVisual() {
       />
       <FeatureCard
         icon={
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#6d4ee3]">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-ink">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff" aria-hidden>
               <rect x="4" y="13" width="3.5" height="7" rx="1" />
               <rect x="10.2" y="9" width="3.5" height="11" rx="1" />
@@ -183,8 +183,8 @@ function SignUpVisual() {
 
 function Pill({ text, className }: { text: string; className: string }) {
   return (
-    <div className={`absolute flex items-center gap-2 rounded-full border border-black/5 bg-white py-1.5 pl-1.5 pr-4 text-[12px] font-medium text-[#16161a] shadow-[0_6px_18px_rgba(20,20,30,0.07)] ${className}`}>
-      <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#d9f5e8] text-[#1f9d6b]">
+    <div className={`absolute flex items-center gap-2 rounded-full border border-black/5 bg-white py-1.5 pl-1.5 pr-4 text-[12px] font-medium text-ink shadow-[0_6px_18px_rgba(20,20,30,0.07)] ${className}`}>
+      <span className="flex h-6 w-6 items-center justify-center rounded-md bg-good-bg text-good">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
           <rect x="9" y="3" width="6" height="12" rx="3" />
           <path d="M5 11a7 7 0 0014 0M12 18v3" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" />
@@ -240,15 +240,15 @@ export function AuthShell({ mode, children }: { mode: "sign-in" | "sign-up"; chi
           {/* Colonne gauche */}
           <section className="flex flex-col">
             <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand text-[18px] font-bold text-[#16161a]">T</span>
-              <span className="text-[18px] font-semibold text-[#16161a]">Tkallem</span>
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand text-[18px] font-semibold text-ink">T</span>
+              <span className="text-[18px] font-semibold text-ink">Tkallem</span>
             </div>
 
             <div className="mt-12 lg:mt-16">
-              <h1 className="max-w-[420px] text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-[#16161a] sm:text-[40px]">
+              <h1 className="max-w-[420px] text-[34px] font-semibold leading-[1.1] tracking-[-0.02em] text-ink sm:text-[40px]">
                 {isSignUp ? "Get ready for your interview in English" : "Your English speaking coach"}
               </h1>
-              <p className="mt-4 max-w-[400px] text-[15px] leading-relaxed text-[#6b6b75]">
+              <p className="mt-4 max-w-[400px] text-[15px] leading-relaxed text-muted">
                 {isSignUp
                   ? "Free account: 60 answers to start, then 15 new answers every day. Your progress is saved."
                   : "Rehearse visa, Campus France and job interviews by voice, with every mistake explained in French."}
@@ -269,8 +269,8 @@ export function AuthShell({ mode, children }: { mode: "sign-in" | "sign-up"; chi
 export function AuthCard({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
     <div className="relative z-10 w-full max-w-[460px] rounded-[20px] border border-black/5 bg-white px-6 py-8 shadow-[0_20px_60px_rgba(20,20,30,0.08)] sm:px-9 sm:py-9">
-      <h2 className="text-[24px] font-semibold tracking-[-0.01em] text-[#16161a]">{title}</h2>
-      <p className="mt-2 text-[14px] text-[#6b6b75]">{subtitle}</p>
+      <h2 className="text-[24px] font-semibold tracking-[-0.01em] text-ink">{title}</h2>
+      <p className="mt-2 text-[14px] text-muted">{subtitle}</p>
       <div className="mt-7">{children}</div>
     </div>
   );
@@ -279,7 +279,7 @@ export function AuthCard({ title, subtitle, children }: { title: string; subtitl
 export function FormError({ message }: { message: string }) {
   if (!message) return null;
   return (
-    <p role="alert" className="rounded-lg bg-[#fdecec] px-3 py-2 text-[13px] text-[#b42318]">
+    <p role="alert" className="rounded-lg bg-bad-bg px-3 py-2 text-[13px] text-bad">
       {message}
     </p>
   );

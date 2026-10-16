@@ -5,12 +5,12 @@ import { useEffect, type ReactNode } from "react";
 import { cn, initials } from "@/lib/utils";
 import { ApiError } from "@/lib/api/client";
 
-/* ---------- pastel tones (visual only; assigned by position, never from data) ---------- */
-export const TONES = ["mint", "butter", "peach", "rose", "lilac"] as const;
+/* ---------- neutral tones (visual only; assigned by position, never from data) ---------- */
+export const TONES = ["surface"] as const;
 export type Tone = (typeof TONES)[number];
 export const toneAt = (i: number): Tone => TONES[i % TONES.length];
-export const toneBg: Record<Tone, string> = { mint: "bg-mint", butter: "bg-butter", peach: "bg-peach", rose: "bg-rose", lilac: "bg-lilac" };
-export const toneDeep: Record<Tone, string> = { mint: "bg-mint-deep", butter: "bg-butter-deep", peach: "bg-peach-deep", rose: "bg-rose-deep", lilac: "bg-lilac-deep" };
+export const toneBg: Record<Tone, string> = { surface: "bg-surface" };
+export const toneDeep: Record<Tone, string> = { surface: "bg-white" };
 
 /* ---------- primitives ---------- */
 export function Skeleton({ className }: { className?: string }) {
@@ -56,7 +56,7 @@ export function Button({ dark = true, className, ...p }: React.ButtonHTMLAttribu
 }
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <section className={cn("rounded-card border border-line bg-white p-5 shadow-soft", className)}>{children}</section>;
+  return <section className={cn("rounded-card border border-line bg-white p-5", className)}>{children}</section>;
 }
 
 export function SectionTitle({ title, action }: { title: string; action?: ReactNode }) {
@@ -72,7 +72,7 @@ export function PageHeader({ eyebrow, title, subtitle }: { eyebrow?: ReactNode; 
   return (
     <header className="mb-6">
       {eyebrow && <p className="mb-1 text-sm text-muted">{eyebrow}</p>}
-      <h1 className="text-4xl font-extrabold tracking-tight md:text-5xl">{title}</h1>
+      <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">{title}</h1>
       {subtitle && <p className="mt-2 text-lg text-muted">{subtitle}</p>}
     </header>
   );
@@ -92,7 +92,7 @@ export function EmptyState({ title, text, action, className }: { title: string; 
 export function ErrorState({ error, onRetry, className }: { error?: unknown; onRetry?: () => void; className?: string }) {
   const msg = error instanceof ApiError ? error.message : "Something went wrong while loading this section.";
   return (
-    <div role="alert" className={cn("flex items-start gap-3 rounded-2xl border border-rose-deep bg-rose/50 p-4", className)}>
+    <div role="alert" className={cn("flex items-start gap-3 rounded-2xl border border-line bg-bad-bg p-4 text-bad", className)}>
       <AlertCircle className="mt-0.5 shrink-0" size={18} />
       <div className="flex-1 text-sm">
         <p className="font-semibold">Couldn't load this</p>

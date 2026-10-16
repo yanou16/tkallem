@@ -12,7 +12,7 @@ function files(dir: string): string[] {
     return /\.(tsx|ts|css)$/.test(n) && !/\.test\./.test(n) ? [p] : [];
   });
 }
-const SOURCES = files(SRC).map((p) => ({ path: p.slice(SRC.length + 1), text: readFileSync(p, "utf8") }));
+const SOURCES = files(SRC).map((p) => ({ path: p.slice(SRC.length + 1).replace(/\\/g, "/"), text: readFileSync(p, "utf8") }));
 const offenders = (re: RegExp, allow: RegExp = /$^/) =>
   SOURCES.filter((f) => !allow.test(f.path)).flatMap((f) => (f.text.match(re) ?? []).map((m) => `${f.path}: ${m}`));
 
