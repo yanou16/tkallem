@@ -47,6 +47,7 @@ RAISED_FOR_THE_TEST = {
 os.environ.update(RAISED_FOR_THE_TEST)
 
 import anyio  # noqa: E402
+import psycopg  # noqa: E402
 import uvicorn  # noqa: E402
 from tkallem_agent.testing import FakeChat  # noqa: E402
 
@@ -129,13 +130,31 @@ def database_round_trip_ms(pool) -> float:
     return statistics.median(times)
 
 
+NEON_CONNECTIONS = """
+    SELECT count(*) AS total, count(*) FILTER (WHERE state = 'active') AS active
+    FROM pg_stat_activity
+    WHERE backend_type = 'client backend'
+"""
+
+
+def neon_connections(conn) -> tuple[int | None, int | None]:
+    """Connections open on the database server itself (all clients, the pooler's included), and how many are working."""
+    try:
+        row = conn.execute(NEON_CONNECTIONS).fetchone()
+        return row[0], row[1]
+    except Exception:
+        return None, None
+
+
 async def monitor(pool, fake: EndlessFakeChat) -> None:
     """One CSV line every STATS_EVERY seconds: what is busy, what is waiting."""
     STATS_PATH.parent.mkdir(parents=True, exist_ok=True)
     limiter = anyio.to_thread.current_default_thread_limiter()
+    # Its own connection, outside the app's pool, so that measuring never takes a connection from a request.
+    server_side = await asyncio.to_thread(psycopg.connect, settings.database_url, autocommit=True)
     columns = ["time", "loop_lag_ms", "cpu_percent", "threads_busy", "threads_max", "threads_waiting", "os_threads",
                "pool_size", "pool_available", "pool_requests_waiting", "pool_requests", "pool_queued",
-               "pool_wait_ms_total", "pool_errors", "fake_llm_calls"]
+               "pool_wait_ms_total", "pool_errors", "fake_llm_calls", "neon_connections", "neon_active"]
     with STATS_PATH.open("w", newline="", encoding="utf-8") as f:
         out = csv.writer(f)
         out.writerow(columns)
@@ -149,11 +168,13 @@ async def monitor(pool, fake: EndlessFakeChat) -> None:
             wall, cpu = now_wall, now_cpu
             s = pool.pop_stats()  # counters since the previous line, and the current gauges
             total_calls = sum(fake.calls.values())
+            neon_total, neon_active = await asyncio.to_thread(neon_connections, server_side)
             row = [time.strftime("%H:%M:%S"), round(lag, 1), round(cpu_percent, 1),
                    limiter.borrowed_tokens, int(limiter.total_tokens), limiter.statistics().tasks_waiting,
                    threading.active_count(), s.get("pool_size", 0), s.get("pool_available", 0),
                    s.get("requests_waiting", 0), s.get("requests_num", 0), s.get("requests_queued", 0),
-                   s.get("requests_wait_ms", 0), s.get("requests_errors", 0), total_calls - calls]
+                   s.get("requests_wait_ms", 0), s.get("requests_errors", 0), total_calls - calls,
+                   neon_total, neon_active]
             calls = total_calls
             out.writerow(row)
             f.flush()
@@ -161,7 +182,8 @@ async def monitor(pool, fake: EndlessFakeChat) -> None:
                 printed = now_wall
                 print(f"[{row[0]}] cpu {row[2]}%  threads {row[3]}/{row[4]} (+{row[5]} waiting)  "
                       f"pool {row[7] - row[8]}/{s.get('pool_max', 0)} busy, {row[11]} queued, "
-                      f"{row[12]} ms waited, {row[13]} errors  loop lag {row[1]} ms", flush=True)
+                      f"{row[12]} ms waited, {row[13]} errors  loop lag {row[1]} ms  "
+                      f"Neon {neon_total} connections ({neon_active} active)", flush=True)
 
 
 def main() -> None:

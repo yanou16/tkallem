@@ -10,8 +10,9 @@ from psycopg import Connection
 
 pool = ConnectionPool(
     conninfo=settings.database_url,
-    min_size=1,
-    max_size=5,
+    min_size=settings.db_pool_min,
+    max_size=settings.db_pool_max,
+    timeout=settings.db_pool_timeout,  # then PoolTimeout: fail fast rather than keep a student waiting
     open=False,
     check=ConnectionPool.check_connection,
     kwargs={"row_factory": dict_row},

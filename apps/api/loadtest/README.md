@@ -13,7 +13,8 @@ app runs with a **fake language model** and **no voice**, so no provider is call
 ## What is real, what is fake
 
 - **Real:** routes, authentication (guest tokens), Pydantic validation, the credit wallet, the agent's graph and
-  guardrails, every SQL query, the connection pool (1 to 5), one uvicorn process (like `start.sh`), the database.
+  guardrails, every SQL query, the connection pool (`DB_POOL_MIN` to `DB_POOL_MAX`, 1 to 10 by default), one uvicorn
+  process (like `start.sh`), the database.
 - **Fake:** the model. Every call (corrector, coach, report note) waits `FAKE_LLM_DELAY` seconds, then answers like a
   model would (the correction of the mistake in the answer, a short reply, the goal of the question).
 - **Off:** voice (the journey only types), the budget alert webhook, Langfuse tracing.
@@ -72,6 +73,7 @@ Stop the server (Ctrl+C) and start it again between two steps, so each step has 
 | `LOADTEST_STATS` | `loadtest/results/server_stats.csv` | Where the server writes its stats |
 | `LOADTEST_STATS_EVERY` | `5` | Seconds between two stats lines |
 | `LOCUST_THINK_MIN`, `LOCUST_THINK_MAX` | `2`, `5` | Seconds a virtual judge waits before each step (reading, typing) |
+| `DB_POOL_MAX` (and `DB_POOL_MIN`, `DB_POOL_TIMEOUT`) | the app's | The app's own pool settings: set one on the fake server to try another pool size |
 
 A virtual judge waits 2 to 5 s between steps; a real one reads and types for much longer (about 20 s per answer), so one
 virtual judge sends roughly as many answers as several real ones.
@@ -82,7 +84,9 @@ virtual judge sends roughly as many answers as several real ones.
   `4a. turn: coach reply received` is the time until the coach's text arrives, what the judge waits before reading.
 - **`server_stats.csv`:** `pool_*` is the connection pool (`pool_queued`: checkouts that had to wait, `pool_wait_ms_total`:
   how long in total, `pool_errors`: timeouts after 30 s); `threads_busy` / `threads_max` are the worker threads that run
-  the `def` routes and the streamed answers; `loop_lag_ms` is how late the event loop is; `cpu_percent` is the process.
+  the `def` routes and the streamed answers; `loop_lag_ms` is how late the event loop is; `cpu_percent` is the process;
+  `neon_connections` / `neon_active` count the connections open on the database server itself (`pg_stat_activity`,
+  every client of that compute, the pooler's included), measured on a connection of its own outside the app's pool.
 - The fake server prints `Database round trip` at start. Run locally, every query pays the trip from your machine to
   Neon (about 50 ms from Algeria); on Azure, next to Neon in Frankfurt, it should be a few milliseconds (not measured
   yet). A local run therefore shows the **order** in which things saturate, not production's absolute numbers.
