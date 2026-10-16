@@ -8,7 +8,7 @@ and the practice groups (REST plus a WebSocket). Back to the project: [`README.m
 - **FastAPI** with Pydantic v2 and pydantic-settings. Routes are plain `def` (FastAPI runs them in a thread pool);
   only the WebSocket and the group routes that broadcast an event are `async def`.
 - **PostgreSQL on Neon**, through **psycopg 3** with **raw SQL** (`dict_row`), no ORM. One connection pool
-  (`psycopg_pool`, 1 to 5 connections) opened at startup.
+  (`psycopg_pool`, 1 to 10 connections by default, set by `DB_POOL_MIN` and `DB_POOL_MAX`) opened at startup.
 - **Alembic** for migrations, written as SQL (`op.execute`).
 - **Clerk** for sign-in: the API checks the Clerk session JWT (RS256, keys from the Clerk JWKS, issuer checked, `azp`
   checked against `FRONTEND_ORIGIN`). Visitors without an account send a signed guest token instead
@@ -70,6 +70,8 @@ production (see `infra/azure/api.env.example`). Never commit a value.
 |---|---|
 | `DATABASE_URL` | Postgres database of the API (Neon) |
 | `TEST_DATABASE_URL` | Database used by the tests, never the same as `DATABASE_URL` |
+| `DB_POOL_MIN`, `DB_POOL_MAX` | Connections the API process keeps open at least, and opens at most (default 1 and 10) |
+| `DB_POOL_TIMEOUT` | Seconds a request waits for a free connection before failing (default 10) |
 | `CLERK_JWKS_URL`, `CLERK_ISSUER` | Where the Clerk signing keys are, and the expected token issuer. Without them, authentication answers 503 |
 | `FRONTEND_ORIGIN` | Allowed web origins, comma separated: CORS, the WebSocket origin check and the token `azp` check |
 | `LLM_PROVIDER`, `LLM_MODEL` | Main language model of the coach (`openrouter` or `groq`) |

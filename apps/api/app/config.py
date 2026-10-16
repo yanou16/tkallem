@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,6 +17,10 @@ class Settings(BaseSettings):
     voice_connect_timeout: float = 3.0  # a provider that cannot be reached in 3 s is retried once, then the next one answers
     database_url: str = ""
     test_database_url: str = ""
+    # Connection pool of the one API process (apps/api/loadtest/README.md: the pool is the first thing to saturate).
+    db_pool_min: int = Field(1, ge=0)  # connections kept open even when idle
+    db_pool_max: int = Field(10, ge=1)  # connections at most
+    db_pool_timeout: float = Field(10.0, gt=0)  # seconds a request waits for a free connection before failing
     clerk_jwks_url: str = ""
     clerk_issuer: str = ""
     max_audio_bytes: int = 5_000_000
