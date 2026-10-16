@@ -7,11 +7,11 @@
   "icon": "university",
   "mode": "guided",
   "minutes": 8,
-  "coach_role": "A Campus France advisor interviewing a student who applies to an English-taught master's programme in France: friendly, precise, short questions.",
+  "coach_role": "A Campus France advisor interviewing a student who applies to an English-taught master's program in France: friendly, precise, short questions.",
   "questions": [
     "Can you introduce yourself and your studies so far?",
-    "Which programme did you apply to, and why this one?",
-    "How is this programme connected to your previous studies?",
+    "Which program did you apply to, and why this one?",
+    "How is this program connected to your previous studies?",
     "Why did you choose France for your studies?",
     "How will you finance your stay in France?",
     "What is your professional project after this master's?"
@@ -26,12 +26,20 @@
   ],
   "useful_words": [
     "bachelor's degree",
-    "master's programme",
+    "master's program",
     "internship",
     "coherent",
     "career plan",
     "tuition fees",
     "accommodation",
     "sponsor"
+  ],
+  "starters": [
+    "My name is",
+    "I applied to a master's program in",
+    "This program builds on my previous studies in",
+    "I chose France because",
+    "My stay in France will be financed by",
+    "After this master's, I would like to"
   ]
 }

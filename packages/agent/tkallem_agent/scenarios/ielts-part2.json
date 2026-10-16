@@ -1,7 +1,7 @@
 {
   "id": "ielts-part2",
   "title": "IELTS Speaking, part 2",
-  "description": "Practise the IELTS Speaking long turn and the follow-up questions.",
+  "description": "Practice the IELTS Speaking long turn and the follow-up questions.",
   "category": "exams",
   "level": "B2",
   "icon": "exam",
@@ -32,5 +32,13 @@
     "it depends",
     "local culture",
     "nowadays"
+  ],
+  "starters": [
+    "A place I visited and really liked is",
+    "Yes, I would like to go back because",
+    "In my country, many people like to travel to",
+    "I think some people prefer to travel alone because",
+    "In recent years, tourism in my city has",
+    "I think tourism is good for a place when"
   ]
 }

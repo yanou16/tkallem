@@ -39,5 +39,13 @@
     "chosen_program",
     "funding",
     "why_abroad"
+  ],
+  "starters": [
+    "The main purpose of my trip is to",
+    "I am going to study at",
+    "My studies will be paid by",
+    "I want to study in the US because",
+    "My strongest tie to Algeria is",
+    "After my studies, I plan to"
   ]
 }

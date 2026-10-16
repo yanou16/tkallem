@@ -2,11 +2,11 @@
 
 ## The spending switch
 
-Every answer costs one credit (`docs/CREDITS.md`). `DAILY_SPEND_CAP` (API environment) is the number of credits that
+Every answer uses one free answer (called a credit in the code, `docs/CREDITS.md`). `DAILY_SPEND_CAP` (API environment) is the number of answers that
 everybody together may spend per day (UTC). When it is reached, students see "Today's free practice is used up, come
 back tomorrow" until midnight UTC. Nothing else stops.
 
-What one credit costs us (measured October 2026):
+What one answer costs us (measured October 2026):
 
 | Answer | Cost |
 |---|---|
@@ -14,7 +14,7 @@ What one credit costs us (measured October 2026):
 | Spoken, voice by Groq Orpheus | about 0.0034 $ (model + transcription + voice) |
 | Spoken, voice by DeepInfra Kokoro | about 0.0009 $ |
 
-So the cap bounds the daily bill: 5000 credits (default) is at most about 17 $ a day if every answer is spoken with
+So the cap bounds the daily bill: 5000 answers (default) is at most about 17 $ a day if every answer is spoken with
 Orpheus, about 1.5 $ if they are typed.
 
 ## Alerts

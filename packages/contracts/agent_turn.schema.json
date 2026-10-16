@@ -28,6 +28,14 @@
       }
     },
     "sentence_status": { "type": "string", "enum": ["green", "orange", "red"] },
-    "goal_covered": { "type": ["string", "null"] }
+    "goal_covered": { "type": ["string", "null"] },
+    "praise": {
+      "type": ["string", "null"], "maxLength": 200,
+      "description": "Improvement 4: one short true positive about the answer (12 words max, checked by code), shown before the corrections. Null when the code refused it."
+    },
+    "priority_index": {
+      "type": "integer", "minimum": 0,
+      "description": "Index in corrections of the fix shown in full; the others are folded. 0 when there is no correction."
+    }
   }
 }

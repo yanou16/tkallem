@@ -82,6 +82,8 @@ class Reply(BaseModel):
 class Found(BaseModel):
     corrections: list[Correction] = []
     changes_meaning: bool = False  # one mistake changes what the student meant: the sentence is red (spec)
+    praise: str | None = None  # one short true positive about the answer (checked by schemas.praise_problem)
+    priority_index: int = 0  # the correction that matters most for being understood
 
 
 def merge_dicts(a: dict | None, b: dict | None) -> dict:
@@ -91,12 +93,15 @@ def merge_dicts(a: dict | None, b: dict | None) -> dict:
 class CoachState(TypedDict, total=False):
     level: Level
     explain_lang: ExplainLang  # defaults to "fr"
+    feedback_mode: str  # "practice" (default) or "interview": the coach neither encourages nor evaluates
     scenario: dict
     history: list[BaseMessage]
     covered_goals: list[str]  # goal ids answered by the previous turns
     student_text: str
     found: list[dict]
     changes_meaning: bool
+    praise: str | None
+    priority_index: int
     reply: dict | None
     coach_error: str
     turn: AgentTurn
@@ -155,16 +160,35 @@ def next_question(
     return questions[nxt] if nxt < len(questions) else None
 
 
-def build_system_prompt(level: Level, scenario: dict) -> str:
+# "Real interview" mode (docs/JURY_BRIEF.md, improvement 3): the coach behaves like the real officer, no encouragement,
+# no evaluation, no teaching. The corrections are still computed; the app shows them only in the report.
+INTERVIEW_RULES = """
+REAL INTERVIEW MODE: this is a rehearsal under real pressure, so play the role exactly as the real person would.
+Rule 3 is replaced: do NOT encourage, praise, congratulate or evaluate ("Good", "Great", "Well done", "Nice", "Perfect"
+are forbidden), and do not explain or teach. Your `reaction` is neutral and short, as a real officer or recruiter would
+say it: "I see.", "Thank you.", "Understood.", "Noted.", or a very short acknowledgement of a fact the student gave."""
+
+
+_PRAISE = re.compile(r"\b(good|great|well done|nice|perfect|excellent|wonderful|fantastic|congratulations|bravo|impressive|"
+                    r"awesome|amazing|brilliant|encouraging|keep it up|well said|well answered)\b", re.I)
+NEUTRAL_REACTION = "Thank you."
+
+
+def neutral_reaction(reaction: str) -> str:
+    """Real interview mode, decided by code: a reaction that praises or evaluates becomes a neutral acknowledgement."""
+    return NEUTRAL_REACTION if _PRAISE.search(reaction) else reaction
+
+
+def build_system_prompt(level: Level, scenario: dict, interview: bool = False) -> str:
     common = {"coach_role": scenario["coach_role"], "level": level, "level_rules": LEVEL_RULES[level], "max_words": MAX_WORDS[level]}
     if is_free(scenario):
-        return FREE_PROMPT.format(**common)
+        return FREE_PROMPT.format(**common) + (INTERVIEW_RULES if interview else "")
     return PROMPT.format(
         **common,
         questions=" | ".join(scenario["questions"]),
         goals=", ".join(scenario["goals"]),
         useful_words=", ".join(scenario["useful_words"]),
-    )
+    ) + (INTERVIEW_RULES if interview else "")
 
 
 def sentences(text: str) -> list[str]:
@@ -217,11 +241,15 @@ def declared_status(changes_meaning: bool) -> str:
     return "red" if changes_meaning else "green"
 
 
-def final_corrections(found: list, scenario: dict, student_text: str, changes_meaning: bool = False) -> tuple[list[dict], str]:
-    """Corrections kept after the code guardrails, and the sentence status derived from them."""
-    out = sanitize({"corrections": found, "sentence_status": declared_status(changes_meaning)}, scenario.get("goals", []), student_text)
-    kept = [Correction.model_validate(c).model_dump() for c in out["corrections"]]
-    return kept, out["sentence_status"]
+def final_corrections(found: list, scenario: dict, student_text: str, changes_meaning: bool = False,
+                      praise: str | None = None, priority_index: int = 0) -> dict:
+    """What the code keeps of the corrector's output: corrections, the status derived from them, the praise (or None)
+    and the index of the correction to show first."""
+    raw = {"corrections": found, "sentence_status": declared_status(changes_meaning), "praise": praise,
+           "priority_index": priority_index}
+    out = sanitize(raw, scenario.get("goals", []), student_text)
+    return {"corrections": [Correction.model_validate(c).model_dump() for c in out["corrections"]],
+            "sentence_status": out["sentence_status"], "praise": out["praise"], "priority_index": out["priority_index"]}
 
 
 def build_graph(llm: BaseChatModel):
@@ -243,13 +271,17 @@ def build_graph(llm: BaseChatModel):
                 messages = [*messages, SystemMessage(RETRY_COMPACT)]
         found = raw.get("corrections") if isinstance(raw, dict) else None
         meaning = bool(raw.get("changes_meaning")) if isinstance(raw, dict) else False
-        return {"found": found or [], "changes_meaning": meaning, "timings": {"correct": time.perf_counter() - t0}}
+        praise = raw.get("praise") if isinstance(raw, dict) else None
+        priority = raw.get("priority_index") if isinstance(raw, dict) else 0
+        return {"found": found or [], "changes_meaning": meaning, "praise": praise if isinstance(praise, str) else None,
+                "priority_index": priority if isinstance(priority, int) else 0,
+                "timings": {"correct": time.perf_counter() - t0}}
 
     def coach_node(state: CoachState, config: RunnableConfig) -> CoachState:
         t0 = time.perf_counter()
         level = state["level"]
         messages = [
-            SystemMessage(build_system_prompt(level, state["scenario"])),
+            SystemMessage(build_system_prompt(level, state["scenario"], state.get("feedback_mode") == "interview")),
             *state.get("history", []),
             HumanMessage(state["student_text"]),
         ]
@@ -260,7 +292,8 @@ def build_graph(llm: BaseChatModel):
             except Exception as e:  # invalid JSON, runaway output, provider error: same as an unusable reply
                 raw = None
                 problem = f"no usable output ({type(e).__name__}). {RETRY_COMPACT}"
-            hard = reply_problem(raw) if raw is not None else problem
+            # raw is None without an error when the provider answers without the structured output: unusable too
+            hard = problem if raw is None and problem else reply_problem(raw)
             soft = None if hard else reaction_problem(raw["reaction"], level)
             if not hard and (not soft or attempt == MAX_RETRIES):
                 timings = {"coach": time.perf_counter() - t0, "coach_attempts": attempt + 1}
@@ -274,11 +307,15 @@ def build_graph(llm: BaseChatModel):
         if reply is None:
             return {"error": state.get("coach_error") or "no coach reply"}
         scenario, history = state["scenario"], state.get("history", [])
+        if state.get("feedback_mode") == "interview":  # the code, not the prompt alone, keeps the officer neutral
+            reply = {**reply, "reaction": neutral_reaction(reply["reaction"])}
         merged = {
             "reply": compose_reply(reply, scenario, history, state.get("covered_goals", [])),
             "goal_covered": reply.get("goal_covered"),
             "corrections": state.get("found", []),
             "sentence_status": declared_status(state.get("changes_meaning", False)),  # finalised by sanitize
+            "praise": state.get("praise"),
+            "priority_index": state.get("priority_index", 0),
         }
         try:
             turn = AgentTurn.model_validate(sanitize(merged, scenario.get("goals", []), state["student_text"]))

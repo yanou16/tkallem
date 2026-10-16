@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     clerk_issuer: str = ""
     max_audio_bytes: int = 5_000_000
     max_text_chars: int = 1000
+
     frontend_origin: str = "http://localhost:3000"
     cloudinary_cloud_name: str = ""
     cloudinary_api_key: str = ""
@@ -32,6 +33,7 @@ class Settings(BaseSettings):
             for origin in self.frontend_origin.split(",")
             if origin.strip()
         )
+
 
     # Credits (see docs/CREDITS.md). 1 credit = 1 answer from the student.
     guest_secret: str = ""  # signs guest tokens (32+ characters); empty = guest mode disabled
@@ -47,5 +49,8 @@ class Settings(BaseSettings):
     budget_cache_s: float = 30.0  # how often the global daily spending is re-read from the ledger
     daily_spend_cap: int = 5000  # credits spent by everyone per day: the switch that bounds the bill (credits x cost per credit)
 
+    @property
+    def frontend_origins(self) -> list[str]:
+        return [o.strip().rstrip("/") for o in self.frontend_origin.split(",") if o.strip()]
 
 settings = Settings()

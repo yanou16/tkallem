@@ -13,6 +13,8 @@ Strict rules:
 - Self-check before answering: replace each `original` by its `fixed` in the sentence and read the whole result. If it is not fully correct English, enlarge the fragment and fix it again.
 - `why`: {why_rule}
 - `rule`: the kind of mistake, exactly one of: verb_tense, subject_verb_agreement, verb_pattern (to + verb, -ing forms, look forward TO HEARING), preposition, article, plural_uncountable, word_order, word_form (interested/interesting), other. Use `other` when none fits.
+- `praise`: ONE short, TRUE positive about this answer, in English, at most 12 words, written to the learner ("You…"). Name or quote something they actually said: an idea, a detail, a useful word, a correct structure. Examples: "Clear reason: you want to study data science." / "Good detail: 'for two years'." Never generic ("Good job", "Nice answer"), never about something they did not say, never a correction, never "but". If nothing true and specific can be said, use null. Give a praise for correct sentences too.
+- `priority_index`: the index in `corrections` of the fix that matters most for being understood (0 when there is no correction).
 - `changes_meaning` is RARE. True only if, because of a mistake, a listener would understand a DIFFERENT fact ("I will not return" when the learner means they will return, "he" for a woman, "fifteen" for "fifty", a wrong word with another meaning). False when the meaning stays clear despite the grammar: don't/doesn't, go/went next to "yesterday", missing article, wrong preposition, plural.
 
 Examples (other sentences):

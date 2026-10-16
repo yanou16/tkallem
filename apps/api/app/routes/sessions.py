@@ -1,14 +1,17 @@
 import json
+from datetime import datetime, timezone
 import logging
+import time
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import StreamingResponse
 from psycopg import Connection
-from tkallem_agent import AgentError, CoachSession, ScenarioNotFound
+from tkallem_agent import AgentError, CoachSession, HintError, ScenarioNotFound, freeze_compare, freeze_summary, match_repeat
 
-from app import credits
+from app import credits, rate_limit
 from app.config import settings
 from app.db.connection import ConnFactory, get_conn, get_conn_factory
 from app.db.sessions import (
@@ -17,11 +20,17 @@ from app.db.sessions import (
     get_session_detail,
     get_session_for_user,
     list_turns,
+    previous_finished,
+    set_confidence,
     save_turn,
     set_session_mode,
 )
 from app.dependencies import get_current_user, user_for_claims
-from app.schemas.sessions import SessionCreate, SessionDetail, SessionReport, SessionStarted, Spoken, TurnResult
+from app.progress_line import progress_line
+from app.schemas.sessions import (
+    ConfidenceAnswer, HintRequest, HintResult, NoteRequest, NoteResult, RepeatResult, SessionCreate, SessionDetail, SessionReport, SessionStarted, Spoken,
+    TurnResult,
+)
 from app.security import ClerkClaims, get_clerk_claims
 from app.voice import SttError, TtsError, run_turn, stream_turn, synthesize, transcribe
 
@@ -29,6 +38,14 @@ logger = logging.getLogger(__name__)
 _PRE = ThreadPoolExecutor(max_workers=32, thread_name_prefix="tkallem-turn")  # credit + transcription in parallel
 SPEAK_LIMIT = 6  # voice replays per session and per process: each one is a paid TTS request with a daily quota
 _speak_calls: dict[UUID, int] = {}
+HINT_LIMIT = 2  # hints per question (docs/JURY_BRIEF.md): help to start, not to answer
+HINTS_PER_HOUR = 30  # per student and per process: hints are free for the student but each is a paid model call
+_hint_calls: dict[tuple[UUID, int], int] = {}
+_hint_times: dict[str, deque] = {}
+REPEAT_LIMIT = 3  # tries per corrected answer (docs/JURY_BRIEF.md)
+REPEATS_PER_HOUR = 40  # per student and per process: each try is a paid transcription
+_repeat_calls: dict[tuple[UUID, int], int] = {}
+_repeat_times: dict[str, deque] = {}
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -55,6 +72,7 @@ def start_session(
             level=user["level"],
             explain_lang=explain_lang,
             max_text_chars=settings.max_text_chars,
+            feedback_mode=body.feedback_mode,
         )
     except ScenarioNotFound:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Unknown scenario")
@@ -77,6 +95,7 @@ def start_session(
     return {
         "session_id": coach.session_id,
         "first_question": {"text": coach.opening, "audio_url": audio_url},
+        "feedback_mode": coach.feedback_mode,
     }
 
 
@@ -135,10 +154,62 @@ def read_session(
         "started_at": session["started_at"],
         "ended_at": session["ended_at"],
         **_scenario_view(session),
-        "turns": list_turns(conn, session_id, user["id"]),
+        "feedback_mode": session["state"].get("feedback_mode", "practice"),
+        "confidence": _confidence(session),
+        "turns": _with_praise(list_turns(conn, session_id, user["id"]), session["state"], hide=_interview_running(session)),
         "note": session["note"],
         "metrics": {key: session[key] for key in METRIC_KEYS} if session["ended_at"] else None,
+        "progress": _progress(conn, user["id"], session),
+        "freeze": _freeze_of(conn, user["id"], session),
     }
+
+
+def _freeze(state: dict, before: dict | None) -> dict | None:
+    """Freeze meter: the average wait before answering in this session, and the previous finished session's when the two
+    are comparable (same kind of answers). None for a session without measures (before the freeze meter, old client)."""
+    now = freeze_summary(state.get("turns", []))
+    last = freeze_summary(before["state"].get("turns", [])) if before and before.get("state") else None
+    return freeze_compare(now, last)
+
+
+def _freeze_of(conn: Connection, user_id: int, session: dict) -> dict | None:
+    if session["ended_at"] is None:
+        return None
+    before, _ = previous_finished(conn, user_id, session["id"], session["ended_at"])
+    return _freeze(session["state"], before)
+
+
+def _progress(conn: Connection, user_id: int, session: dict) -> str | None:
+    """A finished session shows the same first line as its report did: progress since the session finished before it."""
+    if session["ended_at"] is None:
+        return None
+    before, count = previous_finished(conn, user_id, session["id"], session["ended_at"])
+    return progress_line({key: session[key] for key in METRIC_KEYS}, before, count)
+
+
+def _confidence(session: dict) -> dict:
+    return {"before": session.get("confidence_before"), "after": session.get("confidence_after")}
+
+
+def _interview_running(session: dict) -> bool:
+    """A real interview shows nothing (no correction, no colour) until its report."""
+    return session["state"].get("feedback_mode") == "interview" and session["ended_at"] is None
+
+
+def _with_praise(turns: list[dict], state: dict, hide: bool = False) -> list[dict]:
+    """Praise and priority correction of each answer (improvement 4), from the session state the agent keeps: the
+    turns table does not store them. Position 1 is the first answer."""
+    logged = state.get("turns", [])
+    out = []
+    for t in turns:
+        if hide:
+            out.append({**t, "corrections": [], "sentence_status": None, "praise": None, "priority_index": 0})
+            continue
+        log = logged[t["position"] - 1] if 0 < t["position"] <= len(logged) else {}
+        n = len(t.get("corrections") or [])
+        priority = log.get("priority_index", 0)
+        out.append({**t, "praise": log.get("praise"), "priority_index": priority if 0 <= priority < max(n, 1) else 0})
+    return out
 
 
 def _spend(connect: ConnFactory, user: dict, session_id: UUID) -> credits.CreditStatus:
@@ -173,21 +244,32 @@ def _save(connect: ConnFactory, session_id: UUID, coach: CoachSession, turn, exp
         )
     if saved is None:
         return None
+    interview = coach.feedback_mode == "interview"  # computed and stored, but shown only in the report
     return {
         "transcript": coach.turns[-1].student_text,
         "reply": turn.reply,
-        "corrections": corrections,
-        "sentence_status": turn.sentence_status,
+        "corrections": [] if interview else corrections,
+        "sentence_status": None if interview else turn.sentence_status,
+        "praise": None if interview else turn.praise,
+        "priority_index": 0 if interview else turn.priority_index,
         "finished": coach.finished,
     }
 
 
-def _answer(session_id: UUID, session: dict, text: str, audio_seconds, pauses: int, want_audio: bool, llm, connect: ConnFactory) -> dict:
+def _number(raw: str | None) -> float | None:
+    try:
+        return float(raw) if raw is not None else None
+    except ValueError:
+        return None
+
+
+def _answer(session_id: UUID, session: dict, text: str, audio_seconds, pauses: int, want_audio: bool, llm, connect: ConnFactory,
+            think: float | None = None) -> dict:
     """Run the coach, speak the reply, save the turn (JSON answer). Any exception means: nothing was saved."""
     expected_turns = len(session["state"]["turns"])
     coach = CoachSession.from_state(session["state"], llm=llm, max_text_chars=settings.max_text_chars)
     try:
-        result = run_turn(coach, text, audio_seconds=audio_seconds, pauses=pauses, want_audio=want_audio)
+        result = run_turn(coach, text, audio_seconds=audio_seconds, pauses=pauses, think_seconds=think, want_audio=want_audio)
     except ValueError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc))
     except AgentError:
@@ -204,7 +286,7 @@ def _sse(event: str, data: dict) -> str:
 
 
 def _stream_answer(session_id: UUID, session: dict, user: dict, wallet, text: str, audio_seconds, pauses: int,
-                   want_audio: bool, llm, connect: ConnFactory):
+                   want_audio: bool, llm, connect: ConnFactory, think: float | None = None):
     """Server-Sent Events: transcript, reply (text), corrections and audio as soon as each exists, then done (the
     turn is saved) or error. The credit is given back if the turn is not saved, client gone included."""
     saved = False
@@ -214,11 +296,14 @@ def _stream_answer(session_id: UUID, session: dict, user: dict, wallet, text: st
         coach = CoachSession.from_state(session["state"], llm=llm, max_text_chars=settings.max_text_chars)
         answer = None
         try:
-            for ev in stream_turn(coach, text, audio_seconds=audio_seconds, pauses=pauses, want_audio=want_audio):
+            for ev in stream_turn(coach, text, audio_seconds=audio_seconds, pauses=pauses, think_seconds=think, want_audio=want_audio):
                 if ev["type"] == "reply":
                     yield _sse("reply", {"text": ev["reply"]})
+                elif ev["type"] == "corrections" and coach.feedback_mode == "interview":
+                    pass  # a real interview: the corrections wait for the report
                 elif ev["type"] == "corrections":
-                    yield _sse("corrections", {"corrections": ev["corrections"], "sentence_status": ev["sentence_status"]})
+                    yield _sse("corrections", {"corrections": ev["corrections"], "sentence_status": ev["sentence_status"],
+                                               "praise": ev.get("praise"), "priority_index": ev.get("priority_index", 0)})
                 elif ev["type"] == "audio":
                     yield _sse("audio", {"audio_url": ev["speech"].data_uri if ev["speech"] else None})
                 elif ev["type"] == "done":
@@ -268,12 +353,127 @@ def speak_last_line(
     return {"text": text, "audio_url": audio_url}
 
 
+def _hourly_ok(log: dict[str, deque], user_key: str, limit: int, now: float) -> bool:
+    times = log.setdefault(user_key, deque())
+    while times and now - times[0] > 3600:
+        times.popleft()
+    if len(times) >= limit:
+        return False
+    times.append(now)
+    return True
+
+
+def _hint_rate_ok(user_key: str, now: float) -> bool:
+    return _hourly_ok(_hint_times, user_key, HINTS_PER_HOUR, now)
+
+
+@router.post("/{session_id}/confidence", status_code=status.HTTP_204_NO_CONTENT)
+def answer_confidence(
+    session_id: UUID,
+    body: ConfidenceAnswer,
+    user: dict = Depends(get_current_user),
+    connect: ConnFactory = Depends(get_conn_factory),
+) -> None:
+    """The student's own 1-to-5 answer, free and repeatable. `before` is taken until the first answer is sent; `after`
+    only once the report exists (the question comes with it)."""
+    with connect() as conn:
+        session = get_session_for_user(conn, session_id, user["id"])
+        if session is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+        if body.when == "before" and session["state"].get("turns"):
+            raise HTTPException(status.HTTP_409_CONFLICT, "Too late: the first answer was already sent")
+        if body.when == "after" and session["ended_at"] is None:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Ask again once the report is ready")
+        set_confidence(conn, session_id, user["id"], body.when, body.value)
+
+
+@router.post("/{session_id}/hint", response_model=HintResult)
+def ask_hint(
+    session_id: UUID,
+    body: HintRequest,
+    user: dict = Depends(get_current_user),
+    connect: ConnFactory = Depends(get_conn_factory),
+    llm=Depends(get_llm),
+) -> dict:
+    """"Help me start" on the question the student is answering: the first words of an answer (`starter`), or their
+    idea in French or Darija turned into English (`translate`). Free (no credit), at most HINT_LIMIT per question."""
+    with connect() as conn:
+        session = get_session_for_user(conn, session_id, user["id"])
+    if session is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    if session["ended_at"] is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
+    if body.type == "translate" and not (body.text or "").strip():
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Write your idea in French or Darija first")
+    coach = CoachSession.from_state(session["state"], llm=llm, max_text_chars=settings.max_text_chars)
+    if coach.feedback_mode == "interview":
+        raise HTTPException(status.HTTP_409_CONFLICT, "No hints in a real interview: answer as you would in the real one")
+    if coach.current_question() is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "The interview is over: no question to help with")
+    key = (session_id, len(coach.turns))  # a new question (or the same one asked again) after each answer
+    used = _hint_calls.get(key, 0)
+    if used >= HINT_LIMIT:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "You had 2 hints for this question: try to answer, even with a short sentence")
+    if not _hint_rate_ok(str(user["id"]), time.monotonic()):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many hints in the last hour: try to answer on your own")
+    _hint_calls[key] = used + 1
+    try:
+        hint = coach.hint(body.type, body.text)  # never fails on a provider error: the scenario's starter instead
+    except HintError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc))
+    except ValueError as exc:  # translate: text too long for an answer
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc))
+    except AgentError:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Hints are unavailable right now")
+    return {**hint.model_dump(), "remaining": HINT_LIMIT - used - 1}
+
+
+@router.post("/{session_id}/repeat", response_model=RepeatResult)
+def say_it_again(
+    session_id: UUID,
+    turn: int = Form(..., ge=0),
+    audio: UploadFile = File(...),
+    user: dict = Depends(get_current_user),
+    connect: ConnFactory = Depends(get_conn_factory),
+) -> dict:
+    """"Say it again": the student says the corrected version of answer number `turn` (0 = first answer) out loud. The
+    code decides if it matches (tkallem_agent.repeat). Free, at most REPEAT_LIMIT tries per answer; the interview does
+    not move on, and it works after the session ended too (to practice from the report)."""
+    with connect() as conn:
+        session = get_session_for_user(conn, session_id, user["id"])
+    if session is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    coach = CoachSession.from_state(session["state"], max_text_chars=settings.max_text_chars)
+    if coach.feedback_mode == "interview" and session["ended_at"] is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Say it again opens with the report of a real interview")
+    if turn >= len(coach.turns):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Answer not found")
+    answer = coach.turns[turn]
+    if not answer.corrections:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This answer had nothing to correct")
+    key = (session_id, turn)
+    used = _repeat_calls.get(key, 0)
+    if used >= REPEAT_LIMIT:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "You tried 3 times: go on with the interview, you can practice it again later")
+    if not _hourly_ok(_repeat_times, str(user["id"]), REPEATS_PER_HOUR, time.monotonic()):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Too many tries in the last hour: take a break and come back")
+    data = audio.file.read(settings.max_audio_bytes + 1)
+    if len(data) > settings.max_audio_bytes:
+        raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, "Recording too long: say only the corrected sentence")
+    heard, _, _, _ = _hear(session_id, data, audio.filename or "repeat.webm", audio.content_type or "audio/webm")
+    _repeat_calls[key] = used + 1  # counted once the recording was understood: a failed transcription costs no try
+    result = match_repeat(answer.student_text, answer.corrections, heard)
+    return {**result.model_dump(), "heard": heard, "tries_left": REPEAT_LIMIT - used - 1}
+
+
 @router.post("/{session_id}/turn", response_model=TurnResult)
 def send_turn(
     session_id: UUID,
     request: Request,
     text: str | None = Form(None),
     audio: UploadFile | None = File(None),
+    think_seconds: str | None = Form(None),
+    explain_lang: str | None = Form(None),
     claims: ClerkClaims = Depends(get_clerk_claims),
     connect: ConnFactory = Depends(get_conn_factory),
     llm=Depends(get_llm),
@@ -289,6 +489,9 @@ def send_turn(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
     if session["ended_at"] is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
+    if explain_lang in ("en", "fr") and session["state"].get("explain_lang") != explain_lang:
+        # "Explain in English / French": from this answer on, the explanations come in that language (and stay saved so)
+        session = {**session, "state": {**session["state"], "explain_lang": explain_lang}}
     data = None
     if audio is not None:
         data = audio.file.read(settings.max_audio_bytes + 1)
@@ -308,20 +511,48 @@ def send_turn(
             _refund(connect, user, session_id)
             raise
     want_audio = session["mode"] == "voice" or audio is not None  # a spoken answer is always answered aloud
+    think = _number(think_seconds)  # freeze meter, measured by the app: a bad value is ignored, never an error
 
     if "text/event-stream" in request.headers.get("accept", ""):
         return StreamingResponse(
-            _stream_answer(session_id, session, user, wallet, text, audio_seconds, pauses, want_audio, llm, connect),
+            _stream_answer(session_id, session, user, wallet, text, audio_seconds, pauses, want_audio, llm, connect, think),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},  # no proxy buffering: events go out at once
         )
     try:
-        answer = _answer(session_id, session, text, audio_seconds, pauses, want_audio, llm, connect)
+        answer = _answer(session_id, session, text, audio_seconds, pauses, want_audio, llm, connect, think)
     except Exception:
         _refund(connect, user, session_id)
         raise
     answer["credits"] = wallet.as_dict()
     return answer
+
+
+@router.post("/{session_id}/note", response_model=NoteResult)
+def explain_note(
+    session_id: UUID,
+    body: NoteRequest,
+    claims: ClerkClaims = Depends(get_clerk_claims),
+    connect: ConnFactory = Depends(get_conn_factory),
+    llm=Depends(get_llm),
+) -> dict:
+    """The coach's note of the report, written again in `lang`. Nothing is saved or spent; 10 an hour per student."""
+    with connect() as conn:
+        user = user_for_claims(conn, claims)
+        session = get_session_for_user(conn, session_id, user["id"])
+    if session is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    if not session["state"]["turns"]:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Answer at least one question first")
+    if not rate_limit.explain_notes.allow(str(user["id"])):
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "You asked for the note in another language too often: try again in an hour")
+    coach = CoachSession.from_state({**session["state"], "explain_lang": body.lang}, llm=llm, max_text_chars=settings.max_text_chars)
+    try:
+        report = coach.end()
+    except AgentError:
+        logger.exception("Note failed on session %s", session_id)
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "The note could not be written, try again")
+    return {"note": report.note, "explain_lang": body.lang}
 
 
 @router.post("/{session_id}/end", response_model=SessionReport)
@@ -350,7 +581,9 @@ def end_practice_session(
 
     with connect() as conn:
         ended = end_session(conn, session_id, report.note, report.metrics)
-    if not ended:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
+        if not ended:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
+        before, count = previous_finished(conn, user["id"], session_id, datetime.now(timezone.utc))
 
-    return report.model_dump()
+    return {**report.model_dump(), "feedback_mode": coach.feedback_mode, "confidence": _confidence(session), "progress": progress_line(report.metrics, before, count),
+            "freeze": _freeze(session["state"], before)}

@@ -14,13 +14,20 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["credits"])
 
 
+def _without_port(address: str) -> str:
+    """Azure App Service writes "41.1.2.3:51234" (a new port per connection): the port must not make a new visitor."""
+    if address.startswith("["):  # [IPv6]:port
+        return address[1:address.index("]")] if "]" in address else address
+    return address.rsplit(":", 1)[0] if address.count(":") == 1 else address  # IPv4:port; bare IPv6 kept
+
+
 def client_ip(request: Request) -> str:
-    """The student's network address. Behind a reverse proxy (Render, Railway: 1 hop) the socket address is the
-    proxy's, so the proxy's header is used: the entry added by the LAST trusted proxy, which the client cannot forge."""
+    """The student's network address. Behind a reverse proxy (Azure App Service, Render: 1 hop) the socket address is
+    the proxy's, so the proxy's header is used: the entry added by the LAST trusted proxy, which the client cannot forge."""
     hops = settings.forwarded_hops
     forwarded = [p.strip() for p in request.headers.get("x-forwarded-for", "").split(",") if p.strip()]
     if hops > 0 and len(forwarded) >= hops:
-        return forwarded[-hops]
+        return _without_port(forwarded[-hops])
     return request.client.host if request.client else "unknown"
 
 

@@ -28,6 +28,7 @@ def run_turn(
     *,
     audio_seconds: float | None = None,
     pauses: int = 0,
+    think_seconds: float | None = None,
     want_audio: bool = False,
     synth: Callable[[str], Speech] | None = None,
 ) -> VoiceTurn:
@@ -36,7 +37,7 @@ def run_turn(
     future: Future | None = None
     turn: AgentTurn | None = None
     try:
-        for event in coach.turn_events(text, audio_seconds, pauses):
+        for event in coach.turn_events(text, audio_seconds, pauses, think_seconds):
             if event["type"] == "reply" and want_audio and future is None:
                 future = _POOL.submit(synth, event["reply"])  # starts now, in parallel with the corrector
             elif event["type"] == "done":
@@ -66,6 +67,7 @@ def stream_turn(
     *,
     audio_seconds: float | None = None,
     pauses: int = 0,
+    think_seconds: float | None = None,
     want_audio: bool = False,
     synth: Callable[[str], Speech] | None = None,
 ):
@@ -92,7 +94,7 @@ def stream_turn(
 
     def agent() -> None:
         try:
-            for event in coach.turn_events(text, audio_seconds, pauses):
+            for event in coach.turn_events(text, audio_seconds, pauses, think_seconds):
                 events.put(event)  # "reply" is queued before its voice is started, so the consumer expects the audio
                 if event["type"] == "reply" and want_audio:
                     _POOL.submit(speak, event["reply"])

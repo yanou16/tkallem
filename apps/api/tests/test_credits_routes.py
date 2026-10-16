@@ -94,6 +94,9 @@ def test_client_ip_uses_the_last_trusted_proxy_entry(monkeypatch):
     monkeypatch.setattr(settings, "forwarded_hops", 1)
     assert client_ip(req("6.6.6.6, 2.2.2.2")) == "2.2.2.2"               # the client-forged entry is ignored
     assert client_ip(req()) == "10.9.9.9"
+    assert client_ip(req("6.6.6.6, 41.1.2.3:51234")) == "41.1.2.3"       # Azure adds the port: ignored
+    assert client_ip(req("[2001:db8::1]:443")) == "2001:db8::1"
+    assert client_ip(req("2001:db8::1")) == "2001:db8::1"
 
 
 # ---- using the app as a guest ------------------------------------------------------------------------------------

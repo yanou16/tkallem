@@ -25,7 +25,7 @@ from app.db.users import get_by_clerk_id
 
 class NoCredits(Exception):
     def __init__(self, next_refill_at: datetime | None):
-        super().__init__("no credits left")
+        super().__init__("no answers left")
         self.next_refill_at = next_refill_at
 
 
