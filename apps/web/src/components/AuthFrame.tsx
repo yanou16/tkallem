@@ -1,18 +1,18 @@
 import type { ReactNode } from "react";
 export function AuthFrame({ left, children }: { left: ReactNode; children: ReactNode }) {
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-surface p-6">
-      <div aria-hidden className="pointer-events-none absolute -bottom-24 right-10 h-[420px] w-[420px] rounded-full bg-surface/80 blur-sm" />
-      <div aria-hidden className="pointer-events-none absolute -left-20 top-40 h-[360px] w-[360px] rounded-full bg-surface/70" />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#faf9f4] p-6">
+      <div aria-hidden className="pointer-events-none absolute -bottom-24 right-10 h-[420px] w-[420px] rounded-full bg-butter-deep/60 blur-sm" />
+      <div aria-hidden className="pointer-events-none absolute -left-20 top-40 h-[360px] w-[360px] rounded-full bg-mint/70" />
       <div className="relative grid w-full max-w-6xl items-center gap-12 md:grid-cols-[1fr_460px]">
         <div>
           <div className="mb-14 flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-ink text-lg font-medium text-white">T</span>
-            <span className="text-2xl font-medium">Tkallem</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-lg font-extrabold">T</span>
+            <span className="text-2xl font-bold">Tkallem</span>
           </div>
           {left}
         </div>
-        <div className="rounded-[28px] border border-line bg-white p-8">{children}</div>
+        <div className="rounded-[28px] border border-line bg-white p-8 shadow-soft">{children}</div>
       </div>
     </div>
   );

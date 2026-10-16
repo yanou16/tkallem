@@ -1,7 +1,6 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
 :root {
   /* Base */
   --canvas: #ffffff;
@@ -48,8 +47,46 @@
 
   /* Shadow */
   --shadow-pop: 0 16px 48px -8px rgba(5, 0, 56, 0.12);
-}
+  :root {
+  --canvas: #ffffff;
+  --surface: #f7f8fa;
 
+  --ink: #1c1c1e;
+  --charcoal: #2c2c34;
+  --slate: #555a6a;
+  --steel: #6b6f7e;
+  --stone: #8e91a0;
+
+  --hairline: #e0e2e8;
+  --hairline-soft: #eef0f3;
+  --hairline-strong: #c7cad5;
+
+  --brand-yellow: #ffd02f;
+
+  --tint-visa: #c3faf5;
+  --tint-campus: #fff4c4;
+  --tint-job: #ffe6cd;
+  --tint-ielts: #ffc6c6;
+
+  --good: #0a7a4b;
+  --good-bg: #d9f5e9;
+  --good-fill: #00b473;
+
+  --warn: #9a5b00;
+  --warn-bg: #fff1d6;
+
+  --bad: #b42318;
+  --bad-bg: #fde2e1;
+
+  --radius-input: 8px;
+  --radius-panel: 12px;
+  --radius-correction: 16px;
+  --radius-bubble: 20px;
+  --radius-card: 28px;
+
+  --shadow-pop: 0 16px 48px -8px rgba(5, 0, 56, 0.12);
+}
+}
 html, body { background: #fdfdfb; color: #111; }
 body { -webkit-font-smoothing: antialiased; }
 :focus-visible { outline: 2px solid #111; outline-offset: 2px; }

@@ -340,8 +340,8 @@ function Chat() {
 
         <div className="mb-4 grid gap-3 md:grid-cols-[1.3fr_0.8fr_1fr]">
           <div className="relative">
-            <button onClick={() => setMenu((m) => !m)} className="flex w-full items-center gap-3 rounded-2xl bg-surface p-3 text-left">
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-white"><Icon name={icon ?? "briefcase"} /></span>
+            <button onClick={() => setMenu((m) => !m)} className="flex w-full items-center gap-3 rounded-2xl bg-peach p-3 text-left">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-peach-deep"><Icon name={icon ?? "briefcase"} /></span>
               <span className="flex-1"><span className="block text-xs text-muted">Scenario</span><span className="font-semibold">{title ?? "Choose a scenario"}</span></span>
               <ChevronDown size={18} />
             </button>
@@ -355,8 +355,8 @@ function Chat() {
               </ul>
             )}
           </div>
-          <div className="flex items-center gap-3 rounded-2xl bg-surface p-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-white"><ChartNoAxesColumn size={20} /></span>
+          <div className="flex items-center gap-3 rounded-2xl bg-mint p-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-mint-deep"><ChartNoAxesColumn size={20} /></span>
             <span><span className="block text-xs text-muted">Level</span><span className="font-semibold">{user?.level ?? "—"}</span></span>
           </div>
           <div className="flex items-center gap-2 rounded-2xl bg-black/[0.03] p-2" role="radiogroup" aria-label="Answer mode">
@@ -379,8 +379,8 @@ function Chat() {
                   className={cn(
                     "flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-all",
                     rtVoice.isConnected || rtVoice.isConnecting
-                      ? "border border-bad/30 bg-bad-bg text-bad"
-                      : "border border-line bg-surface text-ink hover:bg-black/5",
+                      ? "border border-rose-deep bg-rose text-ink"
+                      : "border border-mint-deep bg-mint text-ink hover:bg-mint-deep/60",
                     rtVoice.isConnecting && "cursor-wait opacity-70"
                   )}
                 >
@@ -397,7 +397,7 @@ function Chat() {
                   )}
                 </button>
                 {rtVoice.isConnected && (
-                  <span className="flex items-center gap-1.5 rounded-full bg-good-bg px-2.5 py-1 text-[11px] font-medium text-good">
+                  <span className="flex items-center gap-1.5 rounded-full bg-mint-deep/20 px-2.5 py-1 text-[11px] font-medium text-ink">
                     <span className="h-2 w-2 rounded-full animate-pulse bg-success" />
                     Connected · {formatTime(rtVoice.duration)}
                   </span>
@@ -407,7 +407,7 @@ function Chat() {
             </div>
             <div className="rounded-card border border-line bg-white p-4">
               <div className="flex items-center gap-4">
-                {avatarOn ? <CoachAvatar {...coach.avatarProps} /> : <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-line bg-surface"><Icon name={icon ?? "briefcase"} /></span>}
+                {avatarOn ? <CoachAvatar {...coach.avatarProps} /> : <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-mint"><Icon name={icon ?? "briefcase"} /></span>}
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold">Your AI tutor</p>
                   <p className="text-sm text-muted">
@@ -420,7 +420,7 @@ function Chat() {
                   <div className="mt-3 flex h-8 items-center gap-1" aria-label="Microphone activity">
                     {Array.from({ length: 24 }).map((_, i) => {
                       const wave = rtVoice.isConnected ? Math.max(0.15, rtVoice.audioLevel * (0.55 + ((i % 5) / 5))) : 0.12;
-                      return <span key={i} className={cn("w-1 rounded-full transition-[height] duration-100", rtVoice.isConnected ? "bg-ink" : "bg-line")} style={{ height: `${Math.max(4, wave * 30)}px` }} />;
+                      return <span key={i} className={cn("w-1 rounded-full transition-[height] duration-100", rtVoice.isConnected ? "bg-brand" : "bg-line")} style={{ height: `${Math.max(4, wave * 30)}px` }} />;
                     })}
                   </div>
                 </div>
@@ -431,7 +431,7 @@ function Chat() {
                 )}
               </div>
               {rtVoice.isConnected && <VoiceState state={rtVoice.state} className="mt-3" />}
-              {voiceError && <p role="alert" className="mt-3 rounded-xl bg-bad-bg px-3 py-2 text-sm text-bad">{voiceError}</p>}
+              {voiceError && <p role="alert" className="mt-3 rounded-xl bg-rose/60 px-3 py-2 text-sm">{voiceError}</p>}
             </div>
           </div>
         )}
@@ -459,7 +459,7 @@ function Chat() {
                   <Bubble m={{ id: "pending-reply", role: "assistant", content: live.reply }} icon={icon} user={user} />
                 ) : (
                   <div className="flex items-center gap-3">
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-line bg-surface"><Icon name={icon ?? "briefcase"} /></span>
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-mint"><Icon name={icon ?? "briefcase"} /></span>
                     <VoiceState state="thinking" className="rounded-3xl bg-black/[0.05] px-5 py-4" />
                   </div>
                 )}
@@ -492,7 +492,7 @@ function Chat() {
       />
     ) : (
       <div className="flex items-center gap-3">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-line bg-surface">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-mint">
           <Icon name={icon ?? "briefcase"} />
         </span>
         <VoiceState
@@ -513,11 +513,11 @@ function Chat() {
                   <Volume2 size={16} /> Tap to hear the coach
                 </button>
               )}
-              {rec.error && <p role="alert" className="rounded-2xl bg-bad-bg px-4 py-3 text-sm text-bad">{rec.error}</p>}
+              {rec.error && <p role="alert" className="rounded-2xl bg-rose/60 px-4 py-3 text-sm">{rec.error}</p>}
               {creditProblem && <OutOfCredits error={creditProblem} isGuest={isGuest} />}
               {problem && (
                 <Problem help={problem} onRestart={() => restart()}
-                  onRetry={send.error ? (lastRecording.current ? () => sendRecording(lastRecording.current!) : submit) : finish} />
+                  onRetry={send.error ? () => { if (lastRecording.current) sendRecording(lastRecording.current); else submit(); } : finish} />
               )}
             </div>
           )}
@@ -530,7 +530,7 @@ function Chat() {
           ) : rtVoice.isConnected || rtVoice.isConnecting ? (
             <div className="flex items-center justify-between gap-4 border-t border-line p-4">
               <div className="flex items-center gap-3 text-sm text-muted">
-                <span className={cn("h-3 w-3 rounded-full", rtVoice.isConnected ? "bg-success animate-pulse" : "bg-warn animate-pulse")} />
+                <span className={cn("h-3 w-3 rounded-full", rtVoice.isConnected ? "bg-success animate-pulse" : "bg-butter-deep animate-pulse")} />
                 {rtVoice.isConnecting ? "Connecting to your tutor…" : rtVoice.isMuted ? "Microphone muted" : "Call in progress — no button needed"}
               </div>
               {rtVoice.isConnected && <button type="button" onClick={rtVoice.toggleMute} className="rounded-full border border-line px-4 py-2 text-sm font-semibold">{rtVoice.isMuted ? "Unmute" : "Mute"}</button>}
@@ -582,7 +582,7 @@ function Chat() {
 
       <aside className="hidden space-y-4 xl:block">
         <Card className="space-y-3">
-          <div className="flex items-center justify-between"><h2 className="text-xl font-semibold">Live corrections</h2>
+          <div className="flex items-center justify-between"><h2 className="text-xl font-bold">Live corrections</h2>
             {s && !s.finished && <span className="flex items-center gap-2 text-sm"><span className="h-2.5 w-2.5 rounded-full bg-success" /> Active</span>}</div>
           {!last ? (
             <EmptyState title="No corrections yet" text="Send an answer and your tutor will suggest improvements here." />
@@ -591,7 +591,7 @@ function Chat() {
           ) : (
             <EmptyState title="Clean answer" text="No correction on your last answer." />
           )}
-          {last && <SummaryRow icon={<CircleAlert size={18} />} tone="bg-bad-bg text-bad" title="Corrections this turn" sub={plural(last.corrections?.length ?? 0, "suggestion")} />}
+          {last && <SummaryRow icon={<CircleAlert size={18} />} tone="bg-rose" title="Corrections this turn" sub={plural(last.corrections?.length ?? 0, "suggestion")} />}
         </Card>
       </aside>
     </div>
@@ -601,7 +601,7 @@ function Chat() {
 function Problem({ help, onRetry, onRestart }: { help: Help; onRetry?: () => void; onRestart?: () => void }) {
   const small = "!px-3 !py-1.5 text-xs";
   return (
-    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-2xl border border-line bg-bad-bg p-4 text-sm text-bad">
+    <div role="alert" className="flex flex-wrap items-center gap-3 rounded-2xl border border-rose-deep bg-rose/50 p-4 text-sm">
       <CircleAlert className="shrink-0" size={18} />
       <p className="flex-1">{help.text}</p>
       {help.chooseLevel && <Link href="/profile" className="font-semibold underline">Choose my level</Link>}
@@ -620,9 +620,9 @@ function Bubble({ m, icon, user, onListen }: { m: ChatMessage; icon?: string; us
   const time = m.createdAt && new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   return (
     <div className={cn("flex items-start gap-3", mine && "justify-end")}>
-      {!mine && <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-line bg-surface"><Icon name={icon ?? "briefcase"} /></span>}
+      {!mine && <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-mint"><Icon name={icon ?? "briefcase"} /></span>}
       <div className={cn("max-w-[75%]", mine && "text-right")}>
-        <p className={cn("whitespace-pre-wrap rounded-3xl px-5 py-4 text-left", mine ? "bg-ink text-white" : "bg-surface text-ink", m.pending && "flex items-center gap-2 italic text-muted")}>
+        <p className={cn("whitespace-pre-wrap rounded-3xl px-5 py-4 text-left", mine ? "bg-mint" : "bg-black/[0.05]", m.pending && "flex items-center gap-2 italic text-muted")}>
           {m.pending && <Mic size={16} aria-hidden />}{m.content}
         </p>
         {mine && !m.pending && m.corrections && m.corrections.length > 0 && <InlineCorrection text={m.content} corrections={m.corrections} />}
@@ -666,19 +666,19 @@ function InlineCorrection({ text, corrections }: { text: string; corrections: Co
 function CorrectionCard({ c }: { c: Correction }) {
   const grammar = c.type === "grammar";
   return (
-    <div className="rounded-2xl border border-line bg-surface p-4">
+    <div className={cn("rounded-2xl p-4", grammar ? "bg-rose" : "bg-butter")}>
       <p className="mb-3 flex items-center gap-2 font-semibold">
-        <span className={cn("flex h-8 w-8 items-center justify-center rounded-lg", grammar ? "bg-bad-bg text-bad" : "bg-warn-bg text-warn")}>
+        <span className={cn("flex h-8 w-8 items-center justify-center rounded-lg", grammar ? "bg-rose-deep" : "bg-butter-deep")}>
           {grammar ? <CircleAlert size={18} /> : <Lightbulb size={18} />}
         </span>
         {grammar ? "Grammar correction" : "Better phrasing"}
       </p>
       <p className="text-xs font-medium">Your sentence</p>
-      <p className="mb-1 rounded-lg bg-bad-bg px-3 py-1.5 text-sm text-bad">{c.original}</p>
+      <p className="mb-1 rounded-lg bg-rose-deep/60 px-3 py-1.5 text-sm">{c.original}</p>
       <ArrowDown size={14} className="mx-auto my-1" />
       <p className="text-xs font-medium">{grammar ? "Better version" : "More natural"}</p>
-      <p className="mb-2 rounded-lg bg-good-bg px-3 py-1.5 text-sm text-good">{c.fixed}</p>
-      <p className="rounded-lg border border-line bg-white px-3 py-2 text-xs text-muted">{c.why}</p>
+      <p className="mb-2 rounded-lg bg-mint-deep/70 px-3 py-1.5 text-sm">{c.fixed}</p>
+      <p className="rounded-lg bg-white/60 px-3 py-2 text-xs text-muted">{c.why}</p>
     </div>
   );
 }
@@ -705,7 +705,7 @@ function Report({ report, title, onRestart }: { report: SessionReport; title?: s
     <div className="mx-auto max-w-3xl">
       <PageHeader eyebrow={title} title="Your session report" />
       <Card>
-        <h2 className="text-lg font-semibold">Your tutor's note</h2>
+        <h2 className="text-lg font-semibold">Your tutor&apos;s note</h2>
         <p className="mt-2 whitespace-pre-wrap">{report.note}</p>
       </Card>
 

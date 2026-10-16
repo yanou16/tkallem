@@ -107,7 +107,10 @@ export function GroupCard({ g, tone, small }: { g: GroupSummary; tone: Tone; sma
       {small ? <p className="text-xs text-muted">{g.memberCount} members</p> : (
         <>
           <p className="flex items-center gap-1.5 text-sm text-muted">
-            {g.language.flagUrl && /* eslint-disable-next-line @next/next/no-img-element */ <img src={g.language.flagUrl} alt="" className="h-4 w-5 rounded-sm object-cover" />}
+            {g.language.flagUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={g.language.flagUrl} alt="" className="h-4 w-5 rounded-sm object-cover" />
+            )}
             {g.language.name} • {g.levelRange}
           </p>
           <p className="text-sm text-muted">{g.description}</p>

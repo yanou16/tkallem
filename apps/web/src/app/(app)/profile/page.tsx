@@ -66,6 +66,12 @@ function changeFor(edit: Edit, value: string, focus: FocusArea[], user: User): U
   }
 }
 
+function Pen({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <button onClick={onClick} aria-label={`Edit ${label}`} className="rounded-full p-1.5 text-muted hover:bg-black/5"><Pencil size={15} /></button>
+  );
+}
+
 export default function ProfilePage() {
   const { user } = useCurrentUser();
   const clerk = useClerk();
@@ -95,15 +101,12 @@ export default function ProfilePage() {
     setFocus((list) => (list.includes(area) ? list.filter((a) => a !== area) : [...list, area]));
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
 
-  const Pen = ({ onClick, label }: { onClick: () => void; label: string }) => (
-    <button onClick={onClick} aria-label={`Edit ${label}`} className="rounded-full p-1.5 text-muted hover:bg-black/5"><Pencil size={15} /></button>
-  );
 
   return (
     <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div>
         <p className="text-sm text-muted">Profile</p>
-        <h1 className="mb-6 text-5xl font-semibold tracking-tight">{user.firstName}</h1>
+        <h1 className="mb-6 text-5xl font-extrabold tracking-tight">{user.firstName}</h1>
 
         <div className="flex flex-wrap items-center gap-6">
           <div className="relative">
@@ -114,7 +117,7 @@ export default function ProfilePage() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="mb-2 text-3xl font-semibold">{fullName}</h2>
+              <h2 className="text-3xl font-bold">{fullName}</h2>
               <Pen label="name" onClick={openAccount} />
             </div>
             {user.email && <p className="mt-1 text-muted">{user.email}</p>}
@@ -164,7 +167,7 @@ export default function ProfilePage() {
 
       <aside className="space-y-5">
         <Card>
-          <h2 className="mb-2 text-lg font-semibold">Account settings</h2>
+          <h2 className="mb-2 text-lg font-bold">Account settings</h2>
           {ACCOUNT_ROWS.map(({ title, icon: I }) => (
             <button key={title} onClick={openAccount} className="flex w-full items-center gap-4 rounded-lg border-b border-line px-1 py-4 text-left last:border-0 hover:bg-black/[0.02]">
               <I size={20} className="text-muted" /><span className="flex-1">{title}</span><ChevronRight size={16} />

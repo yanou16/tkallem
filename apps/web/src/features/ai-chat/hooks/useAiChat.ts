@@ -1,7 +1,7 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { endSession, getSession, sendAnswer, speakLastLine, startSession, streamAnswer, saveConfidence, requestHint, repeatAnswer, type AnswerInput, type LiveTurn } from "../api/ai";
+import { endSession, getSession, sendAnswer, speakLastLine, startSession, streamAnswer, type AnswerInput, type LiveTurn } from "../api/ai";
 import { CREDITS_KEY } from "@/features/credits/hooks/useCredits";
 import { MY_SESSIONS_KEY } from "@/features/practice/hooks/usePractice";
 import { ACHIEVEMENTS_KEY } from "@/features/profile/hooks/useProfile";
@@ -79,7 +79,7 @@ export function useAnswer(sessionId: string | undefined, onAudio: (url: string |
   const qc = useQueryClient();
   const [live, setLive] = useState<LiveTurn | null>(null);
   const audio = useRef(onAudio);
-  audio.current = onAudio;
+  useEffect(() => { audio.current = onAudio; }, [onAudio]);
   const mutation = useMutation({
     mutationFn: (input: AnswerInput) => {
       setLive({});
@@ -113,8 +113,3 @@ export const useSpeakLastLine = (sessionId?: string) => {
       }),
   });
 };
-
-
-export const useConfidence = (sessionId: string) => useMutation({ mutationFn: (input: { when: "before" | "after"; value: number }) => saveConfidence(sessionId, input) });
-export const useHint = (sessionId: string) => useMutation({ mutationFn: (input: { type: "starter" | "translate"; text?: string }) => requestHint(sessionId, input) });
-export const useRepeat = (sessionId: string) => useMutation({ mutationFn: (input: { turn: number; audio: Blob }) => repeatAnswer(sessionId, input) });

@@ -3,8 +3,7 @@
  * that cannot load); the code stays, switch a flag on when its API is built.
  */
 export const FEATURES = {
-  groups: process.env.NEXT_PUBLIC_FEATURE_GROUPS === "1",
-  // /api/groups/*: study groups, posts, group sessions
+  groups: false, // /api/groups/*: study groups, posts, group sessions
   notifications: false, // /api/notifications/*, notification preferences
   profileExtras: false, // bio, photo, goals, practice mode, daily goal, focus areas, languages, badges, AI preferences
 } as const;

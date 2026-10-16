@@ -18,7 +18,7 @@ export function CoachAvatar({ speech, onStart, onEnd, onBlocked, onUnavailable }
   const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
   const [detail, setDetail] = useState("");
   const done = useRef({ onStart, onEnd, onBlocked, onUnavailable });
-  done.current = { onStart, onEnd, onBlocked, onUnavailable };
+  useEffect(() => { done.current = { onStart, onEnd, onBlocked, onUnavailable }; }, [onStart, onEnd, onBlocked, onUnavailable]);
 
   useEffect(() => {
     let dead = false;

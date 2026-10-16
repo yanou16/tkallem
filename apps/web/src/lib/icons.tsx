@@ -1,3 +1,4 @@
+import { createElement } from "react";
 import {
   BriefcaseBusiness, Plane, Utensils, GraduationCap, Stethoscope, MessageCircle, Users, Laptop, BookOpen,
   Target, Mic, Flame, Trophy, Globe, Sparkles, FileText, ChartNoAxesColumn, TriangleAlert, Sprout, Video,
@@ -20,6 +21,5 @@ export function getIcon(name?: string): LucideIcon {
   return (name && map[name.toLowerCase()]) || Sparkles;
 }
 export function Icon({ name, className, size = 20 }: { name?: string; className?: string; size?: number }) {
-  const C = getIcon(name);
-  return <C className={className} size={size} strokeWidth={1.8} aria-hidden />;
+  return createElement(getIcon(name), { className, size, strokeWidth: 1.8, 'aria-hidden': true });
 }
