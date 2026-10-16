@@ -53,7 +53,7 @@ export default function SayItAgain({ sessionId, turn, disabled, onNailed, onStar
           className={cn("inline-flex min-h-11 items-center gap-2 rounded-full border px-4 font-semibold disabled:opacity-50",
             rec.isRecording ? "border-ink bg-ink text-white" : "border-hairline-strong bg-white")}>
           {rec.isRecording
-            ? <><Square size={14} aria-hidden /> Stop and check ({rec.seconds}s)</>
+            ? <><Square size={14} aria-hidden /> Stop and check ({Math.floor(rec.seconds)}s)</>
             : repeat.isPending ? "Checking…"
             : <><Mic size={16} aria-hidden /> {view ? "Try again" : "Say it again"}</>}
         </button>
