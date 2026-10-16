@@ -1,3 +1,4 @@
+
 """Practice groups (written English between students of the same level). REST to read and send; the WebSocket
 (phase 3) only pushes what changed. Routes that write are `async def`: the database work runs in a thread
 (run_in_threadpool) inside `with connect()`, which commits when the block ends, so what is pushed afterwards is
@@ -393,3 +394,4 @@ async def report_a_message(
     if result == "hidden":
         await _publish(group_id, {"type": "message.hidden", "message_id": message_id})
     return {"hidden": result == "hidden"}
+

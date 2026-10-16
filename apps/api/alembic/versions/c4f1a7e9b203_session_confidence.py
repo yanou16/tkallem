@@ -18,8 +18,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.execute("ALTER TABLE practice_sessions ADD COLUMN confidence_before SMALLINT CHECK (confidence_before BETWEEN 1 AND 5)")
-    op.execute("ALTER TABLE practice_sessions ADD COLUMN confidence_after SMALLINT CHECK (confidence_after BETWEEN 1 AND 5)")
+    op.execute(
+        "ALTER TABLE practice_sessions ADD COLUMN IF NOT EXISTS confidence_before "
+        "SMALLINT CHECK (confidence_before BETWEEN 1 AND 5)"
+    )
+    op.execute(
+        "ALTER TABLE practice_sessions ADD COLUMN IF NOT EXISTS confidence_after "
+        "SMALLINT CHECK (confidence_after BETWEEN 1 AND 5)"
+    )
 
 
 def downgrade() -> None:

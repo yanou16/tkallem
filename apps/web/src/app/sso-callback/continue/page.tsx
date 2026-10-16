@@ -39,10 +39,10 @@ export default function ContinueSignUpPage() {
         {error ? (
           <div className="space-y-3">
             <FormError message={error} />
-            <Link href="/sign-up" className="text-sm font-medium text-ink underline underline-offset-2">Back to sign up</Link>
+            <Link href="/sign-up" className="text-[13px] font-medium text-ink underline underline-offset-2">Back to sign up</Link>
           </div>
         ) : (
-          <p className="text-sm text-slate">Signing you in…</p>
+          <p className="text-sm text-muted">Signing you in…</p>
         )}
       </AuthCard>
     </AuthShell>

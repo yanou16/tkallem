@@ -25,7 +25,20 @@ class Settings(BaseSettings):
     clerk_issuer: str = ""
     max_audio_bytes: int = 5_000_000
     max_text_chars: int = 1000
-    frontend_origin: str = "http://localhost:3000"  # several allowed: comma separated (Vercel URL, custom domain)
+
+    frontend_origin: str = "http://localhost:3000"
+    cloudinary_cloud_name: str = ""
+    cloudinary_api_key: str = ""
+    cloudinary_api_secret: str = ""
+
+    @property
+    def allowed_frontend_origins(self) -> tuple[str, ...]:
+        return tuple(
+            origin.strip().rstrip("/")
+            for origin in self.frontend_origin.split(",")
+            if origin.strip()
+        )
+
 
     # Credits (see docs/CREDITS.md). 1 credit = 1 answer from the student.
     guest_secret: str = ""  # signs guest tokens (32+ characters); empty = guest mode disabled

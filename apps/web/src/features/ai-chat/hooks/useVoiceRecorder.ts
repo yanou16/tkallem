@@ -1,14 +1,16 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { MAX_RECORDING_S, RECORDING_ERRORS, judgeRecording } from "../lib/voice";
-
-export { MAX_RECORDING_S };
+export const MAX_RECORDING_S = 60; // one answer; the API refuses files above max_audio_bytes anyway
+const MIN_RECORDING_S = 0.8; // a tap, not an answer: Whisper would invent text on near-silence
+// Loudest moment of the recording (RMS, 0..1) below which nothing was said: Whisper turns silence into "Thank you."
+// with normal confidence, so a silent recording is never sent. Speech close to a phone mic is well above 0.05.
+const SILENCE_PEAK = 0.012;
 
 export type Recording = { blob: Blob; seconds: number };
 
 /** Browser-side recording only. Upload/processing states are driven by the caller. */
-export function useVoiceRecorder({ onAutoStop, maxSeconds = MAX_RECORDING_S }: { onAutoStop?: (r: Recording | null) => void; maxSeconds?: number } = {}) {
+export function useVoiceRecorder({ onAutoStop }: { onAutoStop?: (r: Recording | null) => void } = {}) {
   const [isRecording, setIsRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -31,9 +33,12 @@ export function useVoiceRecorder({ onAutoStop, maxSeconds = MAX_RECORDING_S }: {
           recorder.current = null;
           setIsRecording(false);
           const length = (performance.now() - startedAt.current) / 1000;
-          const verdict = judgeRecording(length, peak.current);
-          if (verdict !== "ok") {
-            setError(RECORDING_ERRORS[verdict]);
+          if (length < MIN_RECORDING_S) {
+            setError("That was too short. Tap the mic, answer, then tap again to send.");
+            return resolve(null);
+          }
+          if (peak.current >= 0 && peak.current < SILENCE_PEAK) {
+            setError("We could not hear you. Check that the right microphone is on, speak closer, then try again.");
             return resolve(null);
           }
           resolve({ blob: new Blob(chunks.current, { type: r.mimeType || "audio/webm" }), seconds: length });
@@ -100,10 +105,10 @@ export function useVoiceRecorder({ onAutoStop, maxSeconds = MAX_RECORDING_S }: {
     const t = window.setInterval(() => {
       const s = (performance.now() - startedAt.current) / 1000;
       setSeconds(s);
-      if (s >= maxSeconds) stop().then((r) => autoStop.current?.(r));
+      if (s >= MAX_RECORDING_S) stop().then((r) => autoStop.current?.(r));
     }, 250);
     return () => window.clearInterval(t);
-  }, [isRecording, stop, maxSeconds]);
+  }, [isRecording, stop]);
 
   // Release the microphone if the page is left while recording.
   useEffect(() => () => { recorder.current?.stream.getTracks().forEach((t) => t.stop()); stopMeter(); }, []);

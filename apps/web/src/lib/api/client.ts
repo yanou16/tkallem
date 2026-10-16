@@ -86,14 +86,17 @@ export function errorMessage(data: unknown, status: number): string {
 }
 
 /** Signed in: the Clerk session token. Signed out: the guest token, if this visitor has one. */
-async function authorize(headers: Headers, requestToken?: string | null) {
+export async function getAuthHeaderValue(requestToken?: string | null): Promise<string | null> {
   const token = requestToken ?? (await authTokenProvider?.()) ?? null;
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-    return;
-  }
+  if (token) return `Bearer ${token}`;
   const guest = guestStore.get();
-  if (guest) headers.set("Authorization", `Guest ${guest}`);
+  if (guest) return `Guest ${guest}`;
+  return null;
+}
+
+async function authorize(headers: Headers, requestToken?: string | null) {
+  const auth = await getAuthHeaderValue(requestToken);
+  if (auth) headers.set("Authorization", auth);
 }
 
 function failure(res: Response, data: unknown, headers: Headers, skipAuthRedirect?: boolean): ApiError {

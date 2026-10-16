@@ -46,7 +46,7 @@ export default function GroupRoom({ summary }: { summary: GroupSummary }) {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <h1 className="text-3xl font-medium tracking-tight md:text-4xl">{name}</h1>
-                <p className="mt-1 flex items-center gap-2 text-muted"><Users size={16} /> {plural(group.data?.members.length ?? summary.memberCount, "member")}</p>
+                <p className="mt-1 flex items-center gap-2 text-muted"><Users size={16} /> {plural(group.data?.members?.length ?? summary.memberCount, "member")}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Pill className="border border-line">Level {summary.level}</Pill>
                   <LiveStatus status={status} />
@@ -111,7 +111,7 @@ export default function GroupRoom({ summary }: { summary: GroupSummary }) {
             <Async query={group} skeleton={<Skeleton className="h-40" />}>
               {(g) => (
                 <div className="grid gap-3 md:grid-cols-2">
-                  {g.members.map((m) => (
+                  {(g.members ?? []).map((m) => (
                     <div key={m.id} className="flex items-center gap-3 rounded-2xl border border-line bg-white p-3">
                       <Avatar first={m.firstName ?? undefined} size={44} />
                       <p className="font-semibold">{memberName(m, m.id === myId)}</p>

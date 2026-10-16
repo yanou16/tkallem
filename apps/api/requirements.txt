@@ -11,4 +11,5 @@ alembic
 PyJWT[crypto]
 pytest
 httpx
+pipecat-ai[webrtc,silero]
 -e ../../packages/agent

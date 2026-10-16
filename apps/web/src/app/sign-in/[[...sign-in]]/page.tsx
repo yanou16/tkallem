@@ -51,7 +51,7 @@ export default function SignInPage() {
         await setActive({ session: res.createdSessionId });
         router.push("/");
       } else {
-        setError("This sign-in needs one more step that this page cannot do. Use “Continue with Google”, or reset your password with “Forgot password?”.");
+        setError("Additional verification is required to sign in.");
       }
     } catch (err) {
       setError(clerkMessage(err));
@@ -76,7 +76,7 @@ export default function SignInPage() {
 
   return (
     <AuthShell mode="sign-in">
-      <AuthCard title="Sign in" subtitle="Already have an account? Pick up where you stopped.">
+      <AuthCard title="Welcome back" subtitle="Pick up where you stopped.">
         <TryWithoutAccount />
         <form onSubmit={onSubmit} className="space-y-4">
           <GoogleButton onClick={onGoogle} loading={!isLoaded} />
@@ -101,7 +101,7 @@ export default function SignInPage() {
           />
 
           <div className="flex justify-end pt-1">
-            <Link href="/forgot-password" className="inline-flex min-h-11 items-center px-1 text-sm font-medium text-ink underline underline-offset-2">
+            <Link href="/forgot-password" className="text-[13px] font-medium text-ink underline underline-offset-2">
               Forgot password?
             </Link>
           </div>
@@ -109,14 +109,14 @@ export default function SignInPage() {
           <FormError message={error} />
 
           <div className="pt-1">
-            <PrimaryButton type="submit" loading={loading} disabled={!isLoaded}>
+            <PrimaryButton type="submit" loading={loading}>
               Sign in
             </PrimaryButton>
           </div>
 
-          <p className="pt-1 text-center text-sm text-slate">
+          <p className="pt-1 text-center text-[13px] text-muted">
             Don&apos;t have an account?{" "}
-            <Link href="/sign-up" className="inline-flex min-h-11 items-center px-1 font-medium text-ink underline underline-offset-2">
+            <Link href="/sign-up" className="font-medium text-ink underline underline-offset-2">
               Create an account
             </Link>
           </p>

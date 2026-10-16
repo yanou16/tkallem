@@ -114,7 +114,7 @@ export default function SignUpPage() {
           </form>
         </AuthCard>
       ) : (
-        <AuthCard title="Create your account" subtitle="Practice real interviews with your AI coach.">
+        <AuthCard title="Create your account" subtitle="Practise real interviews with your AI coach.">
           <TryWithoutAccount />
           <form onSubmit={onSubmit} className="space-y-4">
             <GoogleButton onClick={onGoogle} loading={!isLoaded} label="Sign up with Google" />
@@ -176,9 +176,9 @@ export default function SignUpPage() {
               </PrimaryButton>
             </div>
 
-            <p className="pt-1 text-center text-sm text-slate">
+            <p className="pt-1 text-center text-[13px] text-muted">
               Already have an account?{" "}
-              <Link href="/sign-in" className="inline-flex min-h-11 items-center px-1 font-medium text-ink underline underline-offset-2">
+              <Link href="/sign-in" className="font-medium text-ink underline underline-offset-2">
                 Sign in
               </Link>
             </p>

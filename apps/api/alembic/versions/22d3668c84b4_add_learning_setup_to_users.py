@@ -21,13 +21,13 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     op.execute("""
         ALTER TABLE users
-            ADD COLUMN daily_goal_minutes SMALLINT NOT NULL DEFAULT 10
+            ADD COLUMN IF NOT EXISTS daily_goal_minutes SMALLINT NOT NULL DEFAULT 10
                 CHECK (daily_goal_minutes IN (5, 10, 15, 20, 30)),
-            ADD COLUMN learning_goal TEXT
+            ADD COLUMN IF NOT EXISTS learning_goal TEXT
                 CHECK (char_length(learning_goal) <= 200),
-            ADD COLUMN practice_mode TEXT
+            ADD COLUMN IF NOT EXISTS practice_mode TEXT
                 CHECK (char_length(practice_mode) <= 200),
-            ADD COLUMN focus_areas TEXT[] NOT NULL DEFAULT '{}'
+            ADD COLUMN IF NOT EXISTS focus_areas TEXT[] NOT NULL DEFAULT '{}'
                 CHECK (focus_areas <@ ARRAY['conversation', 'pronunciation', 'vocabulary',
                                             'grammar', 'fluency', 'confidence']::TEXT[])
     """)
@@ -36,8 +36,8 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.execute("""
         ALTER TABLE users
-            DROP COLUMN focus_areas,
-            DROP COLUMN practice_mode,
-            DROP COLUMN learning_goal,
-            DROP COLUMN daily_goal_minutes
+            DROP COLUMN IF EXISTS focus_areas,
+            DROP COLUMN IF EXISTS practice_mode,
+            DROP COLUMN IF EXISTS learning_goal,
+            DROP COLUMN IF EXISTS daily_goal_minutes
     """)

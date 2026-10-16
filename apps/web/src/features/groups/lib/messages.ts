@@ -94,6 +94,6 @@ export function groupMessages(messages: GroupMessage[], gapMs = GROUP_GAP_MS): M
 
 /** member.joined / member.left on the group's member list (each member once). */
 export function applyMemberEvent(detail: GroupDetail, type: "member.joined" | "member.left", member: Member): GroupDetail {
-  const others = detail.members.filter((m) => m.id !== member.id);
+  const others = (detail.members ?? []).filter((m) => m.id !== member.id);
   return { ...detail, members: type === "member.joined" ? [...others, member] : others };
 }
