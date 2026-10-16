@@ -6,6 +6,7 @@ import { useScenarios } from "@/features/practice/hooks/usePractice";
 import { startHref } from "@/components/cards";
 import InstallButton from "@/components/InstallButton";
 import HeroExample from "@/features/landing/HeroExample";
+import HowItWorks from "@/features/landing/HowItWorks";
 import ProductTour from "@/features/landing/ProductTour";
 import { scenarioTint } from "@/lib/tint";
 import { cn } from "@/lib/utils";
@@ -79,7 +80,11 @@ export default function WelcomePage() {
           <HeroExample />
         </section>
 
-        <div id="how" className="mt-24 scroll-mt-6 md:mt-32"><ProductTour /></div>
+        <div className="mt-24 md:mt-32">
+          <HowItWorks ctaHref={isSignedIn ? "/practice" : startHref(FIRST_SCENARIO)} ctaLabel={isSignedIn ? "Continue practicing" : "Try a visa interview now"} />
+        </div>
+
+        <div id="tour" className="mt-24 scroll-mt-6 md:mt-32"><ProductTour /></div>
 
         <section id="situations" className="mt-24 scroll-mt-6 md:mt-32">
           <h2 className="text-2xl font-semibold sm:text-3xl">Pick a real situation</h2>
