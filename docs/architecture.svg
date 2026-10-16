@@ -1,0 +1,236 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1010" viewBox="0 0 1600 1010" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Tkallem high-level architecture</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10" fill="none" stroke="#e7e5e4" stroke-width="1.6"/>
+    </marker>
+    <marker id="arrowMuted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10" fill="none" stroke="#a8a29e" stroke-width="1.6"/>
+    </marker>
+    <style>
+      .bg{fill:#141414}
+      .frame{fill:none;stroke:#3a3a3a;stroke-width:1}
+      .group{fill:#26231f;stroke:#c98a3a;stroke-width:1.6}
+      .chip{fill:#1c1a17;stroke:#4d4740;stroke-width:1}
+      .chipHi{fill:#1c1a17;stroke:#c98a3a;stroke-width:1;stroke-dasharray:0}
+      .planned{fill:none;stroke:#78716c;stroke-width:1.2;stroke-dasharray:5 4}
+      .tag{fill:#141414;stroke:#57534e;stroke-width:1}
+      .tagText{fill:#f5f5f4;font-size:12px;font-weight:600;letter-spacing:.06em}
+      .h{fill:#fafaf9;font-size:15px;font-weight:600}
+      .t{fill:#e7e5e4;font-size:13px}
+      .m{fill:#a8a29e;font-size:12px}
+      .lbl{fill:#d6d3d1;font-size:12px}
+      .icon{fill:none;stroke:#f5f5f4;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+      .line{fill:none;stroke:#e7e5e4;stroke-width:1.5}
+      .lineMuted{fill:none;stroke:#a8a29e;stroke-width:1.3;stroke-dasharray:5 4}
+      .pill{fill:#141414;stroke:#3f3a35;stroke-width:1}
+    </style>
+  </defs>
+
+  <rect class="bg" width="1600" height="1010"/>
+  <!-- title tag -->
+  <rect class="tag" x="24" y="20" width="300" height="28" rx="5"/>
+  <text class="tagText" x="38" y="39">HIGH-LEVEL ARCHITECTURE · TKALLEM</text>
+  <rect class="frame" x="24" y="60" width="1552" height="930" rx="6"/>
+
+  <!-- ================= CLIENTS ================= -->
+  <rect class="group" x="48" y="300" width="220" height="330" rx="14"/>
+  <rect class="tag" x="62" y="314" width="96" height="26" rx="5"/>
+  <text class="tagText" x="76" y="332">CLIENTS</text>
+  <!-- laptop -->
+  <rect class="icon" x="128" y="368" width="58" height="38" rx="4"/>
+  <path class="icon" d="M118 414 H196"/>
+  <text class="h" x="158" y="440" text-anchor="middle">Browser</text>
+  <text class="m" x="158" y="458" text-anchor="middle">laptop · desktop</text>
+  <!-- phone -->
+  <rect class="icon" x="140" y="492" width="36" height="58" rx="6"/>
+  <circle cx="158" cy="541" r="1.8" fill="#f5f5f4"/>
+  <text class="h" x="158" y="576" text-anchor="middle">Phone</text>
+  <text class="m" x="158" y="594" text-anchor="middle">installable PWA</text>
+
+  <!-- ================= EDGE ================= -->
+  <rect class="group" x="338" y="210" width="236" height="190" rx="14"/>
+  <rect class="tag" x="352" y="224" width="78" height="26" rx="5"/>
+  <text class="tagText" x="366" y="242">WEB</text>
+  <path class="icon" d="M456 272 L480 312 L432 312 Z"/>
+  <text class="h" x="456" y="340" text-anchor="middle">Next.js 16 · React 19</text>
+  <text class="m" x="456" y="358" text-anchor="middle">Vercel · PWA · service worker</text>
+  <text class="m" x="456" y="376" text-anchor="middle">TanStack Query · Tailwind</text>
+
+  <rect class="group" x="338" y="480" width="236" height="150" rx="14"/>
+  <rect class="tag" x="352" y="494" width="78" height="26" rx="5"/>
+  <text class="tagText" x="366" y="512">AUTH</text>
+  <rect class="icon" x="444" y="538" width="24" height="20" rx="3"/>
+  <path class="icon" d="M449 538 V531 a7 7 0 0 1 14 0 V538"/>
+  <text class="h" x="456" y="584" text-anchor="middle">Clerk</text>
+  <text class="m" x="456" y="602" text-anchor="middle">sign-in · RS256 JWT</text>
+
+  <!-- ================= API ================= -->
+  <rect class="group" x="640" y="84" width="476" height="746" rx="14"/>
+  <rect class="tag" x="654" y="98" width="62" height="26" rx="5"/>
+  <text class="tagText" x="668" y="116">API</text>
+  <text class="h" x="878" y="150" text-anchor="middle">FastAPI · Python 3.12</text>
+  <text class="m" x="878" y="169" text-anchor="middle">Docker on Azure App Service (B1, Frankfurt) · one uvicorn process</text>
+
+  <!-- modules: 2 columns -->
+  <g>
+    <rect class="chip" x="660" y="190" width="214" height="112" rx="10"/>
+    <text class="h" x="676" y="216">Auth</text>
+    <text class="t" x="676" y="240">Clerk JWT via JWKS</text>
+    <text class="t" x="676" y="260">Guest tokens (HMAC)</text>
+    <text class="m" x="676" y="284">CORS + origin checks</text>
+
+    <rect class="chip" x="884" y="190" width="214" height="112" rx="10"/>
+    <text class="h" x="900" y="216">Sessions &amp; turns</text>
+    <text class="t" x="900" y="240">Interview flow, report</text>
+    <text class="t" x="900" y="260">Streams text then voice</text>
+    <text class="m" x="900" y="284">Server-Sent Events</text>
+
+    <rect class="chip" x="660" y="314" width="214" height="112" rx="10"/>
+    <text class="h" x="676" y="340">Voice pipeline</text>
+    <text class="t" x="676" y="364">Speech → text → speech</text>
+    <text class="t" x="676" y="384">Provider failover</text>
+    <text class="m" x="676" y="408">5 MB uploads max</text>
+
+    <rect class="chip" x="884" y="314" width="214" height="112" rx="10"/>
+    <text class="h" x="900" y="340">Credits</text>
+    <text class="t" x="900" y="364">1 credit = 1 answer</text>
+    <text class="t" x="900" y="384">Atomic debit in SQL</text>
+    <text class="m" x="900" y="408">Daily spend cap + alert</text>
+
+    <rect class="chip" x="660" y="438" width="214" height="112" rx="10"/>
+    <text class="h" x="676" y="464">Progress</text>
+    <text class="t" x="676" y="488">Streak, activity, metrics</text>
+    <text class="t" x="676" y="508">Top mistakes, badges</text>
+    <text class="m" x="676" y="532">SQL CTEs · window functions</text>
+
+    <rect class="chip" x="884" y="438" width="214" height="112" rx="10"/>
+    <text class="h" x="900" y="464">Rate limits</text>
+    <text class="t" x="900" y="488">Sliding window per student</text>
+    <text class="t" x="900" y="508">Guest caps per address</text>
+    <text class="m" x="900" y="532">in memory (one process)</text>
+
+    <rect class="chipHi" x="660" y="562" width="438" height="150" rx="10"/>
+    <text class="h" x="676" y="588">Practice groups</text>
+    <text class="m" x="1082" y="588" text-anchor="end">behind a feature flag</text>
+    <rect class="pill" x="676" y="602" width="196" height="46" rx="8"/>
+    <text class="t" x="774" y="621" text-anchor="middle">REST to send</text>
+    <text class="m" x="774" y="638" text-anchor="middle">join · messages · report</text>
+    <path class="line" d="M872 625 H900" marker-end="url(#arrow)"/>
+    <rect class="pill" x="902" y="602" width="180" height="46" rx="8"/>
+    <text class="t" x="992" y="621" text-anchor="middle">WebSocket hub</text>
+    <text class="m" x="992" y="638" text-anchor="middle">/ws/groups/{id}</text>
+    <text class="m" x="676" y="672">Up to 8 students per level · row lock and advisory lock on join</text>
+    <text class="m" x="676" y="692">Private "check my message" · 7-day leaderboard</text>
+
+    <rect class="chip" x="660" y="724" width="438" height="90" rx="10"/>
+    <text class="h" x="676" y="750">Data access</text>
+    <text class="t" x="676" y="774">Raw SQL with psycopg 3 · bound parameters · connection pool</text>
+    <text class="m" x="676" y="796">Alembic migrations, run by the container at start</text>
+  </g>
+
+  <!-- ================= AGENT ================= -->
+  <rect class="group" x="1176" y="84" width="380" height="250" rx="14"/>
+  <rect class="tag" x="1190" y="98" width="148" height="26" rx="5"/>
+  <text class="tagText" x="1204" y="116">COACH AGENT</text>
+  <text class="m" x="1542" y="116" text-anchor="end">packages/agent</text>
+  <text class="h" x="1366" y="146" text-anchor="middle">LangGraph</text>
+  <text class="m" x="1366" y="162" text-anchor="middle">corrector and coach run in parallel</text>
+  <rect class="pill" x="1196" y="174" width="160" height="44" rx="8"/>
+  <text class="t" x="1276" y="194" text-anchor="middle">Corrector</text>
+  <text class="m" x="1276" y="210" text-anchor="middle">finds mistakes</text>
+  <rect class="pill" x="1376" y="174" width="160" height="44" rx="8"/>
+  <text class="t" x="1456" y="194" text-anchor="middle">Coach</text>
+  <text class="m" x="1456" y="210" text-anchor="middle">next question</text>
+  <path class="line" d="M1276 218 V236 H1356 V250" marker-end="url(#arrow)"/>
+  <path class="line" d="M1456 218 V236 H1376 V250" />
+  <rect class="chipHi" x="1236" y="252" width="260" height="62" rx="8"/>
+  <text class="t" x="1366" y="276" text-anchor="middle">Guardrails in code</text>
+  <text class="m" x="1366" y="296" text-anchor="middle">"the model talks, the code decides"</text>
+
+  <!-- ================= DATA ================= -->
+  <rect class="group" x="1176" y="364" width="380" height="226" rx="14"/>
+  <rect class="tag" x="1190" y="378" width="128" height="26" rx="5"/>
+  <text class="tagText" x="1204" y="396">DATA STORES</text>
+  <!-- cylinder -->
+  <ellipse class="icon" cx="1236" cy="438" rx="22" ry="7"/>
+  <path class="icon" d="M1214 438 V476 a22 7 0 0 0 44 0 V438"/>
+  <path class="icon" d="M1214 457 a22 7 0 0 0 44 0"/>
+  <text class="h" x="1272" y="448">PostgreSQL · Neon</text>
+  <text class="m" x="1272" y="466">Frankfurt · CHECK, UNIQUE, FK</text>
+  <text class="m" x="1272" y="484">one branch per developer</text>
+  <rect class="chip" x="1196" y="504" width="160" height="66" rx="8"/>
+  <text class="t" x="1276" y="530" text-anchor="middle">In memory</text>
+  <text class="m" x="1276" y="550" text-anchor="middle">limits · sockets</text>
+  <rect class="planned" x="1376" y="504" width="160" height="66" rx="8"/>
+  <text class="t" x="1456" y="530" text-anchor="middle">Redis</text>
+  <text class="m" x="1456" y="550" text-anchor="middle">planned: many instances</text>
+
+  <!-- ================= EXTERNAL AI ================= -->
+  <rect class="group" x="1176" y="620" width="380" height="210" rx="14"/>
+  <rect class="tag" x="1190" y="634" width="158" height="26" rx="5"/>
+  <text class="tagText" x="1204" y="652">AI PROVIDERS</text>
+  <text class="m" x="1542" y="652" text-anchor="end">each with a backup</text>
+  <rect class="chip" x="1196" y="672" width="340" height="44" rx="8"/>
+  <text class="t" x="1212" y="691">Language models</text>
+  <text class="m" x="1212" y="707">Qwen3-235B on OpenRouter → Groq backups</text>
+  <rect class="chip" x="1196" y="722" width="340" height="44" rx="8"/>
+  <text class="t" x="1212" y="741">Speech to text</text>
+  <text class="m" x="1212" y="757">Whisper on Groq → DeepInfra</text>
+  <rect class="chip" x="1196" y="772" width="340" height="44" rx="8"/>
+  <text class="t" x="1212" y="791">Text to speech</text>
+  <text class="m" x="1212" y="807">Orpheus on Groq → Kokoro → browser voice</text>
+
+  <!-- ================= CI / CD ================= -->
+  <rect class="group" x="48" y="860" width="1508" height="110" rx="14"/>
+  <rect class="tag" x="62" y="874" width="82" height="26" rx="5"/>
+  <text class="tagText" x="76" y="892">CI / CD</text>
+  <g>
+    <rect class="chip" x="170" y="890" width="200" height="60" rx="8"/>
+    <text class="t" x="270" y="914" text-anchor="middle">Pull request</text>
+    <text class="m" x="270" y="932" text-anchor="middle">main takes green PRs only</text>
+    <path class="line" d="M370 920 H410" marker-end="url(#arrow)"/>
+    <rect class="chip" x="412" y="890" width="300" height="60" rx="8"/>
+    <text class="t" x="562" y="914" text-anchor="middle">GitHub Actions: CI ok</text>
+    <text class="m" x="562" y="932" text-anchor="middle">pytest + Postgres · web build · AI eval gate</text>
+    <path class="line" d="M712 920 H752" marker-end="url(#arrow)"/>
+    <rect class="chip" x="754" y="890" width="230" height="60" rx="8"/>
+    <text class="t" x="869" y="914" text-anchor="middle">Docker image</text>
+    <text class="m" x="869" y="932" text-anchor="middle">GitHub Container Registry</text>
+    <path class="line" d="M984 920 H1024" marker-end="url(#arrow)"/>
+    <rect class="chip" x="1026" y="890" width="220" height="60" rx="8"/>
+    <text class="t" x="1136" y="914" text-anchor="middle">Deploy to Azure</text>
+    <text class="m" x="1136" y="932" text-anchor="middle">migrations at start</text>
+    <path class="line" d="M1246 920 H1286" marker-end="url(#arrow)"/>
+    <rect class="chip" x="1288" y="890" width="248" height="60" rx="8"/>
+    <text class="t" x="1412" y="914" text-anchor="middle">Smoke test</text>
+    <text class="m" x="1412" y="932" text-anchor="middle">/health reports the new commit</text>
+  </g>
+
+  <!-- ================= ARROWS ================= -->
+  <!-- clients -> web -->
+  <path class="line" d="M268 390 H312 V305 H336" marker-end="url(#arrow)"/>
+  <text class="lbl" x="271" y="382">HTTPS</text>
+  <!-- clients -> clerk -->
+  <path class="line" d="M268 560 H336" marker-end="url(#arrow)"/>
+  <text class="lbl" x="280" y="552">sign-in</text>
+  <!-- clients -> api (direct) -->
+  <path class="line" d="M268 440 H638" marker-end="url(#arrow)"/>
+  <rect class="pill" x="356" y="418" width="200" height="44" rx="8"/>
+  <text class="lbl" x="456" y="436" text-anchor="middle">REST · SSE · WebSocket</text>
+  <text class="m" x="456" y="453" text-anchor="middle">Bearer JWT or guest token</text>
+  <!-- clerk -> api (jwks) -->
+  <path class="lineMuted" d="M574 580 H638" marker-end="url(#arrowMuted)"/>
+  <text class="m" x="578" y="572">JWKS</text>
+  <!-- api -> agent -->
+  <path class="line" d="M1116 230 H1174" marker-end="url(#arrow)"/>
+  <text class="lbl" x="1124" y="222">turn</text>
+  <!-- api -> data -->
+  <path class="line" d="M1116 470 H1174" marker-end="url(#arrow)"/>
+  <text class="lbl" x="1124" y="462">SQL</text>
+  <!-- api -> voice providers -->
+  <path class="line" d="M1116 760 H1174" marker-end="url(#arrow)"/>
+  <text class="lbl" x="1122" y="752">voice</text>
+  <!-- agent -> llm (right side) -->
+  <path class="line" d="M1556 210 H1574 V694 H1538" marker-end="url(#arrow)"/>
+</svg>
