@@ -26,8 +26,8 @@ const NAV = [
 function Logo() {
   return (
     <Link href="/" className="flex items-center gap-3 px-2">
-      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-lg font-semibold text-ink">T</span>
-      <span className="text-2xl font-semibold tracking-tight">Tkallem</span>
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-lg font-extrabold">T</span>
+      <span className="text-2xl font-bold tracking-tight">Tkallem</span>
     </Link>
   );
 }
@@ -38,11 +38,6 @@ function useNav() {
   return useIdentity().isGuest ? GUEST_NAV : NAV;
 }
 
-export function isActive(path: string | null, href: string, aliases: string[] = []): boolean {
-  if (!path) return false;
-  return href === "/" ? path === "/" : path.startsWith(href) || aliases.some((a) => path.startsWith(a));
-}
-
 function Sidebar() {
   const path = usePathname();
   const nav = useNav();
@@ -51,7 +46,7 @@ function Sidebar() {
       <Logo />
       <nav className="flex flex-col gap-1.5" aria-label="Main">
         {nav.map(({ href, label, icon: I }) => {
-          const active = isActive(path, href);
+          const active = href === "/" ? path === "/" : path.startsWith(href);
           return (
             <Link key={href} href={href} aria-current={active ? "page" : undefined}
               className={cn("flex items-center gap-4 rounded-full px-5 py-3.5 text-[15px] font-medium transition",
@@ -71,7 +66,7 @@ function MobileNav() {
   return (
     <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-line bg-white/95 py-2 md:hidden">
       {nav.map(({ href, label, icon: I }) => {
-        const active = isActive(path, href);
+        const active = href === "/" ? path === "/" : path.startsWith(href);
         return (
           <Link key={href} href={href} className={cn("flex flex-col items-center gap-0.5 px-2 text-[11px]", active ? "font-semibold text-ink" : "text-muted")}>
             <I size={20} /> {label}
