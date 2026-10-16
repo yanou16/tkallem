@@ -64,21 +64,25 @@ def test_build_voice_pipeline_includes_vad_processor():
     from pipecat.processors.audio.vad_processor import VADProcessor
     from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
 
-    conn = SmallWebRTCConnection()
-    coach = MagicMock()
-    coach.opening = "Hello!"
-    coach.turns = []
+    async def build_and_inspect():
+        conn = SmallWebRTCConnection()
+        coach = MagicMock()
+        coach.opening = "Hello!"
+        coach.turns = []
 
-    runner, task, processor = pipecat_pipeline.build_voice_pipeline(
-        webrtc_connection=conn,
-        session_id=uuid4(),
-        user={"id": uuid4(), "level": "B1"},
-        coach=coach,
-        connect=MagicMock(),
-    )
+        runner, task, processor = pipecat_pipeline.build_voice_pipeline(
+            webrtc_connection=conn,
+            session_id=uuid4(),
+            user={"id": uuid4(), "level": "B1"},
+            coach=coach,
+            connect=MagicMock(),
+        )
 
-    inner_pipeline = task._pipeline._processors[1]
-    processor_types = [type(p) for p in inner_pipeline._processors]
+        inner_pipeline = task._pipeline._processors[1]
+        processor_types = [type(p) for p in inner_pipeline._processors]
+        return runner, processor, processor_types
+
+    runner, processor, processor_types = asyncio.run(build_and_inspect())
     assert VADProcessor in processor_types
     assert pipecat_pipeline.TkallemSTTService in processor_types
     assert pipecat_pipeline.TkallemVoiceTurnProcessor in processor_types

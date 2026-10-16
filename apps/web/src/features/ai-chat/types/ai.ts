@@ -144,3 +144,12 @@ export type AiSession = {
   /** Set once the session is ended. For a reloaded session, only what the API stored (no levels, no redo). */
   report?: SessionReport;
 };
+
+
+export type ConfidenceDto = { before: number | null; after: number | null };
+export type FreezeDto = { seconds: number; answers: number; kind: "voice" | "text" | "mixed"; previous: number | null };
+export type HintDto = { kind: "starter" | "translation"; lines: string[]; fallback: boolean; remaining: number };
+export type RepeatDto = { nailed: boolean; heard: string; target: string; missing: string[]; similarity: number; tries_left: number };
+export type ConfidenceInputDto = { when: "before" | "after"; value: number };
+export type HintInputDto = { type: "starter" | "translate"; text?: string };
+export type RepeatInputDto = { turn: number; audio: Blob };

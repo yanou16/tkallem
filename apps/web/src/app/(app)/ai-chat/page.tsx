@@ -586,7 +586,7 @@ function Chat() {
             {s && !s.finished && <span className="flex items-center gap-2 text-sm"><span className="h-2.5 w-2.5 rounded-full bg-success" /> Active</span>}</div>
           {!last ? (
             <EmptyState title="No corrections yet" text="Send an answer and your tutor will suggest improvements here." />
-          ) : last.sentence_status !== "green" && last.corrections?.length ? (
+          ) : last.status !== "green" && last.corrections?.length ? (
             last.corrections.map((c, i) => <CorrectionCard key={i} c={c} />)
           ) : (
             <EmptyState title="Clean answer" text="No correction on your last answer." />

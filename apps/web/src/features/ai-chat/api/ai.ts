@@ -3,7 +3,7 @@ import { endpoints } from "@/lib/api/endpoints";
 import { mapMetrics } from "@/features/progress/api/progress";
 import type {
   AiSession, ChatMessage, ReportLine, ReportLineDto, SessionDetailDto, SessionReport, SessionReportDto, SessionStarted,
-  SessionStartedDto, SpokenDto, StartSessionDto, Turn, TurnDto,
+  SessionStartedDto, SpokenDto, StartSessionDto, Turn, TurnDto, ConfidenceDto, ConfidenceInputDto, HintDto, HintInputDto, RepeatDto,
 } from "../types/ai";
 
 export const mapSessionStarted = (s: SessionStartedDto): SessionStarted => ({
@@ -122,3 +122,11 @@ export async function streamAnswer(
 }
 
 export const speakLastLine = (sessionId: string) => api.post<SpokenDto>(endpoints.ai.speak(sessionId));
+
+
+export const saveConfidence = (sessionId: string, input: ConfidenceInputDto) => api.post<void>(endpoints.ai.confidence(sessionId), input);
+export const requestHint = (sessionId: string, input: HintInputDto) => api.post<HintDto>(endpoints.ai.hint(sessionId), input);
+export const repeatAnswer = (sessionId: string, input: { turn: number; audio: Blob }) => {
+  const form = new FormData(); form.append("turn", String(input.turn)); form.append("audio", input.audio, "repeat.webm");
+  return api.post<RepeatDto>(endpoints.ai.repeat(sessionId), form);
+};

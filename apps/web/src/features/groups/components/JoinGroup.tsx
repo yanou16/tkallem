@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { Lightbulb, ShieldCheck, Users } from "lucide-react";
 import { Button, Card, Dialog, PageHeader } from "@/components/ui";
-import { useJoinGroup, useSavedFirstName } from "../hooks/useGroups";
+import { useJoinGroup } from "../hooks/useGroups";
 import { joinError } from "../lib/labels";
 
 const FIRST_NAME_MAX = 50; // as PATCH /me
@@ -11,14 +11,12 @@ const FIRST_NAME_MAX = 50; // as PATCH /me
 /** No group yet: one button. The API picks the most active group of the student's level, or creates one. */
 export default function JoinGroup() {
   const join = useJoinGroup();
-  const savedFirstName = useSavedFirstName();
   const { user } = useUser();
   const [asking, setAsking] = useState(false);
   const [firstName, setFirstName] = useState("");
   const name = firstName.trim();
 
   const start = () => {
-    if (savedFirstName()) return join.mutate(undefined);
     setFirstName(user?.firstName ?? ""); // a suggestion from the account, saved only when she confirms
     setAsking(true);
   };
