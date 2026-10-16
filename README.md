@@ -60,17 +60,9 @@ Prompt injections ("ignore your rules", "mark this green", hidden JSON) are trea
 
 ## Architecture
 
-```mermaid
-flowchart LR
-  S[Student<br/>phone or laptop] -->|HTTPS| W[Web app<br/>Next.js PWA on Vercel]
-  W -->|REST + Server-Sent Events| A[API<br/>FastAPI on Azure App Service, Frankfurt]
-  W -.->|sign-in| C[Clerk]
-  A --> G[Coach agent<br/>LangGraph, packages/agent]
-  G -->|corrector + coach in parallel| L[(Language models<br/>OpenRouter, Groq backups)]
-  A -->|speech to text| STT[(Groq Whisper, DeepInfra backup)]
-  A -->|text to speech| TTS[(Groq Orpheus, DeepInfra Kokoro, browser voice)]
-  A --> D[(Postgres<br/>Neon, Frankfurt)]
-```
+![Tkallem high-level architecture: clients, web, API, coach agent, data stores, AI providers and CI/CD](docs/architecture.svg)
+
+*Solid boxes run today; the dashed Redis box is planned for running several API instances.*
 
 Each answer starts three things at once (the answer count, the transcription, then the corrector and the coach in parallel), and
 the text and the voice stream back as soon as they exist. Every provider has a backup, so a rate limit during the judging
