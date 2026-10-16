@@ -125,8 +125,6 @@ Full-width ink strip, white small text "Prototype with example data" + yellow pi
 
 Framer Motion only. Durations 150 to 250ms, ease-out. Screen transitions: fade 200ms. No bounce, no parallax, no confetti.
 
-One exception, chosen by the team: on the landing page only, the content after the hero slides over it once (`StackIntro.tsx`: the hero shrinks 6% and dims 18% behind). Scroll-linked, no library, off with `prefers-reduced-motion`. No other scroll effect.
-
 ## Icons
 
 lucide-react, 20px, stroke 1.75, ink or slate. No emojis in the UI.
