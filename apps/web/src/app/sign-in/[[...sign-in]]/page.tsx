@@ -114,7 +114,7 @@ export default function SignInPage() {
             </PrimaryButton>
           </div>
 
-          <p className="pt-1 text-center text-[13px] text-muted">
+          <p className="pt-1 text-center text-[13px] text-[#6b6b75]">
             Don&apos;t have an account?{" "}
             <Link href="/sign-up" className="font-medium text-ink underline underline-offset-2">
               Create an account
