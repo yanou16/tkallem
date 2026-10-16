@@ -8,7 +8,7 @@ import { claimGuest, createGuest } from "@/features/credits/api/credits";
 import { useGuestToken } from "@/features/credits/hooks/useCredits";
 
 /** Routes a visitor may use without an account (must match the public routes of src/proxy.ts). */
-const GUEST_ROUTES = ["/practice", "/ai-chat"];
+const GUEST_ROUTES = ["/practice", "/ai-chat", "/groups"];
 
 /**
  * Keeps the visitor identity in order:
