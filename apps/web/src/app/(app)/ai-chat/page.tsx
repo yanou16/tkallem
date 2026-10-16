@@ -517,7 +517,7 @@ function Chat() {
               {creditProblem && <OutOfCredits error={creditProblem} isGuest={isGuest} />}
               {problem && (
                 <Problem help={problem} onRestart={() => restart()}
-                  onRetry={send.error ? (lastRecording.current ? () => sendRecording(lastRecording.current!) : submit) : finish} />
+                  onRetry={send.error ? () => { if (lastRecording.current) sendRecording(lastRecording.current); else submit(); } : finish} />
               )}
             </div>
           )}
@@ -586,7 +586,7 @@ function Chat() {
             {s && !s.finished && <span className="flex items-center gap-2 text-sm"><span className="h-2.5 w-2.5 rounded-full bg-success" /> Active</span>}</div>
           {!last ? (
             <EmptyState title="No corrections yet" text="Send an answer and your tutor will suggest improvements here." />
-          ) : last.sentence_status !== "green" && last.corrections?.length ? (
+          ) : last.status !== "green" && last.corrections?.length ? (
             last.corrections.map((c, i) => <CorrectionCard key={i} c={c} />)
           ) : (
             <EmptyState title="Clean answer" text="No correction on your last answer." />
@@ -705,7 +705,7 @@ function Report({ report, title, onRestart }: { report: SessionReport; title?: s
     <div className="mx-auto max-w-3xl">
       <PageHeader eyebrow={title} title="Your session report" />
       <Card>
-        <h2 className="text-lg font-semibold">Your tutor's note</h2>
+        <h2 className="text-lg font-semibold">Your tutor&apos;s note</h2>
         <p className="mt-2 whitespace-pre-wrap">{report.note}</p>
       </Card>
 

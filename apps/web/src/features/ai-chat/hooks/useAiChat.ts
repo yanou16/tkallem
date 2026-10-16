@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { endSession, getSession, sendAnswer, speakLastLine, startSession, streamAnswer, type AnswerInput, type LiveTurn } from "../api/ai";
 import { CREDITS_KEY } from "@/features/credits/hooks/useCredits";
@@ -79,7 +79,7 @@ export function useAnswer(sessionId: string | undefined, onAudio: (url: string |
   const qc = useQueryClient();
   const [live, setLive] = useState<LiveTurn | null>(null);
   const audio = useRef(onAudio);
-  audio.current = onAudio;
+  useEffect(() => { audio.current = onAudio; }, [onAudio]);
   const mutation = useMutation({
     mutationFn: (input: AnswerInput) => {
       setLive({});

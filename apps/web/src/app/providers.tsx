@@ -2,7 +2,7 @@
 
 import { ClerkProvider, useAuth } from "@clerk/nextjs";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useSyncExternalStore, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { ApiError, setAuthTokenProvider } from "@/lib/api/client";
 import GuestBootstrap from "@/components/GuestBootstrap";
@@ -23,9 +23,9 @@ function AuthTokenBridge() {
  * We delay the entire inner tree until after client-side hydration so no component
  * in the tree can call useAuth() during server rendering.
  */
+const emptySubscribe = () => () => {};
 function HydrationGate({ children }: { children: ReactNode }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
   if (!mounted) return null;
   return <>{children}</>;
 }

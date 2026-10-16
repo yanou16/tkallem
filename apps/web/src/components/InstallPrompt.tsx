@@ -25,14 +25,19 @@ function readDismissed(): boolean {
  */
 export default function InstallPrompt() {
   const [event, setEvent] = useState<InstallEvent | null>(null);
-  const [ios, setIos] = useState(false);
-  const [hidden, setHidden] = useState(true);
+  const ios = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent) && !/crios|fxios/i.test(navigator.userAgent);
+  const [hidden, setHidden] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
+    if (standalone || readDismissed()) return true;
+    return !ios; // iOS: show immediately; non-iOS: wait for beforeinstallprompt
+  });
   const [waited, setWaited] = useState(false);
   const pathname = usePathname() ?? "";
   const pathnameRef = useRef(pathname);
   const waitedRef = useRef(waited);
-  pathnameRef.current = pathname;
-  waitedRef.current = waited;
+  useEffect(() => { pathnameRef.current = pathname; }, [pathname]);
+  useEffect(() => { waitedRef.current = waited; }, [waited]);
 
   useEffect(() => {
     const t = window.setTimeout(() => setWaited(true), DELAY_MS);
@@ -41,9 +46,6 @@ export default function InstallPrompt() {
 
   useEffect(() => {
     const standalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as { standalone?: boolean }).standalone === true;
-    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent) && !/crios|fxios/i.test(navigator.userAgent);
-    setIos(isIos);
-    setHidden(!isIos);
     if (standalone || readDismissed()) return;
     const onPrompt = (e: Event) => {
       const mobile = window.matchMedia("(max-width: 767px)").matches;

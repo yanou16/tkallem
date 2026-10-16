@@ -66,6 +66,12 @@ function changeFor(edit: Edit, value: string, focus: FocusArea[], user: User): U
   }
 }
 
+function Pen({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <button onClick={onClick} aria-label={`Edit ${label}`} className="rounded-full p-1.5 text-muted hover:bg-black/5"><Pencil size={15} /></button>
+  );
+}
+
 export default function ProfilePage() {
   const { user } = useCurrentUser();
   const clerk = useClerk();
@@ -95,9 +101,6 @@ export default function ProfilePage() {
     setFocus((list) => (list.includes(area) ? list.filter((a) => a !== area) : [...list, area]));
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
 
-  const Pen = ({ onClick, label }: { onClick: () => void; label: string }) => (
-    <button onClick={onClick} aria-label={`Edit ${label}`} className="rounded-full p-1.5 text-muted hover:bg-black/5"><Pencil size={15} /></button>
-  );
 
   return (
     <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">

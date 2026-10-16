@@ -98,7 +98,7 @@ function DailyGoalCard() {
   const q = useProgress();
   return (
     <Card>
-      <div className="flex items-center justify-between"><h2 className="text-lg font-semibold">Today's goal</h2><span className="text-sm text-muted">Keep going!</span></div>
+      <div className="flex items-center justify-between"><h2 className="text-lg font-semibold">Today&apos;s goal</h2><span className="text-sm text-muted">Keep going!</span></div>
       <Async query={q} skeleton={<Skeleton className="mt-4 h-36" />}>
         {(p) => {
           const goal = Math.round(p.dailyGoalSeconds / 60);

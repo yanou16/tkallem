@@ -67,7 +67,7 @@ function GroupPageContent() {
             {g.todayTopic && (
               <div className="mt-6 flex items-center gap-5 rounded-card bg-butter p-6">
                 <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-butter-deep"><Lightbulb /></span>
-                <div className="flex-1"><p className="text-sm">Today's topic</p><h2 className="text-xl font-bold">{g.todayTopic.title}</h2>{g.todayTopic.description && <p className="text-muted">{g.todayTopic.description}</p>}</div>
+                <div className="flex-1"><p className="text-sm">Today&apos;s topic</p><h2 className="text-xl font-bold">{g.todayTopic.title}</h2>{g.todayTopic.description && <p className="text-muted">{g.todayTopic.description}</p>}</div>
                 <Button onClick={() => setComposer(true)} disabled={!g.isMember}>Join the discussion <ArrowRight size={14} /></Button>
               </div>
             )}

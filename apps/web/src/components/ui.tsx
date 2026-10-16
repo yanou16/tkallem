@@ -95,7 +95,7 @@ export function ErrorState({ error, onRetry, className }: { error?: unknown; onR
     <div role="alert" className={cn("flex items-start gap-3 rounded-2xl border border-rose-deep bg-rose/50 p-4", className)}>
       <AlertCircle className="mt-0.5 shrink-0" size={18} />
       <div className="flex-1 text-sm">
-        <p className="font-semibold">Couldn't load this</p>
+        <p className="font-semibold">Couldn&apos;t load this</p>
         <p className="text-muted">{msg}</p>
       </div>
       {onRetry && <Button dark={false} onClick={onRetry} className="!px-3 !py-1.5 text-xs">Try again</Button>}
@@ -173,7 +173,7 @@ export function GoalHint({ goal, done }: { goal: number; done: number }) {
   return (
     <div className="flex items-center gap-3 rounded-2xl bg-success/10 p-3 text-sm text-muted">
       <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-success/15 text-success">✿</span>
-      {left > 0 ? <p>You're {left} minute{left === 1 ? "" : "s"} away from your daily goal!</p> : <p>Daily goal reached. Nice work!</p>}
+      {left > 0 ? <p>You&apos;re {left} minute{left === 1 ? "" : "s"} away from your daily goal!</p> : <p>Daily goal reached. Nice work!</p>}
     </div>
   );
 }
