@@ -1,0 +1,2 @@
+# Load testing only (apps/api/loadtest/README.md); never needed by the API itself.
+locust==2.46.7
