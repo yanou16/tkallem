@@ -41,7 +41,7 @@ export default function GroupRoom({ summary }: { summary: GroupSummary }) {
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0">
         <div className="flex flex-wrap items-start gap-6">
-          <span className="flex h-24 w-24 shrink-0 items-center justify-center rounded-3xl bg-surface text-3xl font-semibold md:h-[136px] md:w-[136px] md:text-4xl">{name[0]}</span>
+          <span className="flex h-24 w-24 shrink-0 items-center justify-center rounded-3xl bg-mint text-3xl font-semibold md:h-[136px] md:w-[136px] md:text-4xl">{name[0]}</span>
           <div className="min-w-[220px] flex-1">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -69,8 +69,8 @@ export default function GroupRoom({ summary }: { summary: GroupSummary }) {
 
         {tab === "discussion" && (
           <>
-            <div className="mt-6 flex flex-wrap items-center gap-5 rounded-card bg-surface p-6">
-              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white"><Lightbulb /></span>
+            <div className="mt-6 flex flex-wrap items-center gap-5 rounded-card bg-butter p-6">
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-butter-deep"><Lightbulb /></span>
               <div className="min-w-[200px] flex-1">
                 <p className="text-sm">Theme of the week: {summary.theme.title}</p>
                 {group.data ? <h2 className="text-xl font-semibold">{group.data.theme.question}</h2>
@@ -97,7 +97,7 @@ export default function GroupRoom({ summary }: { summary: GroupSummary }) {
                   placeholder="Write in English… (Enter to send, Shift+Enter for a new line)"
                   className="w-full resize-none rounded-xl border border-line p-3 outline-none focus:border-ink" />
                 <div className="mt-2 flex items-center justify-between gap-3">
-                  <span className={cn("text-sm", text.length > MESSAGE_MAX ? "font-semibold text-[color:var(--bad)]" : "text-muted")}>{text.length}/{MESSAGE_MAX}</span>
+                  <span className={cn("text-xs", text.length > MESSAGE_MAX ? "font-semibold text-[color:var(--bad)]" : "text-muted")}>{text.length}/{MESSAGE_MAX}</span>
                   <Button type="submit" disabled={!canSend}><SendHorizontal size={16} /> {send.isPending ? "Sending…" : "Send"}</Button>
                 </div>
                 {send.error && <p role="alert" className="mt-3 rounded-2xl bg-bad-bg px-4 py-3 text-sm">{sendError(send.error)}</p>}
@@ -138,7 +138,7 @@ function LiveStatus({ status }: { status: SocketStatus }) {
   const label = { connecting: "Connecting…", live: "Live", reconnecting: "Reconnecting…", closed: "Offline" }[status.state];
   return (
     <Pill className="gap-1.5 border border-line">
-      <span className={cn("h-2 w-2 rounded-full", status.state === "live" ? "bg-good" : "bg-black/20")} aria-hidden /> {label}
+      <span className={cn("h-2 w-2 rounded-full", status.state === "live" ? "bg-success" : "bg-black/20")} aria-hidden /> {label}
     </Pill>
   );
 }

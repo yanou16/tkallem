@@ -4,7 +4,6 @@ import "./globals.css";
 import Providers from "./providers";
 import PwaRegister from "@/components/PwaRegister";
 import InstallPrompt from "@/components/InstallPrompt";
-import { Analytics } from "@vercel/analytics/next";
 
 const font = Figtree({ // DESIGN.md: one family everywhere
   subsets: ["latin"],
@@ -41,7 +40,6 @@ export default function RootLayout({
         <Providers>{children}</Providers>
         <PwaRegister />
         <InstallPrompt />
-        <Analytics />
       </body>
     </html>
   );

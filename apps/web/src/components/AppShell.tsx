@@ -3,7 +3,7 @@ import { useClerk, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { Bell, ChevronDown, House, Mic, Users, ChartNoAxesColumn, UserRound, LogOut } from "lucide-react";
+import { Bell, ChevronDown, House, MessageCircle, Sparkles, Users, ChartNoAxesColumn, UserRound, LogOut } from "lucide-react";
 import { Avatar, ErrorState, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/lib/config";
@@ -14,31 +14,26 @@ import ChooseLevel from "@/components/ChooseLevel";
 import { useIdentity } from "@/features/credits/hooks/useCredits";
 import { FEATURES } from "@/lib/features";
 
-/** One entry for practice: the list of situations (/practice) and the conversation (/ai-chat) are two steps of the same thing. */
-const NAV: { href: string; label: string; icon: typeof House; also?: string[] }[] = [
+const NAV = [
   { href: "/", label: "Home", icon: House },
-  { href: "/practice", label: "Practice", icon: Mic, also: ["/ai-chat"] }, // DESIGN.md: no sparkle icons
+  { href: "/practice", label: "Practice", icon: MessageCircle },
+  { href: "/ai-chat", label: "AI Chat", icon: Sparkles },
   ...(FEATURES.groups ? [{ href: "/groups", label: "Groups", icon: Users }] : []),
   { href: "/progress", label: "Progress", icon: ChartNoAxesColumn },
   { href: "/profile", label: "Profile", icon: UserRound },
 ];
 
-/** "/" only matches itself; the others also match their sub-routes and the routes listed in `also`. */
-export const isActive = (path: string | null, href: string, also: string[] = []) =>
-  href === "/" ? path === "/" : [href, ...also].some((p) => (path ?? "").startsWith(p));
-
 function Logo() {
   return (
-    <Link href="/" className="flex min-h-11 shrink-0 items-center gap-3 px-2">
-      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-lg font-semibold">T</span>
-      {/* Under 360 px the mark alone leaves room for the credits and "Sign in"; the name stays for screen readers. */}
-      <span className="text-2xl font-semibold tracking-tight max-[359px]:sr-only">Tkallem</span>
+    <Link href="/" className="flex items-center gap-3 px-2">
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-lg font-extrabold">T</span>
+      <span className="text-2xl font-bold tracking-tight">Tkallem</span>
     </Link>
   );
 }
 
 /** A visitor without account only sees the screens that work without one. */
-const GUEST_NAV = NAV.filter((n) => n.href === "/practice" || n.href === "/groups");
+const GUEST_NAV = NAV.filter((n) => n.href === "/practice" || n.href === "/ai-chat" || n.href === "/groups");
 function useNav() {
   return useIdentity().isGuest ? GUEST_NAV : NAV;
 }
@@ -50,8 +45,8 @@ function Sidebar() {
     <aside className="sticky top-0 hidden h-screen w-[260px] shrink-0 flex-col gap-8 border-r border-line bg-white/60 p-5 md:flex">
       <Logo />
       <nav className="flex flex-col gap-1.5" aria-label="Main">
-        {nav.map(({ href, label, icon: I, also }) => {
-          const active = isActive(path, href, also);
+        {nav.map(({ href, label, icon: I }) => {
+          const active = href === "/" ? path === "/" : path.startsWith(href);
           return (
             <Link key={href} href={href} aria-current={active ? "page" : undefined}
               className={cn("flex items-center gap-4 rounded-full px-5 py-3.5 text-[15px] font-medium transition",
@@ -70,10 +65,10 @@ function MobileNav() {
   const nav = useNav();
   return (
     <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-line bg-white/95 py-2 md:hidden">
-      {nav.map(({ href, label, icon: I, also }) => {
-        const active = isActive(path, href, also);
+      {nav.map(({ href, label, icon: I }) => {
+        const active = href === "/" ? path === "/" : path.startsWith(href);
         return (
-          <Link key={href} href={href} className={cn("flex min-h-11 flex-col items-center justify-center gap-0.5 px-2 text-xs", active ? "font-semibold text-ink" : "text-muted")}>
+          <Link key={href} href={href} className={cn("flex flex-col items-center gap-0.5 px-2 text-[11px]", active ? "font-semibold text-ink" : "text-muted")}>
             <I size={20} /> {label}
           </Link>
         );
@@ -93,9 +88,9 @@ function HeaderBar() {
   const displayName = appUser?.firstName || user?.firstName || user?.primaryEmailAddress?.emailAddress;
 
   return (
-    <div className="sticky top-0 z-30 flex items-center justify-between gap-3 bg-[color:var(--canvas)] px-5 pt-5 md:justify-end md:px-10">
+    <div className="flex items-center justify-between px-6 pt-5 md:justify-end md:px-10">
       <div className="md:hidden"><Logo /></div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-5">
         <CreditsPill />
         {FEATURES.notifications && (
           <button aria-label="Notifications" className="relative rounded-full p-2 hover:bg-black/5">
@@ -103,7 +98,7 @@ function HeaderBar() {
           </button>
         )}
         {isGuest ? (
-          <Link href={ROUTES.signIn} className="whitespace-nowrap rounded-full bg-ink px-4 py-3 text-sm font-medium text-white sm:px-5">Sign in</Link>
+          <Link href={ROUTES.signIn} className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white">Sign in</Link>
         ) : !isLoaded || !user ? (
           <div className="flex items-center gap-3"><Skeleton className="h-10 w-10 !rounded-full" /><Skeleton className="h-4 w-16" /></div>
         ) : (
@@ -165,7 +160,7 @@ function GuestUnavailable() {
   return (
     <div className="mt-8 max-w-md rounded-2xl border border-line bg-white p-5">
       <p className="text-lg font-semibold">Please sign in to start</p>
-      <p className="mt-1 text-sm text-muted">Practice without an account is not available right now. Signing in is free and gives you answers to practice.</p>
+      <p className="mt-1 text-sm text-muted">Practice without an account is not available right now. Signing in is free and gives you credits to practise.</p>
       <Link href={ROUTES.signUp} className="mt-4 inline-block rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white">Create a free account</Link>
     </div>
   );

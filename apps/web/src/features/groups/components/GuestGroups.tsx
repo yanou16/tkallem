@@ -49,7 +49,7 @@ export default function GuestGroups() {
                 <Lock size={16} /> <span className="truncate">Write to your group…</span>
               </div>
               <h2 className="mt-4 text-lg font-semibold">Log in to unlock the group chat</h2>
-              <p className="mt-1 text-slate">Joining and writing are for students with an account. Your guest answers come with you.</p>
+              <p className="mt-1 text-slate">Joining and writing are for students with an account. Your guest answers and credits come with you.</p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <Link href={ROUTES.signUp} className="inline-flex min-h-12 items-center justify-center rounded-full bg-ink px-6 font-semibold text-white hover:bg-black/80">Create a free account</Link>
                 <Link href={ROUTES.signIn} className="inline-flex min-h-12 items-center justify-center rounded-full border border-hairline px-6 font-semibold">Log in</Link>

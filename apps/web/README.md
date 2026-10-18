@@ -34,8 +34,16 @@ Sign up at `/sign-up`, then sign in at `/sign-in`. Every API call sends the Cler
 - `GET /sessions/{id}`: continue a session or reload it after a page refresh. For an ended session, only the note,
   metrics and answers are stored: no traffic light per metric, no answer to redo.
 
-Not in the API yet (TODO in the code, the block is hidden):
-- Audio in `POST /sessions/{id}/turn`: the mic is hidden.
+Voice calls:
+- The AI Chat voice mode uses a continuous Pipecat SmallWebRTC session at
+  `POST /sessions/{id}/webrtc` (with `PATCH` for trickle ICE). Start the call to grant
+  microphone access; speaking and interruptions are handled by WebRTC/VAD without a
+  Send button.
+- The API must have `OPENROUTER_API_KEY`, a configured `STT_PROVIDER` key, and a
+  configured `TTS_PROVIDER` key. `DATABASE_URL` and Clerk settings are also required
+  for authenticated sessions. Set `FRONTEND_ORIGIN` to the web app origin.
+
+Other not-yet-implemented areas:
 - Recommendations, today's focus, notifications.
 - Groups (`/api/groups/*`): hidden on home; the Groups pages show their error state until the API exists.
 
