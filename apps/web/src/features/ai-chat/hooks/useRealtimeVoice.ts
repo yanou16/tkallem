@@ -2,8 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PipecatClient, RTVIEvent } from "@pipecat-ai/client-js";
 import { SmallWebRTCTransport } from "@pipecat-ai/small-webrtc-transport";
-import { API_URL } from "@/lib/config";
-import { getAuthHeaderValue } from "@/lib/api/client";
+import { connectVoice } from "../lib/connectVoice";
 import type { CoachState } from "../components/VoiceState";
 
 export type RealtimeVoiceOptions = {
@@ -88,19 +87,7 @@ export function useRealtimeVoice({
         }
       }
 
-      const authHeader = await getAuthHeaderValue();
-
-      const headers = new Headers();
-      if (authHeader) {
-        headers.set("Authorization", authHeader);
-      }
-
-      const transport = new SmallWebRTCTransport({
-        webrtcRequestParams: {
-          endpoint: `${API_URL}/sessions/${encodeURIComponent(sessionId)}/webrtc`,
-          headers,
-        },
-      });
+      const transport = new SmallWebRTCTransport();
 
       const client = new PipecatClient({
         transport,
@@ -141,7 +128,6 @@ export function useRealtimeVoice({
         setIsConnected(true);
         setIsConnecting(false);
         setIsWebRTCConnected(true);
-        setIsAgentReady(true);
         connectedAt.current = performance.now();
         setDuration(0);
         setState("idle");
@@ -234,7 +220,7 @@ export function useRealtimeVoice({
       // Assign ref BEFORE connect() so RTVI event handlers fire correctly
       // and cleanup in catch() can call disconnect().
       clientRef.current = client;
-      await client.connect();
+      await connectVoice(client, sessionId);
     } catch (err) {
       if (clientRef.current) {
         clientRef.current.disconnect().catch(() => {});
