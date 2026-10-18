@@ -99,7 +99,7 @@ set -a && source ../../apps/api/.env && set +a          # LLM keys for the evalu
 ../../apps/api/.venv/bin/python evals/injection.py      # prompt-injection attacks
 ../../apps/api/.venv/bin/python evals/latency.py        # turn and report latency
 ../../apps/api/.venv/bin/python evals/review_sheet.py   # human review sheets (F3 level, F5 corrections)
-../../apps/api/.venv/bin/python evals/cefr/run_cefr_eval.py hf   # CEFR estimator (F10), see docs/cefr-testers.md
+../../apps/api/.venv/bin/python evals/cefr/run_cefr_eval.py hf   # CEFR estimator (F10)
 ```
 
 Every prompt change must re-run `run_evals.py` (both languages) and `injection.py`.

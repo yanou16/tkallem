@@ -4,8 +4,6 @@
 [![deploy](https://img.shields.io/github/actions/workflow/status/yanou16/tkallem/api-image.yml?branch=main&label=deploy&logo=microsoftazure)](https://github.com/yanou16/tkallem/actions/workflows/api-image.yml)
 [![AI gate](https://img.shields.io/badge/AI%20gate-29%2F29%20mistakes%20%C2%B7%209%2F9%20attacks-brightgreen)](packages/agent/evals/gate.py)
 
-**[Demo](https://tkallem.vercel.app)** · **[API](https://[TEAM-APP-NAME].azurewebsites.net/docs)** `[TEAM: put the Azure app name in this link]`
-
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-4169E1?logo=postgresql&logoColor=white)
@@ -17,35 +15,82 @@
 
 **An AI coach that lets Algerian students rehearse real English interviews out loud, and explains every mistake in French.**
 
-Many Algerian students understand English but freeze when they have to speak it in a decisive moment: a US visa interview,
-a Campus France interview, a remote job interview, IELTS Speaking. Tkallem gives them a private place to rehearse first:
-a coach asks the real questions, listens, and shows what was good and the one thing to fix, without anyone watching.
+|  |  |
+|---|---|
+| **Live app** | https://tkallem.vercel.app: press "Try a visa interview now" (no account, 40 free answers) |
+| **API** | https://tkallem-api-rayane.azurewebsites.net/docs |
+| **Demo video (2 to 4 min)** | `[TEAM: link]` |
 
-- **Live app:** https://tkallem.vercel.app (open it, then "Try a visa interview now": no account needed, 40 free answers)
-- **Demo video (2 to 4 min):** `[TEAM: link]`
-- **Submission texts** (summary, description, stack, what next): [`docs/SUBMISSION.md`](docs/SUBMISSION.md) `[TEAM: this file is not in the repository yet: add it or remove this line]`
+## The problem
+
+Many Algerian students understand English but freeze when they have to speak it at a decisive moment: a US visa interview,
+a Campus France interview, a remote job interview, IELTS Speaking. There is nowhere safe to rehearse: a teacher is not
+available at night, and a friend's feedback is polite, not precise.
+
+Tkallem is that place. A coach asks the real questions, listens, and shows what was good and the one thing to fix first,
+with nobody watching. The student can also see the freeze itself: how long they waited before starting to answer.
+
+`[TEAM: who has this problem and who you spoke to: how many students, where, what they said]`
+
+## Try it in 30 seconds
+
+1. Open https://tkallem.vercel.app and press **Try a visa interview now**. No account.
+2. Answer the first question out loud, or type it. Not sure how to start? Press **Help me start**.
+3. Read the correction (one compliment, then the one fix that matters), press **Say it again**, then finish the interview
+   and open the **report**.
+
+A guest has 40 free answers. Signing in adds 60 more and 15 every day. It installs on a phone like an app (PWA).
 
 ## What a student can do
 
-1. **Build your plan (1 minute, optional)**: five questions (why English, how you speak, time per day, what is hardest, subjects you like) set the level, the daily goal and the order of the situations. The situations themselves are the same for everyone.
-2. **Pick a situation**: visa interview, Campus France, remote job interview, IELTS Speaking, or free talk. Each runs 5 to
-   10 minutes and ends with a report.
-3. **Choose a mode**: *Practice* (corrections after each answer, hints, "Say it again") or *Real interview* (the coach
-   plays the officer, nothing is shown until the report, like the real one).
+1. **Build a plan (1 minute, optional):** five questions set the level, the daily goal and the order of the situations.
+2. **Pick a situation:** visa interview, Campus France, remote job interview, IELTS Speaking, everyday scenes. 5 to 10
+   minutes each, ending with a report.
+3. **Choose a mode:** *Practice* (corrections after each answer, hints, "Say it again") or *Real interview* (the coach plays
+   the officer, nothing is shown until the report, like the real one).
 4. **Answer out loud or by typing.** The coach replies in text and in a natural voice.
-5. **Get feedback that reassures before it corrects**: one true compliment about the answer, then the single correction
-   that matters most (the other small fixes stay folded), explained in French or simple English.
-6. **When frozen, press "Help me start"**: the first words of an answer, or the student's idea written in French or
+5. **Get feedback that reassures before it corrects:** one true compliment, then the single correction that matters most,
+   explained in French or simple English.
+6. **When frozen, press "Help me start":** the first words of an answer, or the student's idea written in French or
    Darija turned into English to read aloud. Free, two per question.
-7. **Say the corrected sentence again**: the code checks it (not the AI): "Nailed it", or a gentle hint.
-8. **Read the report**: progress since the last interview, **how long they waited before starting to speak** (the freeze,
-   made visible), mistakes per 100 words, the answer to redo, and how confident they feel before and after (1 to 5).
+7. **Say the corrected sentence again:** the code checks it, not the AI: "Nailed it", or a gentle hint.
+8. **Read the report:** progress since last time, **how long they waited before speaking**, mistakes per 100 words, the
+   answer to redo, and how confident they feel before and after (1 to 5).
 
-It installs on a phone like an app (PWA), works in a browser, and guests can finish a whole interview without an account.
+## Architecture
+
+![Tkallem high-level architecture: clients, web, API, coach agent, data stores, AI providers and CI/CD](docs/architecture.svg)
+
+*Solid boxes run today; the dashed Redis box is planned for running several API instances.* More detail, the data model
+and the capacity limits: [`docs/architecture.md`](docs/architecture.md).
+
+### The AI stack: what happens when a student answers
+
+```mermaid
+flowchart TD
+  S([Student]) -->|voice or text| W["Web app<br/>Next.js PWA, Vercel"]
+  W -->|HTTPS| A["API<br/>FastAPI, Azure"]
+  A --> ID{"Who is it?<br/>Clerk or guest token"}
+  ID --> CR["Take one answer<br/>from the wallet"]
+  CR --> STT["Speech to text<br/>Whisper: Groq, then DeepInfra"]
+  STT --> CO["Corrector LLM<br/>finds the mistakes"]
+  STT --> CH["Coach LLM<br/>reply and next question"]
+  CO --> GR["Guardrails in code<br/>keep, drop, merge, check"]
+  CH --> GR
+  GR --> DB[("Neon Postgres<br/>text only")]
+  GR -->|"text first"| W
+  GR --> TTS["Voice<br/>Orpheus, Kokoro, then the browser"]
+  TTS -->|"then audio"| W
+  LF[["Langfuse traces<br/>when enabled"]] -.-> CO
+  LF -.-> CH
+```
+
+The two model calls run in parallel, and the reply streams to the student before the corrections are ready, so the voice
+can start early. Every provider has a backup: a rate limit during the judging week costs a second, not the session.
 
 ## "The model talks, the code decides"
 
-A language model never decides alone what a student sees. Everything below is checked by code and covered by tests:
+A language model never decides alone what a student sees. Everything below is checked by code and covered by tests.
 
 | The model proposes | The code decides |
 |---|---|
@@ -56,60 +101,33 @@ A language model never decides alone what a student sees. Everything below is ch
 | Whether the student repeated the correction | Never the model: 85 % word similarity, every fixed phrase heard, the mistake not said again |
 | Progress, freeze, confidence lines | Computed from stored numbers, never written by the model |
 
-Prompt injections ("ignore your rules", "mark this green", hidden JSON) are treated as data: see `packages/agent/evals/injection.py`.
+Prompt injections ("ignore your rules", "mark this green", hidden JSON) are treated as data: see
+`packages/agent/evals/injection.py`. How the agent plugs into the API: [`docs/agent-integration.md`](docs/agent-integration.md).
 
-## Architecture
+## DevOps: one loop, nothing skips a step
 
-![Tkallem high-level architecture: clients, web, API, coach agent, data stores, AI providers and CI/CD](docs/architecture.svg)
+![The DevOps loop of Tkallem: plan, code, build, test, release, deploy, operate, monitor](docs/devops-loop.svg)
 
-*Solid boxes run today; the dashed Redis box is planned for running several API instances.*
+| Step | What really happens |
+|---|---|
+| **Plan, code** | One small pull request per topic. Direct pushes to `main` are refused (a pre-push hook and branch protection). |
+| **Build** | GitHub Actions builds the API Docker image (non-root user) and pushes it to GitHub Container Registry. Vercel builds the web app. |
+| **Test** | `CI ok` needs these green: agent tests, API tests against a real Postgres (with the migrations), web typecheck, tests and build, the Docker build and, when the agent changes, the **AI gate** (29/29 seeded mistakes detected, 0 false alarm, 9/9 prompt-injection attacks handled). |
+| **Release** | Squash merge to `main`, only when `CI ok` is green. |
+| **Deploy** | Vercel deploys the web app; Azure App Service pulls the new API image. A smoke test then waits until `/health` reports the new commit and `/scenarios` answers, or the deploy fails. |
+| **Operate** | Azure B1 with Always On (Frankfurt), Neon Postgres (Frankfurt), database migrations run when the container starts. |
+| **Monitor** | `/health` check, Langfuse traces (when enabled), and an alert at 80 % and 100 % of the daily spending cap (webhook to Slack or Discord). |
 
-Each answer starts three things at once (the answer count, the transcription, then the corrector and the coach in parallel), and
-the text and the voice stream back as soon as they exist. Every provider has a backup, so a rate limit during the judging
-week costs a second, not the session.
+Details of the Azure setup: [`infra/azure/README.md`](infra/azure/README.md).
 
 ## Tech stack
 
-- **Web:** Next.js 16, React 19, Tailwind CSS, Clerk, installable PWA with a service worker, TanStack Query. The 3D coach
-  (TalkingHead) is optional and off by default.
-- **API:** FastAPI, Pydantic, PostgreSQL (Neon), Alembic, httpx. Docker image on Azure App Service (B1, Always On).
+- **Web:** Next.js 16, React 19, Tailwind CSS, Clerk, installable PWA with a service worker, TanStack Query. The optional 3D coach (TalkingHead) is off by default.
+- **API:** FastAPI, Pydantic, PostgreSQL (Neon), raw SQL with psycopg 3 and a connection pool, Alembic, httpx. Docker image on Azure App Service (B1, Always On).
 - **Agent:** LangGraph, LangChain. Main model Qwen3-235B through OpenRouter, backups GPT-4.1 mini and Qwen3 on Groq.
-- **Voice:** Whisper large-v3-turbo on Groq (DeepInfra backup); Orpheus on Groq, then Kokoro on DeepInfra, then the browser's voice.
-- **Quality:** pytest (agent and API, with a real Postgres in CI), Vitest, an AI evaluation gate, GitHub Actions, Langfuse tracing (off unless configured).
-- **AI tools used to build it:** Claude Code (coding assistant). `[TEAM: add the tools each of you used]`
-
-## Backend
-
-The API (`apps/api`) is a FastAPI service that owns everything the student cannot be trusted with: identity, answers
-left, sessions, progress and the calls to the coach. Full reference (routes, environment variables, migrations, the
-groups WebSocket): [`apps/api/README.md`](apps/api/README.md).
-
-**How an answer is handled**
-
-1. **Who is it?** A Clerk token (`Authorization: Bearer`) or a signed guest token (`Authorization: Guest`) is checked
-   before anything else; the user row is created on the first call.
-2. **Can they answer?** One answer is taken from the wallet in a single conditional `UPDATE` (`balance - 1 >= 0`), so
-   two answers sent at the same moment can never spend the same credit; a failed turn gives it back.
-3. **What did they say?** The recording (5 MB max) is transcribed while the coach is prepared; the text is capped.
-4. **The coach answers** (`packages/agent`), then the code checks the result (see "The model talks, the code decides").
-5. **The turn is stored** and streamed back to the browser (Server-Sent Events): text first, then the voice.
-
-**Choices that matter**
-
-| Choice | Why |
-|---|---|
-| Raw SQL with psycopg 3 and a connection pool, no ORM | Every query is visible and reviewed; values are always bound parameters (`%s`), never pasted into the SQL |
-| The database enforces the rules too | `CHECK`, `UNIQUE` and foreign keys with `ON DELETE CASCADE`: a bug in Python cannot store a 600-character message, a sixth confidence level or a student in two groups |
-| Concurrency handled in Postgres | Conditional `UPDATE` for answers, `SELECT … FOR UPDATE` and `pg_advisory_xact_lock` so that two students joining at the same instant never make a group of 9; tested with real parallel connections |
-| Idempotent grants | Starting answers and daily refills carry a unique `ref`: replaying a request cannot give answers twice |
-| Alembic migrations, run by the container at start | Production is always at the schema of its code; one linear history (one head), and a migration already applied on a shared database is never edited |
-| One uvicorn process | Rate limits, the groups' live connections and the provider back-off are kept in memory; a shared store (Redis) is the next step before running several instances |
-| Slow work off the event loop | Model and voice calls run in threads, every provider has a timeout and a backup; the groups' check releases its database connection before calling the model |
-
-**Practice groups (built, hidden for the competition)**: groups of up to 8 students of the same level, a weekly theme
-and a question of the day, a chat (REST to send, a WebSocket `/ws/groups/{id}` to receive live), a private "Check my
-message" that runs the coach's corrector on a draft, reports (a message is hidden after 3), and a 7-day leaderboard.
-The screen only shows when the web app is built with `NEXT_PUBLIC_FEATURE_GROUPS=1`.
+- **Voice:** Whisper large-v3-turbo on Groq (DeepInfra backup); Orpheus on Groq, then Kokoro on DeepInfra, then the browser's voice. The API also has a real-time voice route (Pipecat, WebRTC) that the app does not use yet.
+- **Quality:** pytest (agent and API), Vitest, an AI evaluation gate, GitHub Actions, Locust load test, Langfuse tracing (off unless configured).
+- **AI tools used to build it:** Claude Code (AI coding assistant) for a large part of the code, reviewed and tested by the team. `[TEAM: add the tools each of you used]`
 
 ## Run it locally
 
@@ -131,27 +149,22 @@ cp .env.local.example .env.local   # NEXT_PUBLIC_API_URL=http://localhost:8000, 
 npm run dev
 ```
 
-Keys live only in `.env` files, which are ignored by Git. Guests need no Clerk account: open
-`/ai-chat?scenarioId=visa-us`.
-
+Keys live only in `.env` files, which Git ignores. Guests need no Clerk account: open `/ai-chat?scenarioId=visa-us`.
 Add a scenario: one JSON file in `packages/agent/tkallem_agent/scenarios/` (see `visa-us.json`); `pytest` in
-`packages/agent` validates it.
+`packages/agent` validates it. Backend reference (routes, variables, migrations, the groups WebSocket):
+[`apps/api/README.md`](apps/api/README.md).
 
-## Tests and the road to `main`
+## Tests
 
-Nothing reaches `main` unless the **CI ok** check is green: agent tests, API tests with a real Postgres, web typecheck,
-tests and build, the API Docker build and, when the agent changes, the **AI evaluation gate**. After a merge the API image
-is built, deployed to Azure and smoke-tested. [`docs/TESTING.md`](docs/TESTING.md) maps every feature to its tests.
+```bash
+cd packages/agent && ../../apps/api/.venv/bin/pytest -q                      # agent
+cd apps/api && TEST_DATABASE_URL=<a scratch database> .venv/bin/pytest -q   # API
+cd apps/web && npm run typecheck && npm test                                 # web
+```
 
 Evaluation baseline (real model, `packages/agent/evals/gate.py`): **29 of 29 seeded mistakes detected, 0 false alarm on
 correct sentences, 9 of 9 prompt-injection attacks handled, 0 complete-answer starter and 0 changed name or number in the
 "Help me start" sets, 0 invented compliment.**
-
-```bash
-cd packages/agent && ../../apps/api/.venv/bin/pytest -q                 # agent
-cd apps/api && TEST_DATABASE_URL=<a scratch database> .venv/bin/pytest -q   # API
-cd apps/web && npm run typecheck && npm test                            # web
-```
 
 ## Security
 
@@ -161,84 +174,83 @@ What protects the students, the data and the bill. Each line points to the code 
 |---|---|---|
 | Someone pretends to be another student | Clerk tokens are verified on every request: RS256 signature against Clerk's public keys, issuer, expiry and the origin that requested the token (`azp`) must match | `apps/api/app/security.py` |
 | A guest invents or changes an identity | Guest tokens are `g1.<id>.<HMAC-SHA256>` signed with `GUEST_SECRET` (32+ characters), compared in constant time; sent in a header, never a cookie | `apps/api/app/guests.py` |
-| Reading or changing another student's data | Every route first loads the session, message or group through an owner or membership check (`WHERE id = %s AND user_id = %s`, members only, 403 or 404 otherwise); guests are refused from everything in groups except the read-only preview | `apps/api/app/db/`, `apps/api/app/routes/` |
-| SQL injection | Values are always bound parameters; the only names built into SQL come from fixed lists in the code, never from a request | `apps/api/app/db/` |
-| Another website calling the API | CORS allows only the front's origins (`FRONTEND_ORIGIN`). WebSockets ignore CORS, so the groups socket checks the `Origin` itself and closes with 1008 | `apps/api/app/main.py`, `apps/api/app/routes/group_ws.py` |
-| A token leaking through logs | The WebSocket token is sent in the first message, within 5 seconds, never in the URL (URLs end up in server logs) | `apps/api/app/routes/group_ws.py` |
-| Oversized or malformed input | Pydantic limits on every body (text length, 1-to-5 values, at most 3 corrections), recordings over 5 MB refused with 413, messages 1 to 500 characters in the API and in the database | `apps/api/app/schemas/`, `apps/api/app/config.py`, migrations |
-| Prompt injection ("ignore your rules", hidden JSON) | The student's words are framed as data in the prompt; the code then validates every field the model returns; 9 of 9 attacks handled in the evaluation gate, which blocks a merge when the agent changes | `packages/agent/tkallem_agent/graph.py`, `schemas.py`, `evals/injection.py` |
-| Flooding and abuse | Answers come from a wallet (40 for a guest, then daily refills); guest accounts are capped per network address and per day; hints, replays, group messages (20 per minute) and private checks (30 per 24 h) are rate limited; reported messages are hidden after 3 reports | `apps/api/app/credits.py`, `rate_limit.py`, `routes/` |
-| An unbounded bill | `DAILY_SPEND_CAP` stops the free practice for everyone for the day, with an alert at 80 % and 100 % | `apps/api/app/credits.py`, [`docs/CREDITS.md`](docs/CREDITS.md) |
-| Personal data | A guest's network address is stored only as a keyed hash (enough to count, useless to recover it); real learner recordings and test data are git-ignored | `apps/api/app/guests.py`, `.gitignore` |
-| Secrets in the repository or the image | Keys live in `.env` files and in GitHub, Azure and Vercel settings, all ignored by Git; `.dockerignore` keeps every `.env` out of the image; CI builds with a fake Clerk key | `.gitignore`, `.dockerignore`, `.github/workflows/` |
-| A compromised container | The image runs as a non-root user (uid 10001); Azure serves HTTPS only | `apps/api/Dockerfile`, [`infra/azure/README.md`](infra/azure/README.md) |
-| Unreviewed code reaching production | `main` only takes pull requests whose **CI ok** check is green; a pre-push hook refuses direct pushes to `main`; every deploy is smoke-tested on `/health` | `.github/workflows/`, `.githooks/pre-push` |
+| Reading or changing another student's data | Every route first loads the session, message or group through an owner or membership check (`WHERE id = %s AND user_id = %s`, 403 or 404 otherwise) | `apps/api/app/db/`, `apps/api/app/routes/` |
+| SQL injection | Values are always bound parameters; the only names built into SQL come from fixed lists in the code | `apps/api/app/db/` |
+| Another website calling the API | CORS allows only the front's origins (`FRONTEND_ORIGIN`); the groups WebSocket checks the `Origin` itself | `apps/api/app/main.py`, `routes/group_ws.py` |
+| Oversized or malformed input | Pydantic limits on every body, recordings over 5 MB refused with 413, messages 1 to 500 characters in the API and in the database | `apps/api/app/schemas/`, migrations |
+| Prompt injection | The student's words are framed as data; the code validates every field the model returns; 9 of 9 attacks handled in the gate, which blocks a merge | `packages/agent/tkallem_agent/`, `evals/injection.py` |
+| Flooding and abuse | Answers come from a wallet; guest accounts are capped per address and per day; hints, replays and group messages are rate limited | `apps/api/app/credits.py`, `rate_limit.py` |
+| An unbounded bill | `DAILY_SPEND_CAP` stops the free practice for everyone for the day, with an alert at 80 % and 100 % | `apps/api/app/credits.py` |
+| Personal data | A guest's network address is stored only as a keyed hash; only text is kept, never audio | `apps/api/app/guests.py` |
+| Secrets in the repository or the image | Keys live in `.env` files and in GitHub, Azure and Vercel settings; `.dockerignore` keeps every `.env` out of the image | `.gitignore`, `.dockerignore` |
+| A compromised container | The image runs as a non-root user; Azure serves HTTPS only | `apps/api/Dockerfile`, `infra/azure/` |
 
-**Not done yet** (we would rather say it): no Content-Security-Policy or HSTS headers on the web app yet; rate limits
-are in memory (one process); no automatic dependency scanning (Dependabot); sign-in still uses a Clerk development
-instance. `[TEAM: confirm before submission]`
+**Not done yet:** no Content-Security-Policy or HSTS headers on the web app; rate limits are in memory (one process); no
+automatic dependency scanning; sign-in still uses a Clerk development instance. `[TEAM: confirm before submission]`
 
-## Cost and judging-week safety
+## Cost, free answers and judging-week safety
 
-Every answer uses one free answer (40 for a guest, 60 more after sign-in, then 15 every day). `DAILY_SPEND_CAP` bounds what everyone
-together can spend per day; at 80 % and at 100 % the API logs an alert and posts to a webhook if one is set. A spoken
-answer costs under half a cent today. Details: [`docs/CREDITS.md`](docs/CREDITS.md), [`docs/OPERATIONS.md`](docs/OPERATIONS.md),
-deployment: [`infra/azure/README.md`](infra/azure/README.md).
+One answer from the student uses one free answer (a "credit" in the code). A guest gets **40**; signing in adds **60** and
+moves the guest's unused answers over; then **15 every day**, never above **45**. `DAILY_SPEND_CAP` (default 5000) bounds what
+everyone together can spend per day; at 80 % and at 100 % the API logs an alert and posts to a webhook if one is set.
+
+| One answer costs us | |
+|---|---|
+| Typed | about 0.0003 $ |
+| Spoken, voice by Groq Orpheus | about 0.0034 $ |
+| Spoken, voice by DeepInfra Kokoro | about 0.0009 $ |
+
+So the cap bounds the daily bill: at most about 17 $ a day if every answer were spoken with Orpheus, about 1.5 $ if typed.
+The database pool is 10 connections; a Locust load test of the judge journey (50 simulated users, fake model) kept the
+median answer at 2.3 s with no errors (`apps/api/loadtest/`).
+
+## Impact
+
+What Tkallem can measure about students who freeze, from real sessions. Only averages, never a student.
+
+- **Time before you start (the freeze meter):** seconds between the end of the coach's question and the first sound or letter, averaged per session. Typed and spoken sessions are never compared.
+- **Confidence before and after (1 to 5):** the student's own answers. `apps/api/scripts/impact.py` prints the average over all sessions that have both.
+- **Mistakes per 100 words, answer length, pauses:** computed by code from the transcripts, shown on the report and the Progress screen.
+
+Honest limits: confidence is self-reported, the number of sessions is small, and there is no control group.
+
+## What happens next
+
+Over the next three months we will put Tkallem in front of 30 students preparing visa and Campus France interviews, through
+student clubs and language centers, and check whether their mistakes per 100 words and their time before speaking drop
+over five sessions. We will add the scenarios they ask for, such as scholarship interviews, and a French interface. It
+stays free to try with daily answers; intensive preparation packs and language-center partnerships would pay for it. A
+spoken answer costs us less than half a cent today. `[TEAM: name the clubs and centers we will approach]`
 
 ## Who built what
 
-Git history shows the real split (the same person sometimes commits under two names). `[TEAM: each person checks their own line]`
+Git history shows the real split (the same person sometimes commits under two names). `[TEAM: each person checks their own line and adds their full name]`
 
-- **Rayane Louzazna**: tech lead. The AI coach (agent, prompts, guardrails, evaluation sets), the voice pipeline and its
-  backups, free answers and guest mode, deployment (Azure, Neon, Vercel), the CI/CD, the four improvements and the report.
-- **Zaki**: the API (sessions, profile, progress, achievements, database and migrations), the practice groups end to
-  end (database, REST routes, the live WebSocket, the private check with the coach's corrector, the leaderboard and
-  the groups screen), the API documentation, and the first voice work. `[TEAM: Zaki, confirm]`
-- **Akram (Wad2o)**: front-end screens and the profile pages. `[TEAM: Akram, add what else you did]`
-
-Large parts of the code were written with Claude Code (an AI coding assistant), then reviewed and tested by the team. `[TEAM: confirm]`
+- **Rayane Louzazna:** tech lead. The AI coach (agent, prompts, guardrails, evaluation sets), the voice pipeline and its backups, free answers and guest mode, deployment (Azure, Neon, Vercel), the CI/CD, the four improvements ("Help me start", "Say it again", Practice and Real interview modes, corrections that reassure first), the freeze meter and the report.
+- **Zaki:** the API (sessions, profile, progress, database and migrations), the practice groups end to end (database, REST routes, the live WebSocket, the leaderboard and the screen), the API documentation, the load test, the README diagrams. `[TEAM: Zaki, confirm]`
+- **Akram (Wad2o):** the first front-end redesign (sign-in with Clerk), the dashboard and practice API routes, and the real-time voice route (Pipecat, WebRTC) in the API. `[TEAM: Akram, confirm]`
 
 ## Known limits (we would rather say them)
 
-- **The microphone is tested on desktop Chrome, not yet on every phone.** Autoplay rules and microphone permission differ on
-  iPhone Safari and Android Chrome; a "Tap to hear the coach" button covers the blocked-audio case. `[TEAM: update after the phone tests]`
-- **The evaluation sets are small and labelled by one person**: 33 sentences, 9 attacks, 20 "Help me start" cases. They catch
-  regressions; they do not prove the coach is right about every sentence. A correction can still be wrong or miss something.
-- **Darija translation depends on the model** and on how the student writes it; a translation the code refuses falls back to a generic starter.
-- **Confidence and its change are self-reported**, from few sessions, with no control group (see [`docs/IMPACT.md`](docs/IMPACT.md)).
-- **Scenarios are fixed and few** (ten: six interviews and exams, four everyday ones). A real Campus France interview is in French; ours trains the English version of it.
-- **Rate limits for hints and repeats are kept in memory**, per server process: fine for one instance, not for several.
-  The same goes for the groups' live connections: a second API instance would need Redis before groups can be shown.
-- **Sign-in uses a Clerk development instance** and one language for the interface (English).
-- **The sample 3D avatar is optional and off by default**: it comes from the TalkingHead project, whose sample avatars are for non-commercial use.
-- Voice quality and latency depend on the speech providers' free daily quotas; backups exist, but a long outage degrades to the browser's voice.
-- `[TEAM: earlier work reused? say so here, for example the CEFR level estimation]`
+- **The microphone is tested on desktop Chrome, not yet on every phone.** Autoplay rules and microphone permission differ on iPhone Safari and Android Chrome; a "Tap to hear the coach" button covers blocked audio. `[TEAM: update after the phone tests]`
+- **The evaluation sets are small and labelled by one person:** 33 sentences, 9 attacks, 20 "Help me start" cases. They catch regressions; they do not prove the coach is right about every sentence. A correction can still be wrong.
+- **Darija translation depends on the model;** a translation the code refuses falls back to a generic starter.
+- **Scenarios are few** (ten). A real Campus France interview is in French; ours trains the English version of it.
+- **One API process:** rate limits and the groups' live connections are in memory; several instances would need Redis first.
+- **Practice groups are built but hidden** for the competition (`NEXT_PUBLIC_FEATURE_GROUPS=1` shows them).
+- **Sign-in uses a Clerk development instance** and the interface is in English only.
+- **The sample 3D avatar is optional and off by default:** it comes from the TalkingHead project, whose sample avatars are for non-commercial use.
+- Voice quality and latency depend on the speech providers' free daily quotas; backups exist, but a long outage falls back to the browser's voice.
 
 ## Repository
 
 ```
-apps/web/        Next.js app (screens, PWA, welcome page preview)
-  src/app/           the routes: (app)/ for the app screens (home, plan, practice, AI chat, progress, profile, groups), welcome, sign-in and sign-up
-  src/features/      one folder per feature (ai-chat, practice, progress, profile, groups…): api, hooks, components, lib, types
-  src/components/    shared UI (app shell, cards, buttons, dialogs)
-  src/lib/           API client and endpoints, configuration, feature flags
-  public/            icons, service worker, offline page
-apps/api/        FastAPI (routes, database, voice, answer allowance, migrations)
-  app/               routes/, db/ (raw SQL), schemas/, voice/, realtime and rate limits of the groups
-  alembic/versions/  database migrations
-  tests/             pytest, against a real Postgres
-packages/agent/  the coach: LangGraph, prompts, scenarios, guardrails, evals
-  tkallem_agent/     the graph, the session, prompts/ and scenarios/ (one JSON file per scenario)
-  evals/             evaluation sets and the AI gate run in CI
-  tests/             pytest
+apps/web/        Next.js app: src/app (routes), src/features (one folder per feature), src/components, src/lib
+apps/api/        FastAPI: app/ (routes, db with raw SQL, schemas, voice), alembic/ (migrations), tests/, loadtest/
+packages/agent/  the coach: LangGraph graph, prompts, scenarios (one JSON file each), guardrails, evals
 packages/contracts/  OpenAPI and the agent turn schema, shared by the three
-docs/            design system, free answers, testing, operations, impact, submission, what next
+docs/            architecture.md, agent-integration.md, and the diagrams used above
 infra/azure/     deployment script and notes
-.github/workflows/   CI (tests, web build, AI gate) and the API image (build, deploy to Azure, smoke test)
-.githooks/       pre-push hook: no direct push to main, quick checks (enable with git config core.hooksPath .githooks)
+.github/workflows/   CI (tests, web build, AI gate) and the API image (build, deploy, smoke test)
+.githooks/       pre-push hook: no direct push to main (enable with: git config core.hooksPath .githooks)
 ```
-
-Backend details (stack, structure, environment variables, migrations, tests, routes and the groups WebSocket):
-[`apps/api/README.md`](apps/api/README.md).
-
-More: [`docs/WHAT_NEXT.md`](docs/WHAT_NEXT.md) (the next three months), [`docs/DESIGN.md`](docs/DESIGN.md), [`packages/agent/README.md`](packages/agent/README.md).

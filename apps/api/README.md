@@ -81,7 +81,7 @@ production (see `infra/azure/api.env.example`). Never commit a value.
 | `VOICE_TIMEOUT`, `VOICE_CONNECT_TIMEOUT` | Time limits of a voice provider call |
 | `MAX_AUDIO_BYTES`, `MAX_TEXT_CHARS` | Largest recording and longest typed answer accepted |
 | `GUEST_SECRET` | Signs guest tokens (32 characters or more). Empty: guest mode is off |
-| `GUEST_CREDITS`, `LOGIN_BONUS`, `DAILY_REFILL`, `REFILL_CAP` | Credits: for a guest, once at sign-up, every day, and the refill ceiling (see `docs/CREDITS.md`) |
+| `GUEST_CREDITS`, `LOGIN_BONUS`, `DAILY_REFILL`, `REFILL_CAP` | Credits: for a guest, once at sign-up, every day, and the refill ceiling (the README explains the numbers) |
 | `GUEST_IP_DAILY_CAP`, `GUEST_DAILY_CAP` | Guest accounts per network address per day, and for everyone per day |
 | `FORWARDED_HOPS` | Reverse proxies in front of the API, to read the visitor's address (0: the socket address) |
 | `DAILY_SPEND_CAP`, `BUDGET_ALERT_RATIO`, `ALERT_WEBHOOK_URL` | Credits everyone may spend per day, when to warn, and where (Slack or Discord webhook; empty: logs only) |
@@ -201,8 +201,8 @@ After a reconnection, the web app catches up with `GET /groups/{id}/messages?aft
 ### Hidden in the web app
 
 The screen exists in `apps/web` but is hidden unless the web app is built with `NEXT_PUBLIC_FEATURE_GROUPS=1`
-(`apps/web/src/lib/features.ts`): without it, there is no menu link and `/groups` redirects to `/practice`
-(`docs/JURY_BRIEF.md` F-4). The API routes above stay active either way.
+(`apps/web/src/lib/features.ts`): without it, there is no menu link and `/groups` redirects to `/practice`.
+The API routes above stay active either way.
 
 ### One uvicorn process until Redis
 
