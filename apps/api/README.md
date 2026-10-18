@@ -131,9 +131,13 @@ DATABASE_URL="$TEST_DATABASE_URL" .venv/bin/alembic upgrade head   # once, then 
 The full schema is at `/docs` while the API runs. "Student" means a signed-in account; "guest" a visitor without an
 account.
 
+`/health` is the **liveness** probe: it never touches the database, so it answers as long as the process runs.
+`/ready` is the **readiness** probe: it answers 200 only when the database answers too (503 otherwise, without detail).
+
 | Method | Path | Who | Role |
 |---|---|---|---|
 | GET | `/health` | anyone | Status and deployed version |
+| GET | `/ready` | anyone | 200 `{"status": "ready"}` when a pool connection and `SELECT 1` succeed within 2 s each, else 503 `{"status": "not_ready"}`; `Cache-Control: no-store` |
 | GET | `/scenarios` | anyone | The practice scenarios |
 | POST | `/guests` | anyone | A guest token and the guest credits (limited per address and per day) |
 | GET | `/me/credits` | student or guest | Credit balance |
