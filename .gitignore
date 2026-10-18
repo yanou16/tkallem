@@ -60,3 +60,12 @@ apps/web/tsconfig.tsbuildinfo
 .claude/skills/impeccable/
 .claude/agents/impeccable-*.md
 .claude/settings.local.json
+
+# AI-assistant and design-tool working files: not part of the product, kept out of the repository
+.claude/
+.impeccable/
+CLAUDE.md
+**/CLAUDE.md
+PRODUCT.md
+changelog_session.md
+*.tsbuildinfo

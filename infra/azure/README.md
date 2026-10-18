@@ -79,7 +79,7 @@ everything as guests). A production instance needs a domain of our own and our o
 ## 6. Before telling anyone the link
 
 In a private window, on a phone (Android and iPhone Safari): open the root address, "Try a visa interview now",
-answer by voice and by typing, finish the interview, open the report, "Practice again". `docs/OPERATIONS.md` has the
-judging-week routine.
+answer by voice and by typing, finish the interview, open the report, "Practice again". Every morning of judging week, run one
+guest interview in a private window.
 
 To remove everything: `az group delete -n tkallem`.
