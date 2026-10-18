@@ -14,6 +14,7 @@ Other parts: [AI coach](ai.md) · [DevOps and delivery](devops.md) · [← back 
 7. [Security](#security)
 8. [Capacity and limits](#capacity-and-limits)
 9. [Failure modes we planned for](#failure-modes-we-planned-for)
+10. [Performance](#performance)
 
 ## Goals and constraints
 
@@ -159,9 +160,9 @@ memory (one process); no automatic dependency scanning; sign-in still uses a Cle
 - **Database pool:** 10 connections by default (`DB_POOL_MIN`, `DB_POOL_MAX`, `DB_POOL_TIMEOUT`). A Locust load test of the
   whole judge journey (guest, scenarios, session, five streamed answers, report) with a fake model found the pool was the
   first thing to saturate. With 50 simulated users, the median answer went from 3.8 s (pool of 5, 89 % of requests
-  waiting for a connection) to 2.3 s (pool of 10, 5 % waiting), with no errors. Neon's smallest plan allows 97
-  connections. The test used a fake model, so real answers, which hold a connection longer, are slower. See
-  [`apps/api/loadtest/`](../apps/api/loadtest/).
+  waiting for a connection) to 2.3 s (pool of 10, 5 % waiting), with no errors. Neon's smallest compute (0.25 CU)
+  allows 97 connections. The test used a fake model; real answers are slower and hold a thread longer, not a connection
+  (released during the model call). See [`apps/api/loadtest/`](../apps/api/loadtest/).
 - **Bill:** `DAILY_SPEND_CAP` (default 5000 answers a day, everyone together) is the switch. An answer costs about 0.0003 $
   typed and 0.0009 to 0.0034 $ spoken, so the cap bounds a day at roughly 1.5 to 17 $. Alerts at 80 % and 100 %.
 - **Abuse:** a wallet per user, guest accounts capped per network address and per day, rate limits on hints, replays and
@@ -178,6 +179,27 @@ memory (one process); no automatic dependency scanning; sign-in still uses a Cle
 | The model returns something unusable twice | "Please say that again": nothing was recorded and no answer was spent |
 | The free budget of the day is used up | "Today's free practice is used up, come back tomorrow" |
 | Clerk is slow to load | Guest mode waits for Clerk today: with Clerk delayed by 12 s, the first question took 23 s in our test. A known weak point |
+
+## Performance
+
+**Method.** Locust runs the whole journey of a guest judge: `POST /guests`, `GET /scenarios`, `POST /sessions`, five typed
+answers streamed back as Server-Sent Events, then `POST /end`, for 2 minutes at each load level. The real API runs with a fake
+language model that answers every call after 1.5 s (no provider is called, no voice), on a Neon dev branch reached from a
+laptop at about 48 ms per round trip; the API in production sits next to its database, so this test is pessimistic.
+
+| Pool | Simulated users | A turn, median / p95 | Coach reply received, median / p95 | Connection checkouts that waited | Errors |
+|---|---|---|---|---|---|
+| 5 (before) | 30 | 2.3 / 2.6 s | 2.0 / 2.2 s | 35 % | 0 |
+| 10 | 30 | 2.3 / 2.3 s | 2.0 / 2.0 s | 1 % | 0 |
+| 15 | 30 | 2.3 / 2.3 s | 2.0 / 2.0 s | 2 % | 0 |
+| 5 (before) | 50 | 3.8 / 4.3 s | 3.0 / 3.4 s | 89 % | 0 |
+| 10 | 50 | 2.3 / 2.4 s | 2.0 / 2.0 s | 5 % | 0 |
+| 15 | 50 | 2.3 / 2.4 s | 2.0 / 2.1 s | 2 % | 0 |
+
+**Conclusion.** The connection pool was the bottleneck: with 5 connections it was full from 30 users, while the CPU stayed
+at 6 % on average at 50 users. 10 connections remove the waiting and 15 add nothing measurable, so `DB_POOL_MAX` defaults to 10.
+
+To run the test again: [`apps/api/loadtest/README.md`](../apps/api/loadtest/README.md).
 
 ## Where to read next
 
