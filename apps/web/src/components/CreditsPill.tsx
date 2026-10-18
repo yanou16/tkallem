@@ -14,10 +14,10 @@ export default function CreditsPill() {
     <span
       className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-semibold",
         low ? "border-[color:var(--warn)] bg-[color:var(--warn-bg)] text-[color:var(--warn)]" : "border-line bg-white text-ink")}
-      title={isGuest ? "Sign up to get 60 more credits and new ones every day" : "1 credit = 1 answer. New credits arrive every day."}
+      title={isGuest ? "Sign up to get 60 more answers and new ones every day" : "Each answer you send uses one. New answers arrive every day."}
     >
-      <Zap size={15} strokeWidth={2} aria-hidden /> {data.balance} <span className="font-normal text-muted">credits</span>
+      <Zap size={15} strokeWidth={2} aria-hidden /> {data.balance} <span className="font-normal text-muted max-[399px]:sr-only">answers</span>
     </span>
   );
-  return isGuest ? <Link href="/sign-up" aria-label={`${data.balance} credits left. Sign up for more`}>{pill}</Link> : pill;
+  return isGuest ? <Link href="/sign-up" aria-label={`${data.balance} answers left. Sign up for more`} className="shrink-0 py-1.5">{pill}</Link> : pill;
 }

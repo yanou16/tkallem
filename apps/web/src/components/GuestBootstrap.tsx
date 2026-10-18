@@ -5,10 +5,9 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { ApiError, guestFailure, guestStore } from "@/lib/api/client";
 import { claimGuest, createGuest } from "@/features/credits/api/credits";
+import { guestStep } from "@/features/credits/lib/guestStep";
 import { useGuestToken } from "@/features/credits/hooks/useCredits";
 
-/** Routes a visitor may use without an account (must match the public routes of src/proxy.ts). */
-const GUEST_ROUTES = ["/practice", "/ai-chat", "/groups"];
 
 /**
  * Keeps the visitor identity in order:
@@ -26,7 +25,8 @@ export default function GuestBootstrap() {
     if (!isLoaded || busy.current) return;
     const stored = guestStore.get();
 
-    if (isSignedIn === true && stored) {
+    const step = guestStep(isSignedIn === true, stored, pathname);
+    if (step === "claim" && stored) {
       busy.current = true;
       claimGuest(stored)
         .catch((e) => { if (e instanceof ApiError && e.status === 422) guestStore.clear(); return null; }) // forged token: forget it
@@ -35,7 +35,7 @@ export default function GuestBootstrap() {
       return;
     }
 
-    if (isSignedIn !== true && !stored && GUEST_ROUTES.some((r) => pathname.startsWith(r))) {
+    if (step === "create") {
       busy.current = true;
       createGuest()
         .then((g) => { guestFailure.set(false); guestStore.set(g.guest_token); })

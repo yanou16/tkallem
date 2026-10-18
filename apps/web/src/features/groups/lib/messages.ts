@@ -67,6 +67,31 @@ export async function catchUp(
   return { messages, complete: false };
 }
 
+/** Consecutive messages of one author less than this apart are shown as one group of bubbles. */
+export const GROUP_GAP_MS = 5 * 60_000;
+
+/** One group of bubbles: one name, one time (the first message's) and one avatar. */
+export type MessageGroup = { author: Member; authorLeft: boolean; startedAt: string; messages: GroupMessage[] };
+
+/**
+ * The chat as groups of bubbles: a message joins the group above when it has the same author and comes less than
+ * 5 minutes after the previous message. Another author, or a longer pause, starts a new group.
+ */
+export function groupMessages(messages: GroupMessage[], gapMs = GROUP_GAP_MS): MessageGroup[] {
+  const groups: MessageGroup[] = [];
+  for (const m of messages) {
+    const current = groups[groups.length - 1];
+    const previous = current?.messages[current.messages.length - 1];
+    if (previous && previous.author.id === m.author.id && Date.parse(m.createdAt) - Date.parse(previous.createdAt) < gapMs) {
+      current.messages.push(m);
+      current.authorLeft = m.authorLeft;
+    } else {
+      groups.push({ author: m.author, authorLeft: m.authorLeft, startedAt: m.createdAt, messages: [m] });
+    }
+  }
+  return groups;
+}
+
 /** member.joined / member.left on the group's member list (each member once). */
 export function applyMemberEvent(detail: GroupDetail, type: "member.joined" | "member.left", member: Member): GroupDetail {
   const others = detail.members.filter((m) => m.id !== member.id);

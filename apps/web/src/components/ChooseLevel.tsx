@@ -20,7 +20,7 @@ export default function ChooseLevel() {
 
   return (
     <Card className="mx-auto mt-8 max-w-xl">
-      <h1 className="text-2xl font-bold">Welcome to Tkallem</h1>
+      <h1 className="text-2xl font-semibold">Welcome to Tkallem</h1>
       <p className="mt-1 text-muted">Two quick choices so your coach speaks at the right level. You can change them later in your profile.</p>
 
       <fieldset className="mt-6">
@@ -47,9 +47,9 @@ export default function ChooseLevel() {
         </div>
       </fieldset>
 
-      {update.error && <p role="alert" className="mt-4 text-sm text-red-600">Could not save: {(update.error as Error).message}. Try again.</p>}
+      {update.error && <p role="alert" className="mt-4 text-sm text-bad">Could not save: {(update.error as Error).message}. Try again.</p>}
       <Button className="mt-6 w-full" disabled={update.isPending} onClick={() => update.mutate({ level, explainLang: lang })}>
-        {update.isPending ? "Saving…" : "Start practising"}
+        {update.isPending ? "Saving…" : "Start practicing"}
       </Button>
     </Card>
   );
