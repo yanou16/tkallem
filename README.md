@@ -150,6 +150,8 @@ cd apps/web && npm run typecheck && npm test                                 # w
 
 **→ The full security table is in the [system design](docs/system-design.md#security).**
 
+**→ Load test results (pool of 5, 10 and 15 connections, 30 and 50 simulated users) are in the [system design](docs/system-design.md#performance).**
+
 **Not done yet** (we would rather say it): no Content-Security-Policy or HSTS headers on the web app; rate limits are in
 memory (one API process); no automatic dependency scanning; sign-in uses a Clerk development instance.
 `[TEAM: confirm before submission]`
@@ -219,7 +221,7 @@ Each document explains one part, with its diagram.
 | [API reference](apps/api/README.md) | Routes, environment variables, migrations, the groups WebSocket |
 | [Agent package](packages/agent/README.md) | `CoachSession`, scenarios, configuration, tests and evaluations |
 | [Azure deployment](infra/azure/README.md) | Setting up the API on Azure and the front on Vercel |
-| [Load test](apps/api/loadtest/README.md) | The Locust test of the judge journey and its results |
+| [Load test](apps/api/loadtest/README.md) | How to run the Locust test of the judge journey; its results are in the [system design](docs/system-design.md#performance) |
 
 ```
 apps/web/            Next.js app: src/app (routes), src/features (one folder per feature), src/components, src/lib
