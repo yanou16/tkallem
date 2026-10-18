@@ -26,7 +26,7 @@ export default function CheckPanel({ groupId, draft, maxLength }: { groupId: num
       {check.error && <p role="alert" className="mt-4 rounded-2xl bg-bad-bg px-4 py-3 text-sm">{checkError(check.error)}</p>}
       {check.data && !check.error && (
         <div className="mt-4">
-          {!checkedThisDraft && <p className="mb-2 text-xs text-muted">Your draft changed since this check.</p>}
+          {!checkedThisDraft && <p className="mb-2 text-sm text-muted">Your draft changed since this check.</p>}
           {check.data.length === 0 ? (
             <p className="flex items-center gap-2 rounded-2xl bg-good-bg px-4 py-3 text-sm"><Check size={16} /> No mistakes found.</p>
           ) : (
@@ -34,7 +34,7 @@ export default function CheckPanel({ groupId, draft, maxLength }: { groupId: num
               {check.data.map((c, i) => (
                 <li key={i} className="rounded-correction border border-[color:var(--hairline-soft)] bg-[color:var(--surface)] p-3 text-sm">
                   <p><s className="text-steel">{c.original}</s> → <span className="font-semibold text-[color:var(--good)]">{c.correction}</span></p>
-                  <p className="mt-1 text-xs text-muted">{c.explanation}</p>
+                  <p className="mt-1 text-sm text-muted">{c.explanation}</p>
                   <Pill className="mt-2 border border-line">{correctionLabel(c)}</Pill>
                 </li>
               ))}

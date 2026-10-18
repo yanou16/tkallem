@@ -12,6 +12,10 @@ export const endpoints = {
     turn: (id: string) => `/sessions/${id}/turn`,
     end: (id: string) => `/sessions/${id}/end`,
     speak: (id: string) => `/sessions/${id}/speak`,
+    hint: (id: string) => `/sessions/${id}/hint`,
+    repeat: (id: string) => `/sessions/${id}/repeat`,
+    confidence: (id: string) => `/sessions/${id}/confidence`,
+    note: (id: string) => `/sessions/${id}/note`,
   },
   groups: {
     mine: "/me/group",
