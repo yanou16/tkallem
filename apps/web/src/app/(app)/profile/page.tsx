@@ -7,7 +7,7 @@ import { DAILY_GOALS, FOCUS_AREAS, LEVELS, type DailyGoalMinutes, type ExplainLa
 import { useMySessions } from "@/features/practice/hooks/usePractice";
 import { useAchievements, useUpdateProfile } from "@/features/profile/hooks/useProfile";
 import type { Achievement, UpdateProfileInput } from "@/features/profile/types/profile";
-import { Async, Avatar, Button, Card, Dialog, EmptyState, Pill, SectionTitle, Skeleton, toneAt, toneBg, toneDeep } from "@/components/ui";
+import { Async, Avatar, Button, Card, Dialog, EmptyState, PageHeader, Pill, SectionTitle, Skeleton } from "@/components/ui";
 import { SessionList } from "@/components/cards";
 import { Icon } from "@/lib/icons";
 import { cn } from "@/lib/utils";
@@ -66,12 +66,6 @@ function changeFor(edit: Edit, value: string, focus: FocusArea[], user: User): U
   }
 }
 
-function Pen({ onClick, label }: { onClick: () => void; label: string }) {
-  return (
-    <button onClick={onClick} aria-label={`Edit ${label}`} className="rounded-full p-1.5 text-muted hover:bg-black/5"><Pencil size={15} /></button>
-  );
-}
-
 export default function ProfilePage() {
   const { user } = useCurrentUser();
   const clerk = useClerk();
@@ -101,43 +95,40 @@ export default function ProfilePage() {
     setFocus((list) => (list.includes(area) ? list.filter((a) => a !== area) : [...list, area]));
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
 
+  const Pen = ({ onClick, label }: { onClick: () => void; label: string }) => (
+    <button onClick={onClick} aria-label={`Edit ${label}`} className="flex size-11 items-center justify-center rounded-full text-muted hover:bg-black/5"><Pencil size={16} /></button>
+  );
 
   return (
     <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div>
-        <p className="text-sm text-muted">Profile</p>
-        <h1 className="mb-6 text-5xl font-extrabold tracking-tight">{user.firstName}</h1>
+        <PageHeader title="Profile" />
 
         <div className="flex flex-wrap items-center gap-6">
-          <div className="relative">
-            <Avatar src={user.avatarUrl} first={user.firstName} last={user.lastName} size={132} />
-            <button onClick={openAccount} aria-label="Change photo" className="absolute bottom-0 right-0 flex h-11 w-11 items-center justify-center rounded-full bg-ink text-white hover:opacity-90">
-              <Camera size={18} />
-            </button>
-          </div>
+          <Avatar src={user.avatarUrl} first={user.firstName} last={user.lastName} size={96} />
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-3xl font-bold">{fullName}</h2>
+              <h2 className="text-2xl font-medium">{fullName}</h2>
               <Pen label="name" onClick={openAccount} />
             </div>
             {user.email && <p className="mt-1 text-muted">{user.email}</p>}
-            {user.level && <div className="mt-3"><Pill className="bg-black/[0.05] px-4 py-2 text-sm">Learning English · {user.level}</Pill></div>}
+            {user.level && <div className="mt-3"><Pill className="border border-line bg-white px-4 py-2 text-sm">Learning English · {user.level}</Pill></div>}
           </div>
         </div>
 
         <h2 className="mb-3 mt-8 text-lg font-semibold">My learning setup</h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          <SetupCard tone={3} icon="chart" title="English level" onEdit={() => open("level", user.level ?? "B1")}
+        <div className="grid gap-4 md:grid-cols-2">
+          <SetupCard icon="chart" title="English level" onEdit={() => open("level", user.level ?? "B1")}
             text={user.level ? `${user.level} · ${LEVEL_NAMES[user.level]}` : undefined} empty="Choose your level before your first session" />
-          <SetupCard tone={4} icon="book" title="Explanation language" onEdit={() => open("explainLang", user.explainLang)}
+          <SetupCard icon="languages" title="Explanation language" onEdit={() => open("explainLang", user.explainLang)}
             text={EXPLAIN_LANGS[user.explainLang]} empty="Choose a language" />
-          <SetupCard tone={0} icon="target" title="Learning goals" onEdit={() => open("goal", user.learningGoal ?? "")}
+          <SetupCard icon="book" title="Learning goals" onEdit={() => open("goal", user.learningGoal ?? "")}
             text={user.learningGoal ?? undefined} empty="Set a learning goal" />
-          <SetupCard tone={1} icon="laptop" title="Preferred practice mode" onEdit={() => open("mode", user.practiceMode ?? "text")}
+          <SetupCard icon="laptop" title="Preferred practice mode" onEdit={() => open("mode", user.practiceMode ?? "text")}
             text={user.practiceMode ? PRACTICE_MODES[user.practiceMode] ?? user.practiceMode : undefined} empty="Choose how you like to practice" />
-          <SetupCard tone={2} icon="chart" title="Daily goal" onEdit={() => open("daily", String(user.dailyGoalMinutes))}
+          <SetupCard icon="target" title="Daily goal" onEdit={() => open("daily", String(user.dailyGoalMinutes))}
             text={`${user.dailyGoalMinutes} minutes of speaking practice`} empty="Set a daily goal" />
-          <SetupCard tone={4} icon="star" title="Focus areas" onEdit={() => open("focus")}
+          <SetupCard icon="star" title="Focus areas" onEdit={() => open("focus")}
             text={user.focusAreas.map((f) => FOCUS_NAMES[f]).join(", ") || undefined} empty="Pick what you want to improve" />
         </div>
         {/* Hidden for the MVP: "Languages studied" and "Add another language" (English only). */}
@@ -147,8 +138,8 @@ export default function ProfilePage() {
           <Async query={achievements} skeleton={<Skeleton className="h-28" />} isEmpty={(d) => d.length === 0}
             empty={<EmptyState title="No badges yet" text="Badges will show up here." />}>
             {(list) => (
-              <div className="grid gap-3 md:grid-cols-3">
-                {list.map((a, i) => <Badge key={a.id} a={a} tone={i} />)}
+              <div className="grid gap-3 md:grid-cols-2">
+                {list.map((a) => <Badge key={a.id} a={a} />)}
               </div>
             )}
           </Async>
@@ -167,7 +158,7 @@ export default function ProfilePage() {
 
       <aside className="space-y-5">
         <Card>
-          <h2 className="mb-2 text-lg font-bold">Account settings</h2>
+          <h2 className="mb-2 text-lg font-semibold">Account settings</h2>
           {ACCOUNT_ROWS.map(({ title, icon: I }) => (
             <button key={title} onClick={openAccount} className="flex w-full items-center gap-4 rounded-lg border-b border-line px-1 py-4 text-left last:border-0 hover:bg-black/[0.02]">
               <I size={20} className="text-muted" /><span className="flex-1">{title}</span><ChevronRight size={16} />
@@ -198,7 +189,7 @@ export default function ProfilePage() {
               Learning goal
               <textarea rows={3} maxLength={MAX_TEXT} value={value} onChange={(e) => setValue(e.target.value)}
                 className="mt-1 w-full rounded-xl border border-line px-3 py-2.5 outline-none focus:border-ink" />
-              <span className="mt-1 block text-right text-xs font-normal text-muted">{value.length} / {MAX_TEXT}</span>
+              <span className="mt-1 block text-right text-sm font-normal text-muted">{value.length} / {MAX_TEXT}</span>
             </label>
           )}
           {edit === "focus" && (
@@ -218,7 +209,7 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {update.error && <p role="alert" className="text-sm text-red-600">{update.error.message}</p>}
+          {update.error && <p role="alert" className="text-sm text-bad">{update.error.message}</p>}
 
           <div className="flex justify-end gap-2 pt-2">
             <Button dark={false} onClick={close}>Cancel</Button>
@@ -230,30 +221,28 @@ export default function ProfilePage() {
   );
 }
 
-/** Locked badges are greyed out and say so in words (never color alone). */
-function Badge({ a, tone }: { a: Achievement; tone: number }) {
-  const t = toneAt(tone + 1);
+/** Locked badges say so in words (never color alone) and keep full contrast. */
+function Badge({ a }: { a: Achievement }) {
   return (
-    <div className={cn("flex items-center gap-3 rounded-2xl p-4", a.unlocked ? toneBg[t] : "bg-black/[0.04] opacity-60")}>
-      <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full", a.unlocked ? toneDeep[t] : "bg-black/[0.06]")}>
+    <div className={cn("flex items-center gap-3 rounded-2xl border p-4", a.unlocked ? "border-ink bg-white" : "border-line bg-surface")}>
+      <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full", a.unlocked ? "bg-ink text-white" : "bg-white text-slate")}>
         <Icon name={a.icon} />
       </span>
       <div className="min-w-0">
         <p className="font-semibold">{a.title}</p>
-        <p className="text-sm text-muted">{a.description}</p>
-        {!a.unlocked && <p className="mt-1 text-xs font-semibold text-muted">Locked</p>}
+        <p className="text-sm text-slate">{a.description}</p>
+        {!a.unlocked && <p className="mt-1 text-sm font-semibold text-slate">Locked</p>}
       </div>
     </div>
   );
 }
 
-function SetupCard({ tone, icon, title, text, empty, onEdit }: { tone: number; icon: string; title: string; text?: string; empty: string; onEdit: () => void }) {
-  const t = toneAt(tone);
+function SetupCard({ icon, title, text, empty, onEdit }: { icon: string; title: string; text?: string; empty: string; onEdit: () => void }) {
   return (
-    <div className={cn("flex gap-4 rounded-card p-5", toneBg[t])}>
-      <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl", toneDeep[t])}><Icon name={icon} /></span>
-      <div className="flex-1"><p className="font-semibold">{title}</p><p className={cn("text-sm", text ? "text-muted" : "italic text-muted")}>{text || empty}</p></div>
-      <button onClick={onEdit} aria-label={`Edit ${title}`} className="h-fit rounded-full p-1.5 text-muted hover:bg-black/5"><Pencil size={15} /></button>
+    <div className="flex gap-4 rounded-card border border-line bg-surface p-5">
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white"><Icon name={icon} /></span>
+      <div className="min-w-0 flex-1"><p className="font-semibold">{title}</p><p className={cn("text-sm", text ? "text-slate" : "text-slate")}>{text || empty}</p></div>
+      <button onClick={onEdit} aria-label={`Edit ${title}`} className="-mr-2 -mt-2 flex size-11 shrink-0 items-center justify-center rounded-full text-slate hover:bg-black/5"><Pencil size={16} /></button>
     </div>
   );
 }
