@@ -1,9 +1,8 @@
 import { ApiError, api, apiStream } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
 import { mapMetrics } from "@/features/progress/api/progress";
-import type { ExplainLang } from "@/features/auth/types/user";
 import type {
-  AiSession, ChatMessage, FeedbackMode, HintDto, HintRequestDto, RepeatDto, ReportLine, ReportLineDto, SessionDetailDto, SessionReport, SessionReportDto, SessionStarted,
+  AiSession, ChatMessage, ReportLine, ReportLineDto, SessionDetailDto, SessionReport, SessionReportDto, SessionStarted,
   SessionStartedDto, SpokenDto, StartSessionDto, Turn, TurnDto,
 } from "../types/ai";
 
@@ -11,7 +10,6 @@ export const mapSessionStarted = (s: SessionStartedDto): SessionStarted => ({
   sessionId: s.session_id,
   firstQuestion: s.first_question.text,
   firstQuestionAudio: s.first_question.audio_url,
-  feedbackMode: s.feedback_mode ?? "practice",
 });
 
 export const mapTurn = (t: TurnDto): Turn => ({
@@ -19,8 +17,6 @@ export const mapTurn = (t: TurnDto): Turn => ({
   reply: t.reply,
   corrections: t.corrections,
   sentenceStatus: t.sentence_status,
-  praise: t.praise ?? null,
-  priorityIndex: t.priority_index ?? 0,
   finished: t.finished,
   audioUrl: t.reply_audio_url ?? null,
   credits: t.credits,
@@ -31,10 +27,6 @@ const mapReportLine = (l: ReportLineDto) => ({ role: l.role, text: l.text, statu
 export const mapReport = (r: SessionReportDto): SessionReport => ({
   lines: r.lines.map(mapReportLine),
   note: r.note,
-  progress: r.progress ?? null,
-  freeze: r.freeze ?? null,
-  feedbackMode: r.feedback_mode ?? "practice",
-  confidence: r.confidence ?? { before: null, after: null },
   metrics: mapMetrics(r.metrics),
   levels: {
     mistakesPer100: r.levels.mistakes_per_100,
@@ -50,7 +42,7 @@ export function mapSessionDetail(s: SessionDetailDto): AiSession {
   const add = (message: Omit<ChatMessage, "id">) => messages.push({ id: `${s.session_id}-${messages.length}`, ...message });
   if (s.first_question) add({ role: "assistant", content: s.first_question });
   for (const t of s.turns) {
-    add({ role: "user", content: t.transcript, status: t.sentence_status, corrections: t.corrections, praise: t.praise ?? null, priorityIndex: t.priority_index ?? 0 });
+    add({ role: "user", content: t.transcript, status: t.sentence_status, corrections: t.corrections });
     add({ role: "assistant", content: t.reply });
   }
 
@@ -66,25 +58,21 @@ export function mapSessionDetail(s: SessionDetailDto): AiSession {
       ? {
           lines,
           note: s.note ?? "",
-          progress: s.progress ?? null,
-          freeze: s.freeze ?? null,
-          feedbackMode: s.feedback_mode ?? "practice",
-          confidence: s.confidence ?? { before: null, after: null },
           metrics: mapMetrics(s.metrics),
           levels: { mistakesPer100: null, wordsPerAnswer: null, hesitationsPerMin: null },
           redoIndex: null,
         }
       : undefined;
 
-  return { id: s.session_id, scenarioId: s.scenario_id, feedbackMode: s.feedback_mode ?? "practice", confidence: s.confidence ?? { before: null, after: null }, title: s.title, messages, finished: s.finished, report };
+  return { id: s.session_id, scenarioId: s.scenario_id, title: s.title, messages, finished: s.finished, report };
 }
 
 export const getSession = (sessionId: string) =>
   api.get<SessionDetailDto>(endpoints.ai.session(sessionId)).then(mapSessionDetail);
 
 /** explain_lang is left out so the API uses the profile preference. In a voice session the first question is spoken. */
-export const startSession = (scenarioId: string, mode: StartSessionDto["mode"] = "text", feedbackMode: FeedbackMode = "practice") => {
-  const body: StartSessionDto = { scenario_id: scenarioId, mode, feedback_mode: feedbackMode };
+export const startSession = (scenarioId: string, mode: StartSessionDto["mode"] = "text") => {
+  const body: StartSessionDto = { scenario_id: scenarioId, mode };
   return api.post<SessionStartedDto>(endpoints.ai.sessions, body).then(mapSessionStarted);
 };
 
@@ -98,15 +86,10 @@ export const sendAnswer = (sessionId: string, text: string) => {
 export const endSession = (sessionId: string) =>
   api.post<SessionReportDto>(endpoints.ai.end(sessionId)).then(mapReport);
 
-/** `think`: seconds before the student started (freeze meter), when it could be measured. */
-/** `explain`: "Explain in English / French", sent with every answer so a change applies at once. */
-export type AnswerInput = ({ text: string } | { audio: Blob }) & { think?: number; explain?: ExplainLang };
+export type AnswerInput = { text: string } | { audio: Blob };
 
 /** What is known so far about an answer being processed (Server-Sent Events from POST /turn). */
-export type LiveTurn = {
-  transcript?: string; reply?: string; corrections?: Turn["corrections"]; status?: Turn["sentenceStatus"];
-  praise?: string | null; priorityIndex?: number;
-};
+export type LiveTurn = { transcript?: string; reply?: string; corrections?: Turn["corrections"]; status?: Turn["sentenceStatus"] };
 
 /**
  * One answer, typed or spoken, read as a stream: `onLive` gets the transcript, the coach's text and the corrections
@@ -121,8 +104,6 @@ export async function streamAnswer(
   const form = new FormData();
   if ("text" in input) form.append("text", input.text);
   else form.append("audio", input.audio, "recording.webm");
-  if (input.think !== undefined) form.append("think_seconds", String(input.think));
-  if (input.explain) form.append("explain_lang", input.explain);
   let reply = "";
   let audioUrl: string | null = null;
   let done: TurnDto | null = null;
@@ -130,7 +111,7 @@ export async function streamAnswer(
   await apiStream(endpoints.ai.turn(sessionId), form, (name, data) => {
     if (name === "transcript") onLive({ transcript: data.text });
     else if (name === "reply") { reply = data.text; onLive({ reply }); }
-    else if (name === "corrections") onLive({ corrections: data.corrections, status: data.sentence_status, praise: data.praise ?? null, priorityIndex: data.priority_index ?? 0 });
+    else if (name === "corrections") onLive({ corrections: data.corrections, status: data.sentence_status });
     else if (name === "audio") { audioUrl = data.audio_url; onAudio(audioUrl, reply); }
     else if (name === "done") done = { ...data, reply_audio_url: audioUrl ?? data.reply_audio_url ?? null };
     else if (name === "error") error = new ApiError(data.detail, data.status, data);
@@ -141,21 +122,3 @@ export async function streamAnswer(
 }
 
 export const speakLastLine = (sessionId: string) => api.post<SpokenDto>(endpoints.ai.speak(sessionId));
-
-export const askHint = (sessionId: string, body: HintRequestDto) => api.post<HintDto>(endpoints.ai.hint(sessionId), body);
-
-/** "Say it again": the corrected version of answer number `turn` (0 = first), said out loud. */
-export const repeatAnswer = (sessionId: string, turn: number, audio: Blob) => {
-  const form = new FormData();
-  form.append("turn", String(turn));
-  form.append("audio", audio, audio.type.includes("mp4") ? "repeat.mp4" : "repeat.webm");
-  return api.post<RepeatDto>(endpoints.ai.repeat(sessionId), form);
-};
-
-/** "How confident do you feel?", 1 to 5, before the first answer or after the report. */
-export const answerConfidence = (sessionId: string, when: "before" | "after", value: number) =>
-  api.post<void>(endpoints.ai.confidence(sessionId), { when, value });
-
-/** The report's coach note written again in `lang` (nothing is saved, nothing is spent). */
-export const explainNote = (sessionId: string, lang: ExplainLang) =>
-  api.post<{ note: string; explain_lang: ExplainLang }>(endpoints.ai.note(sessionId), { lang });

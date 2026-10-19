@@ -1,124 +1,68 @@
-import type { Level } from "@/features/auth/types/user";
-
-/* ---------- as sent by the API (snake_case) ---------- */
-export type ThemeCategory = "travel" | "work" | "study" | "exams" | "daily_life";
-export type ThemeDto = { id: string; title: string; category: ThemeCategory };
-
-/** POST /groups/join and GET /me/group (null when the student is in no group). */
-export type GroupSummaryDto = {
-  id: number;
-  name: string;
-  level: Level;
-  member_count: number;
-  last_activity: string | null;
-  theme: ThemeDto;
-};
-
-/** GET /groups/preview: for guests and students. */
-export type GroupPreviewDto = { theme: ThemeDto & { question: string }; groups: GroupSummaryDto[] };
-
-export type GroupMemberDto = { id: number; first_name: string | null };
-
-/** GET /groups/{id}, members only. */
-export type GroupDetailDto = {
-  id: number;
-  name: string;
-  level: Level;
-  members: GroupMemberDto[];
-  theme: ThemeDto & { question: string }; // the theme of the week and the question of the day
-};
-
-/** GET /groups/{id}/messages (oldest first), POST /groups/{id}/messages and the message.created event. */
-export type GroupMessageDto = {
-  id: number;
-  body: string;
-  created_at: string;
-  author: GroupMemberDto;
-  author_left: boolean; // a former member
-};
-
-export type CorrectionType = "grammar" | "vocabulary" | "word_choice" | "other";
-
-/** POST /groups/{id}/check: private, nothing is posted. */
-export type CheckedCorrectionDto = {
-  original: string;
-  correction: string;
-  explanation: string; // in the student's explanation language
-  type: CorrectionType;
-  rule: string | null;
-};
-
-/** GET /groups/{id}/leaderboard: practice over the last 7 days. */
-export type LeaderboardEntryDto = {
-  rank: number;
-  member: GroupMemberDto;
-  week_seconds: number;
-  streak_days: number;
-  is_me: boolean;
-};
-
-export type ReportReason = "insult" | "harassment" | "spam" | "other";
-export const REPORT_REASONS: ReportReason[] = ["insult", "harassment", "spam", "other"];
-
-/** What WS /ws/groups/{id} sends after {"type": "auth"}. */
-export type GroupEventDto =
-  | { type: "auth.ok" }
-  | { type: "ping" }
-  | { type: "pong" }
-  | { type: "message.created"; message: GroupMessageDto }
-  | { type: "message.hidden"; message_id: number }
-  | { type: "member.joined"; member: GroupMemberDto }
-  | { type: "member.left"; member: GroupMemberDto };
-
-/* ---------- what the screen uses ---------- */
-export type Theme = { id: string; title: string; category: ThemeCategory };
+export type Person = { id: string; name: string; avatarUrl?: string; online?: boolean };
 
 export type GroupSummary = {
-  id: number;
+  id: string;
   name: string;
-  level: Level;
   memberCount: number;
-  lastActivity: string | null;
-  theme: Theme;
+  language: { code: string; name: string; flagUrl?: string };
+  levelRange: string; // "A2 – B1"
+  description: string;
+  tags: string[];
+  memberAvatars: Person[];
+  isMember: boolean;
+  hasVoiceRoom?: boolean;
+  isExamPrep?: boolean;
 };
 
-/** firstName is null when the member never gave one. */
-export type Member = { id: number; firstName: string | null };
-
-export type GroupDetail = {
-  id: number;
-  name: string;
-  level: Level;
-  members: Member[];
-  theme: Theme & { question: string };
+export type GroupSession = {
+  id: string;
+  groupId: string;
+  groupName?: string;
+  title: string;
+  startsAt: string; // ISO
+  startsAtLabel?: string; // optional pre-formatted by backend (timezone aware)
+  durationMinutes: number;
+  icon?: string;
+  hasReminder?: boolean;
+  isMember?: boolean;
 };
 
-export type GroupMessage = {
-  id: number;
-  body: string;
+export type ActiveTopic = { id: string; name: string; conversationCount: string; trend: string };
+
+export type Moderator = Person & { role?: string };
+
+export type GroupDetail = GroupSummary & {
+  imageUrl?: string;
   createdAt: string;
-  author: Member;
-  authorLeft: boolean;
+  topics: string[];
+  levelLabel?: string;
+  todayTopic?: { title: string; description?: string } | null;
+  liveVoiceRoom?: {
+    id: string;
+    title: string;
+    participantCount: number;
+    isOpen: boolean;
+    participants: Person[];
+  } | null;
+  nextSession?: GroupSession | null;
+  moderators: Moderator[];
 };
 
-/** The messages loaded so far, oldest first, and whether older ones can still be loaded (scrolling up). */
-export type MessageLog = { messages: GroupMessage[]; hasOlder: boolean };
-
-export type CheckedCorrection = {
-  original: string;
-  correction: string;
-  explanation: string;
-  type: CorrectionType;
-  rule: string | null;
+export type GroupPost = {
+  id: string;
+  author: Person;
+  createdAt: string;
+  body: string;
+  likeCount: number;
+  commentCount: number;
+  likedByMe: boolean;
 };
 
-export type LeaderboardEntry = {
-  rank: number;
-  member: Member;
-  weekSeconds: number;
-  streakDays: number;
-  isMe: boolean;
+export type GroupFilters = {
+  search?: string;
+  language?: string;
+  level?: string;
+  topic?: string;
+  voiceRooms?: boolean;
+  examPrep?: boolean;
 };
-
-/** What a visitor without an account sees. */
-export type GroupPreview = { theme: GroupDetail["theme"]; groups: GroupSummary[] };
