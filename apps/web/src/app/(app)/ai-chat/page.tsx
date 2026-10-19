@@ -13,6 +13,7 @@ import { MAX_RECORDING_S, useVoiceRecorder, type Recording } from "@/features/ai
 import { useCoachVoice } from "@/features/ai-chat/hooks/useCoachVoice";
 import { useRealtimeVoice } from "@/features/ai-chat/hooks/useRealtimeVoice";
 import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOfCredits";
+import { applyVoiceCorrection } from "@/features/ai-chat/lib/voiceCorrection";
 import { markSentence } from "@/features/ai-chat/lib/marks";
 import type { AiSession, ChatMessage, Correction, SentenceStatus, SessionReport } from "@/features/ai-chat/types/ai";
 import { Avatar, Button, Card, EmptyState, PageHeader, Skeleton } from "@/components/ui";
@@ -151,7 +152,7 @@ function Chat() {
             ...prev,
             messages: [
               ...prev.messages,
-              { id: `${prev.id}-${n}`, role: "user", content: userText, createdAt: new Date().toISOString(), status: "green" },
+              { id: `${prev.id}-${n}`, role: "user", content: userText, createdAt: new Date().toISOString() },
             ],
           };
         });
@@ -180,28 +181,7 @@ function Chat() {
       if (sessionId) {
         qc.setQueryData<AiSession>(aiSessionKey(sessionId), (prev) => {
           if (!prev) return prev;
-          const n = prev.messages.length;
-          const at = new Date().toISOString();
-          return {
-            ...prev,
-            messages: [
-              ...prev.messages,
-              {
-                id: `${prev.id}-${n}`,
-                role: "user",
-                content: data.original,
-                createdAt: at,
-                status: data.sentence_status,
-                corrections: data.corrections,
-              },
-              {
-                id: `${prev.id}-${n + 1}`,
-                role: "assistant",
-                content: data.reply,
-                createdAt: at,
-              },
-            ],
-          };
+          return applyVoiceCorrection(prev, data);
         });
         session.refetch();
       }
@@ -580,7 +560,7 @@ function Chat() {
         </div>
       </div>
 
-      <aside className="hidden space-y-4 xl:block">
+      <aside className="space-y-4" aria-label="Live corrections">
         <Card className="space-y-3">
           <div className="flex items-center justify-between"><h2 className="text-xl font-bold">Live corrections</h2>
             {s && !s.finished && <span className="flex items-center gap-2 text-sm"><span className="h-2.5 w-2.5 rounded-full bg-success" /> Active</span>}</div>
