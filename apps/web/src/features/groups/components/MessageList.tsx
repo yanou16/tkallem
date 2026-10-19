@@ -12,7 +12,7 @@ import { REPORT_REASONS, type GroupMessage, type MessageLog, type ReportReason }
 const NEAR_BOTTOM = 120;
 
 /** A chat bubble (DESIGN.md radii: --radius-bubble, the tail corner --radius-input). Long words wrap inside it. */
-const BUBBLE = "min-w-0 max-w-[65%] whitespace-pre-wrap rounded-bubble px-4 py-2.5 [overflow-wrap:anywhere]";
+const BUBBLE = "min-w-0 max-w-[85%] whitespace-pre-wrap rounded-bubble px-4 py-3 text-ink [overflow-wrap:anywhere] sm:max-w-[75%]";
 
 /** "18:42": the time of a group's first message, in the student's time zone. */
 const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
@@ -27,6 +27,8 @@ export default function MessageList({ groupId, log, myId }: { groupId: number; l
   const box = useRef<HTMLDivElement>(null);
   const seen = useRef<{ first?: number; last?: number; height: number; top: number }>({ height: 0, top: 0 });
   const atBottom = useRef(true);
+  // Existing history stays still, including older pages loaded above it.
+  const [initialLastId] = useState(() => messages.at(-1)?.id ?? 0);
   const { messages } = log;
 
   useLayoutEffect(() => {
@@ -52,7 +54,7 @@ export default function MessageList({ groupId, log, myId }: { groupId: number; l
 
   return (
     <>
-      <div ref={box} onScroll={onScroll} className="max-h-[60vh] min-h-[240px] space-y-3 overflow-y-auto pr-1" aria-live="polite">
+      <div ref={box} onScroll={onScroll} className="max-h-[60vh] min-h-[240px] space-y-3 overflow-y-auto p-4 sm:p-6" aria-label="Group conversation" aria-live="polite">
         {log.hasOlder && (
           <div className="flex justify-center">
             <Button dark={false} onClick={() => older.mutate()} disabled={older.isPending} className="text-sm">
@@ -64,16 +66,16 @@ export default function MessageList({ groupId, log, myId }: { groupId: number; l
         {messages.length === 0 ? (
           <EmptyState title="No messages yet" text="Answer today's question to start the conversation." />
         ) : (
-          <ul className="space-y-4">
+          <ul className="space-y-6">
             {groupMessages(messages).map((g) => g.author.id === myId ? (
               <li key={g.messages[0].id} className="flex flex-col items-end gap-1">
-                <p className="px-1 text-sm text-muted"><span className="sr-only">You · </span>{clock(g.startedAt)}</p>
+                <p className="flex items-center gap-2 px-1 text-sm text-muted"><span className="font-medium text-ink">You</span><span>{clock(g.startedAt)}</span></p>
                 {g.messages.map((m) => (
-                  <p key={m.id} className={cn(BUBBLE, "rounded-br-input bg-ink text-white")}>{m.body}</p>
+                  <p key={m.id} className={cn(BUBBLE, "rounded-br-input bg-tint-visa", m.id > initialLastId && "tk-in")}>{m.body}</p>
                 ))}
               </li>
             ) : (
-              <li key={g.messages[0].id} className="flex items-end gap-2">
+              <li key={g.messages[0].id} className="flex items-start gap-3">
                 {/* A former member: "?" on light grey (Avatar's own background), like a member without a first name. */}
                 <Avatar first={g.authorLeft ? undefined : g.author.firstName ?? undefined} size={32} className="shrink-0" />
                 <div className="min-w-0 flex-1 space-y-1">
@@ -81,7 +83,7 @@ export default function MessageList({ groupId, log, myId }: { groupId: number; l
                     {g.authorLeft ? "Former member" : <span className="font-medium text-ink">{memberName(g.author)}</span>} · {clock(g.startedAt)}
                   </p>
                   {g.messages.map((m) => (
-                    <div key={m.id} className="flex items-center">
+                    <div key={m.id} className={cn("flex items-start", m.id > initialLastId && "tk-in")}>
                       <p className={cn(BUBBLE, "rounded-bl-input border border-line bg-white")}>{m.body}</p>
                       <button onClick={() => setReporting(m)} aria-label={`Report the message of ${memberName(m.author)}`}
                         className="group flex h-11 w-11 shrink-0 items-center justify-center text-muted">
