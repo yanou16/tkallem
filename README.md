@@ -55,6 +55,7 @@ with nobody watching. The student can also *see* the freeze itself: how long the
 3. Read the correction, press **Say it again**, finish the interview and open the **report**.
 
 A guest has **40 free answers**. Signing in adds 60 more and 15 every day. It installs on a phone like an app (PWA).
+A guest's sessions, reports and progress are kept on that device; creating an account moves them to the account.
 
 ## What a student can do
 
@@ -179,7 +180,8 @@ no errors ([`apps/api/loadtest/`](apps/api/loadtest/README.md)).
 - **The evaluation sets are small and labelled by one person** (33 sentences, 9 attacks, 20 "Help me start" cases). A
   correction can still be wrong; one example is described in [docs/ai.md](docs/ai.md#limits).
 - **Scenarios are few** (ten). A real Campus France interview is in French; ours trains the English version of it.
-- **One API process:** several instances would need Redis first. Practice groups are built but hidden for the competition.
+- **One API process:** several instances would need Redis first.
+- **Practice groups:** a guest sees a read-only preview; joining and chatting need an account.
 - **Sign-in uses a Clerk development instance** and the interface is in English only.
 - **The optional 3D avatar** comes from the TalkingHead project, whose sample avatars are for non-commercial use; it is off by default.
 - Voice quality and latency depend on the providers' free quotas; a long outage falls back to the browser's voice.
