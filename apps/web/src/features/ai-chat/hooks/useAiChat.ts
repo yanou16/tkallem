@@ -1,4 +1,6 @@
 "use client";
+import { answerConfidence, askHint, repeatAnswer } from "../api/ai";
+import type { HintRequestDto } from "../types/ai";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { endSession, getSession, sendAnswer, speakLastLine, startSession, streamAnswer, type AnswerInput, type LiveTurn } from "../api/ai";
@@ -110,6 +112,28 @@ export const useSpeakLastLine = (sessionId?: string) => {
           if (messages[i].role === "assistant") { messages[i] = { ...messages[i], audioUrl: r.audio_url }; break; }
         }
         return { ...prev, messages };
+      }),
+  });
+};
+
+/** "Help me start" on the current question: free, at most 2 per question (the API answers 429 after that). */
+export const useHint = (sessionId?: string) =>
+  useMutation({ mutationFn: (body: HintRequestDto) => askHint(sessionId!, body) });
+
+/** "Say it again" on one corrected answer: free, 3 tries per answer (the API answers 429 after that). */
+export const useRepeat = (sessionId?: string) =>
+  useMutation({ mutationFn: ({ turn, audio }: { turn: number; audio: Blob }) => repeatAnswer(sessionId!, turn, audio) });
+
+/** The student's own 1-to-5 answer. The session in the cache is updated at once, the server keeps the last answer. */
+export const useConfidence = (sessionId?: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ when, value }: { when: "before" | "after"; value: number }) => answerConfidence(sessionId!, when, value),
+    onSuccess: (_, { when, value }) =>
+      qc.setQueryData<AiSession>(key(sessionId), (prev) => {
+        if (!prev) return prev;
+        const confidence = { before: null, after: null, ...prev.confidence, [when]: value };
+        return { ...prev, confidence, report: prev.report ? { ...prev.report, confidence } : prev.report };
       }),
   });
 };
