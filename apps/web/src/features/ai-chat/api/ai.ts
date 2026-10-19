@@ -1,3 +1,5 @@
+import type { HintRequestDto, HintDto, RepeatDto } from "../types/ai";
+import type { ExplainLang } from "@/features/auth/types/user";
 import { ApiError, api, apiStream } from "@/lib/api/client";
 import { endpoints } from "@/lib/api/endpoints";
 import { mapMetrics } from "@/features/progress/api/progress";
@@ -122,3 +124,21 @@ export async function streamAnswer(
 }
 
 export const speakLastLine = (sessionId: string) => api.post<SpokenDto>(endpoints.ai.speak(sessionId));
+
+export const askHint = (sessionId: string, body: HintRequestDto) => api.post<HintDto>(endpoints.ai.hint(sessionId), body);
+
+/** "Say it again": the corrected version of answer number `turn` (0 = first), said out loud. */
+export const repeatAnswer = (sessionId: string, turn: number, audio: Blob) => {
+  const form = new FormData();
+  form.append("turn", String(turn));
+  form.append("audio", audio, audio.type.includes("mp4") ? "repeat.mp4" : "repeat.webm");
+  return api.post<RepeatDto>(endpoints.ai.repeat(sessionId), form);
+};
+
+/** "How confident do you feel?", 1 to 5, before the first answer or after the report. */
+export const answerConfidence = (sessionId: string, when: "before" | "after", value: number) =>
+  api.post<void>(endpoints.ai.confidence(sessionId), { when, value });
+
+/** The report's coach note written again in `lang` (nothing is saved, nothing is spent). */
+export const explainNote = (sessionId: string, lang: ExplainLang) =>
+  api.post<{ note: string; explain_lang: ExplainLang }>(endpoints.ai.note(sessionId), { lang });
