@@ -22,6 +22,7 @@ const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-d
  * page loaded above keeps the same message in view.
  */
 export default function MessageList({ groupId, log, myId }: { groupId: number; log: MessageLog; myId?: number }) {
+  const { messages } = log;
   const older = useLoadOlder(groupId);
   const [reporting, setReporting] = useState<GroupMessage | null>(null);
   const box = useRef<HTMLDivElement>(null);
@@ -29,7 +30,6 @@ export default function MessageList({ groupId, log, myId }: { groupId: number; l
   const atBottom = useRef(true);
   // Existing history stays still, including older pages loaded above it.
   const [initialLastId] = useState(() => messages.at(-1)?.id ?? 0);
-  const { messages } = log;
 
   useLayoutEffect(() => {
     const el = box.current;
