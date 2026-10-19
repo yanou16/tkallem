@@ -1,0 +1,6 @@
+# Who must review a change before it reaches main.
+# With "Require review from Code Owners" turned on in the branch protection of main,
+# a pull request cannot be merged without an approval from the owner of every file it touches.
+# Today that is the project lead for everything.
+
+*  @yanou16
