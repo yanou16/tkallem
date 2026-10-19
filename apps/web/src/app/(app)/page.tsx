@@ -5,7 +5,7 @@ import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useProgress } from "@/features/progress/hooks/useProgress";
 import { mistakeLabel, type Progress } from "@/features/progress/types/progress";
 import { useMySessions, useScenarios } from "@/features/practice/hooks/usePractice";
-import { useSuggestedGroups } from "@/features/groups/hooks/useGroups";
+import { useGroupPreview } from "@/features/groups/hooks/useGroups";
 import { Async, Card, EmptyState, GoalHint, PageHeader, ProgressRing, SectionTitle, Skeleton, toneAt } from "@/components/ui";
 import { CardsSkeleton, GroupCard, ScenarioCard, SessionList } from "@/components/cards";
 import { Icon } from "@/lib/icons";
@@ -14,7 +14,7 @@ import { cn, formatMinutes, formatNumber, plural } from "@/lib/utils";
 export default function HomePage() {
   const { user } = useCurrentUser();
   const progress = useProgress();
-  const suggestedGroups = useSuggestedGroups();
+  const suggestedGroups = useGroupPreview();
   const goal = user?.dailyGoalMinutes;
 
   return (
@@ -55,10 +55,10 @@ export default function HomePage() {
           <Async
             query={suggestedGroups}
             skeleton={<CardsSkeleton n={3} h="h-28" cols="md:grid-cols-3" />}
-            isEmpty={(groups) => groups.length === 0}
+            isEmpty={(preview) => preview.groups.length === 0}
             empty={<EmptyState title="No groups yet" text="Join a speaking community to practise with other learners." />}
           >
-            {(groups) => (
+            {({ groups }) => (
               <div className="grid gap-4 md:grid-cols-3">
                 {groups.slice(0, 3).map((group, i) => <GroupCard key={group.id} g={group} tone={toneAt(i)} small />)}
               </div>
