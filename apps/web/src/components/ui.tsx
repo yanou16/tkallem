@@ -1,4 +1,4 @@
-"use client";
+ "use client";
 import Image from "next/image";
 import { AlertCircle, X } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
@@ -65,7 +65,7 @@ export function SectionTitle({ title, action }: { title: string; action?: ReactN
 
 export function PageHeader({ eyebrow, title, subtitle }: { eyebrow?: ReactNode; title: string; subtitle?: string }) {
   return (
-    <header className="mb-6">
+    <header className="tk-in mb-6">
       {eyebrow && <p className="mb-1 text-sm text-muted">{eyebrow}</p>}
       <h1 className="text-[28px] font-medium leading-tight tracking-tight md:text-5xl">{title}</h1>
       {subtitle && <p className="mt-2 text-base text-muted md:text-lg">{subtitle}</p>}
