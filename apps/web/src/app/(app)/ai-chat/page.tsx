@@ -11,6 +11,7 @@ import ExplainToggle from "@/features/ai-chat/components/ExplainToggle";
 import type { ExplainLang } from "@/features/auth/types/user";
 import { CoachAvatar } from "@/components/CoachAvatar";
 import InstallButton from "@/components/InstallButton";
+import GuestSaveNote from "@/components/GuestSaveNote";
 import VoiceState, { formatTime, type CoachState } from "@/features/ai-chat/components/VoiceState";
 import HelpMeStart from "@/features/ai-chat/components/HelpMeStart";
 import ConfidenceAsk from "@/features/ai-chat/components/ConfidenceAsk";
@@ -632,6 +633,7 @@ function SummaryRow({ icon, tone, title, sub }: { icon: React.ReactNode; tone: s
 }
 
 function Report({ report, title, sessionId, explainDefault, onRestart }: { report: SessionReport; title?: string; sessionId?: string; explainDefault: ExplainLang; onRestart: () => void }) {
+  const { isGuest } = useCurrentUser();
   // The note comes in the language of the session; the other one is written on demand (nothing is saved, nothing is spent).
   const [lang, setLang] = useState<ExplainLang>(explainDefault);
   const [notes, setNotes] = useState<Partial<Record<ExplainLang, string>>>({ [explainDefault]: report.note });
@@ -736,6 +738,7 @@ function Report({ report, title, sessionId, explainDefault, onRestart }: { repor
         </ol>
       </Card>
 
+      {isGuest && <GuestSaveNote className="mt-6" />}
       <p className="mt-6 text-slate">You finished one interview. Five minutes tomorrow keeps it going.</p>
       <div className="mt-3 flex flex-wrap gap-3">
         <Button onClick={onRestart}>Practice again</Button>

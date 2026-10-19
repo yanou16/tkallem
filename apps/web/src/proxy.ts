@@ -3,19 +3,9 @@ import {
   createRouteMatcher,
 } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { PUBLIC_ROUTES } from "@/lib/publicRoutes";
 
-const isPublicRoute = createRouteMatcher([
-  "/sign-in(.*)",
-  "/sign-up(.*)",
-  "/sso-callback(.*)",
-  "/forgot-password(.*)",
-  "/welcome",
-  // visitors without account (guest mode, docs/CREDITS.md): the API itself enforces who may do what
-  "/practice(.*)",
-  "/ai-chat(.*)",
-  "/plan(.*)",
-  "/groups(.*)", // guests see a read-only preview; the API refuses everything else to them
-]);
+const isPublicRoute = createRouteMatcher([...PUBLIC_ROUTES]);
 
 export default clerkMiddleware(async (auth, req) => {
   // Signed-out visitors (a judge opening the demo link) land on the public page that offers to try without an account.

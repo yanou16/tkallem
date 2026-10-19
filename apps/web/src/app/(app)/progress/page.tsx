@@ -2,8 +2,11 @@
 import Link from "next/link";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useProgress } from "@/features/progress/hooks/useProgress";
+import { useMySessions } from "@/features/practice/hooks/usePractice";
+import GuestSaveNote from "@/components/GuestSaveNote";
+import { SessionList } from "@/components/cards";
 import { mistakeLabel, type ProgressMetrics } from "@/features/progress/types/progress";
-import { Card, EmptyState, ErrorState, PageHeader, Skeleton } from "@/components/ui";
+import { Async, Card, EmptyState, ErrorState, PageHeader, Skeleton } from "@/components/ui";
 import { formatMinutes, formatNumber } from "@/lib/utils";
 
 type Metric = {
@@ -31,14 +34,15 @@ function changeText(change: number) {
 }
 
 export default function ProgressPage() {
-  const { user } = useCurrentUser();
+  const { user, isGuest } = useCurrentUser();
   const q = useProgress();
+  const recent = useMySessions(5);
   const p = q.data;
 
   return (
     <div>
       <PageHeader
-        eyebrow={user?.firstName ? `Salam ${user.firstName}` : undefined}
+        eyebrow={!isGuest && user?.firstName ? `Salam ${user.firstName}` : undefined}
         title="Track your progress"
         subtitle="See your speaking metrics and the mistakes to work on next."
       />
@@ -50,6 +54,7 @@ export default function ProgressPage() {
           action={<Link href="/practice" className="inline-flex min-h-11 items-center rounded-full bg-ink px-5 text-sm font-semibold text-white">Choose a situation</Link>} />
       ) : (
         <div className="space-y-6">
+          {isGuest && <GuestSaveNote />}
           {!p.baseline && <p className="text-sm text-slate">This is your starting point. The comparison with your first sessions appears after your next one.</p>}
           <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-card bg-ink p-5 text-white md:row-span-1">
@@ -87,7 +92,7 @@ export default function ProgressPage() {
                       <p className="font-medium">{mistakeLabel(m.category)}</p>
                       <p className="text-sm text-slate">{m.original} → {m.correction}</p>
                     </div>
-                    <span aria-label={`${m.count} times`} className="rounded-full bg-surface px-2.5 py-1 text-[13px] font-semibold">{m.count}×</span>
+                    <span aria-label={`${m.count} times`} className="rounded-full bg-surface px-2.5 py-1 text-sm font-semibold">{m.count}×</span>
                   </li>
                 ))}
               </ul>
@@ -95,6 +100,14 @@ export default function ProgressPage() {
             {p.topMistakes.length > 0 && (
               <Link href="/practice" className="mt-4 inline-flex min-h-11 items-center rounded-full border border-hairline-strong px-5 text-sm font-semibold hover:bg-surface">Practice again</Link>
             )}
+          </Card>
+          <Card>
+            <h2 className="text-xl font-semibold">Your last reports</h2>
+            <p className="text-sm text-slate">Open one to read its report again.</p>
+            <Async query={recent} skeleton={<Skeleton className="mt-4 h-40" />} isEmpty={(d) => d.length === 0}
+              empty={<EmptyState className="mt-4" title="No reports yet" text="Finish a practice session and its report will be kept here." />}>
+              {(list) => <SessionList sessions={list} />}
+            </Async>
           </Card>
         </div>
       )}

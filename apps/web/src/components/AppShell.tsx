@@ -13,6 +13,7 @@ import CreditsPill from "@/components/CreditsPill";
 import ChooseLevel from "@/components/ChooseLevel";
 import { useIdentity } from "@/features/credits/hooks/useCredits";
 import { FEATURES } from "@/lib/features";
+import { GUEST_PATHS } from "@/lib/publicRoutes";
 
 /** One entry for practice: the list of situations (/practice) and the conversation (/ai-chat) are two steps of the same thing. */
 const NAV: { href: string; label: string; icon: typeof House; also?: string[] }[] = [
@@ -38,7 +39,7 @@ function Logo() {
 }
 
 /** A visitor without account only sees the screens that work without one. */
-const GUEST_NAV = NAV.filter((n) => n.href === "/practice" || n.href === "/groups");
+const GUEST_NAV = NAV.filter((n) => GUEST_PATHS.includes(n.href));
 function useNav() {
   return useIdentity().isGuest ? GUEST_NAV : NAV;
 }
