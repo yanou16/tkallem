@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import { Lightbulb, LogOut, SendHorizontal, Users } from "lucide-react";
-import { Async, Avatar, Button, Card, Dialog, Pill, Skeleton } from "@/components/ui";
+import { Async, Avatar, Button, Dialog, Pill, Skeleton } from "@/components/ui";
 import { cn, plural } from "@/lib/utils";
 import { useGroup, useGroupSocket, useLeaderboard, useLeaveGroup, useMessages, useSendMessage } from "../hooks/useGroups";
 import { closedReason, memberName, sendError } from "../lib/labels";
@@ -40,14 +40,14 @@ export default function GroupRoom({ summary }: { summary: GroupSummary }) {
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0">
-        <div className="flex flex-wrap items-start gap-6">
-          <span className="flex h-24 w-24 shrink-0 items-center justify-center rounded-3xl bg-surface text-3xl font-semibold md:h-[136px] md:w-[136px] md:text-4xl">{name[0]}</span>
-          <div className="min-w-[220px] flex-1">
+        <div className="flex flex-wrap items-start gap-4">
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-tint-visa text-2xl font-semibold">{name[0]}</span>
+          <div className="min-w-0 flex-1 basis-[220px]">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h1 className="text-3xl font-medium tracking-tight md:text-4xl">{name}</h1>
+                <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{name}</h1>
                 <p className="mt-1 flex items-center gap-2 text-muted"><Users size={16} /> {plural(group.data?.members.length ?? summary.memberCount, "member")}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="mt-2 flex flex-wrap gap-2">
                   <Pill className="border border-line">Level {summary.level}</Pill>
                   <LiveStatus status={status} />
                 </div>
@@ -69,40 +69,41 @@ export default function GroupRoom({ summary }: { summary: GroupSummary }) {
 
         {tab === "discussion" && (
           <>
-            <div className="mt-6 flex flex-wrap items-center gap-5 rounded-card bg-surface p-6">
-              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white"><Lightbulb /></span>
-              <div className="min-w-[200px] flex-1">
+            <div className="mt-5 flex flex-wrap items-center gap-4 rounded-2xl bg-tint-campus p-4">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/60"><Lightbulb size={20} /></span>
+              <div className="min-w-0 flex-1 basis-[180px]">
                 <p className="text-sm">Theme of the week: {summary.theme.title}</p>
-                {group.data ? <h2 className="text-xl font-semibold">{group.data.theme.question}</h2>
+                {group.data ? <h2 className="text-lg font-semibold">{group.data.theme.question}</h2>
                   : group.isLoading ? <Skeleton className="mt-1 h-7 w-3/4" />
-                  : <h2 className="text-xl font-semibold">{summary.theme.title}</h2>}
+                  : <h2 className="text-lg font-semibold">{summary.theme.title}</h2>}
               </div>
               <Button dark={false} onClick={() => composer.current?.focus()}>Answer it</Button>
             </div>
 
-            <div className="mt-6">
-              <Async query={messages} skeleton={<Skeleton className="h-64" />}>
-                {(log) => <MessageList groupId={id} log={log} myId={myId} />}
-              </Async>
-            </div>
+            <section className="mt-5 overflow-hidden rounded-card border border-line bg-surface/40" aria-label="Discussion">
+              <div>
+                <Async query={messages} skeleton={<Skeleton className="h-64" />}>
+                  {(log) => <MessageList groupId={id} log={log} myId={myId} />}
+                </Async>
+              </div>
 
-            <Card className="mt-4">
-              <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
-                <label htmlFor="group-message" className="sr-only">Your message</label>
-                <textarea id="group-message" ref={composer} value={draft} rows={3}
-                  onChange={(e) => { setDraft(e.target.value); if (send.error) send.reset(); }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); }
-                  }}
-                  placeholder="Write in English… (Enter to send, Shift+Enter for a new line)"
-                  className="w-full resize-none rounded-xl border border-line p-3 outline-none focus:border-ink" />
-                <div className="mt-2 flex items-center justify-between gap-3">
-                  <span className={cn("text-sm", text.length > MESSAGE_MAX ? "font-semibold text-[color:var(--bad)]" : "text-muted")}>{text.length}/{MESSAGE_MAX}</span>
-                  <Button type="submit" disabled={!canSend}><SendHorizontal size={16} /> {send.isPending ? "Sending…" : "Send"}</Button>
-                </div>
-                {send.error && <p role="alert" className="mt-3 rounded-2xl bg-bad-bg px-4 py-3 text-sm">{sendError(send.error)}</p>}
-              </form>
-            </Card>
+              <div className="border-t border-line bg-white p-4">
+                <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
+                  <label htmlFor="group-message" className="sr-only">Your message</label>
+                  <textarea id="group-message" ref={composer} value={draft} rows={2}
+                    onChange={(e) => { setDraft(e.target.value); if (send.error) send.reset(); }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); }
+                    }}
+                    placeholder="Write in English… (Enter to send, Shift+Enter for a new line)"
+                    className="w-full resize-none rounded-2xl border border-line bg-surface p-3 text-base outline-none focus:border-ink" />
+                  <div className="mt-2 flex items-center justify-end gap-3">
+                    <Button type="submit" disabled={!canSend}><SendHorizontal size={16} /> {send.isPending ? "Sending…" : "Send"}</Button>
+                  </div>
+                  {send.error && <p role="alert" className="mt-3 rounded-2xl bg-bad-bg px-4 py-3 text-sm">{sendError(send.error)}</p>}
+                </form>
+              </div>
+            </section>
           </>
         )}
 
