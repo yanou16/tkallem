@@ -135,6 +135,7 @@ export type ChatMessage = {
 };
 
 export type AiSession = {
+  confidence?: { before: number | null; after: number | null };
   id: string;
   scenarioId: string;
   /** From GET /sessions/{id}; a new session takes its title from the scenario list. */
@@ -144,3 +145,13 @@ export type AiSession = {
   /** Set once the session is ended. For a reloaded session, only what the API stored (no levels, no redo). */
   report?: SessionReport;
 };
+
+/** "Help me start" (POST /sessions/{id}/hint). A translation refused by the code comes back as the scenario's starter. */
+export type HintRequestDto = { type: "starter" } | { type: "translate"; text: string };
+/** "Say it again" (POST /sessions/{id}/repeat): judged by code on the server, never by the model. */
+export type RepeatDto = {
+  nailed: boolean; heard: string; target: string; missing: string[]; similarity: number; tries_left: number;
+};
+/** Freeze meter: the time before starting to answer, averaged by the server (POST /end, GET /sessions/{id}). */
+export type FreezeDto = { seconds: number; answers: number; kind: "voice" | "text" | "mixed"; previous?: number | null };
+export type HintDto = { kind: "starter" | "translation"; lines: string[]; fallback: boolean; remaining: number };
