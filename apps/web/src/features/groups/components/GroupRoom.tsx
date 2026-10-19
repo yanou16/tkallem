@@ -102,6 +102,9 @@ export default function GroupRoom({ summary }: { summary: GroupSummary }) {
                   </div>
                   {send.error && <p role="alert" className="mt-3 rounded-2xl bg-bad-bg px-4 py-3 text-sm">{sendError(send.error)}</p>}
                 </form>
+                <div className="mt-4">
+                  <CheckPanel groupId={id} draft={draft} maxLength={MESSAGE_MAX} />
+                </div>
               </div>
             </section>
           </>
@@ -126,7 +129,6 @@ export default function GroupRoom({ summary }: { summary: GroupSummary }) {
       </div>
 
       <aside className="space-y-4">
-        <CheckPanel groupId={id} draft={draft} maxLength={MESSAGE_MAX} />
         <Leaderboard query={leaderboard} />
       </aside>
 
