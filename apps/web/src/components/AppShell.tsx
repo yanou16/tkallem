@@ -14,6 +14,10 @@ import ChooseLevel from "@/components/ChooseLevel";
 import { useIdentity } from "@/features/credits/hooks/useCredits";
 import { FEATURES } from "@/lib/features";
 
+export function isActive(path: string | null, href: string, aliases: string[] = []) {
+  return path !== null && [href, ...aliases].some((route) => route === "/" ? path === "/" : path === route || path.startsWith(route + "/"));
+}
+
 const NAV = [
   { href: "/", label: "Home", icon: House },
   { href: "/practice", label: "Practice", icon: MessageCircle },
@@ -46,7 +50,7 @@ function Sidebar() {
       <Logo />
       <nav className="flex flex-col gap-1.5" aria-label="Main">
         {nav.map(({ href, label, icon: I }) => {
-          const active = href === "/" ? path === "/" : path.startsWith(href);
+          const active = isActive(path, href);
           return (
             <Link key={href} href={href} aria-current={active ? "page" : undefined}
               className={cn("flex items-center gap-4 rounded-full px-5 py-3.5 text-[15px] font-medium transition",
@@ -66,7 +70,7 @@ function MobileNav() {
   return (
     <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-line bg-white/95 py-2 md:hidden">
       {nav.map(({ href, label, icon: I }) => {
-        const active = href === "/" ? path === "/" : path.startsWith(href);
+        const active = isActive(path, href);
         return (
           <Link key={href} href={href} className={cn("flex flex-col items-center gap-0.5 px-2 text-[11px]", active ? "font-semibold text-ink" : "text-muted")}>
             <I size={20} /> {label}
