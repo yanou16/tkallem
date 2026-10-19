@@ -12,10 +12,9 @@ export class ApiError extends Error {
 }
 
 /* ---------- auth: the Clerk session token, sent as a Bearer token ---------- */
-type TokenOptions = { skipCache?: boolean };
-let authTokenProvider: ((options?: TokenOptions) => Promise<string | null>) | null = null;
+let authTokenProvider: (() => Promise<string | null>) | null = null;
 
-export function setAuthTokenProvider(provider: ((options?: TokenOptions) => Promise<string | null>) | null) {
+export function setAuthTokenProvider(provider: (() => Promise<string | null>) | null) {
   authTokenProvider = provider;
 }
 
@@ -87,17 +86,14 @@ export function errorMessage(data: unknown, status: number): string {
 }
 
 /** Signed in: the Clerk session token. Signed out: the guest token, if this visitor has one. */
-export async function getAuthHeaderValue(requestToken?: string | null, fresh = false): Promise<string | null> {
-  const token = requestToken ?? (await authTokenProvider?.(fresh ? { skipCache: true } : undefined)) ?? null;
-  if (token) return `Bearer ${token}`;
-  const guest = guestStore.get();
-  if (guest) return `Guest ${guest}`;
-  return null;
-}
-
 async function authorize(headers: Headers, requestToken?: string | null) {
-  const auth = await getAuthHeaderValue(requestToken);
-  if (auth) headers.set("Authorization", auth);
+  const token = requestToken ?? (await authTokenProvider?.()) ?? null;
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+    return;
+  }
+  const guest = guestStore.get();
+  if (guest) headers.set("Authorization", `Guest ${guest}`);
 }
 
 function failure(res: Response, data: unknown, headers: Headers, skipAuthRedirect?: boolean): ApiError {

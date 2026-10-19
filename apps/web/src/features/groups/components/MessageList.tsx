@@ -2,13 +2,20 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { Flag } from "lucide-react";
 import { Avatar, Button, Dialog, EmptyState } from "@/components/ui";
-import { cn, timeAgo } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { useLoadOlder, useReportMessage } from "../hooks/useGroups";
 import { REASON_LABELS, memberName, reportError } from "../lib/labels";
+import { groupMessages } from "../lib/messages";
 import { REPORT_REASONS, type GroupMessage, type MessageLog, type ReportReason } from "../types/groups";
 
 /** Pixels from the bottom under which a new message scrolls the list down (she is reading the latest ones). */
 const NEAR_BOTTOM = 120;
+
+/** A chat bubble (DESIGN.md radii: --radius-bubble, the tail corner --radius-input). Long words wrap inside it. */
+const BUBBLE = "min-w-0 max-w-[65%] whitespace-pre-wrap rounded-bubble px-4 py-2.5 [overflow-wrap:anywhere]";
+
+/** "18:42": the time of a group's first message, in the student's time zone. */
+const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
 
 /**
  * The chat, oldest first. A new message keeps the list at the bottom when she was already there (or wrote it); an older
@@ -48,7 +55,7 @@ export default function MessageList({ groupId, log, myId }: { groupId: number; l
       <div ref={box} onScroll={onScroll} className="max-h-[60vh] min-h-[240px] space-y-3 overflow-y-auto pr-1" aria-live="polite">
         {log.hasOlder && (
           <div className="flex justify-center">
-            <Button dark={false} onClick={() => older.mutate()} disabled={older.isPending} className="!py-1.5 text-xs">
+            <Button dark={false} onClick={() => older.mutate()} disabled={older.isPending} className="text-sm">
               {older.isPending ? "Loading…" : "Load earlier messages"}
             </Button>
           </div>
@@ -57,29 +64,34 @@ export default function MessageList({ groupId, log, myId }: { groupId: number; l
         {messages.length === 0 ? (
           <EmptyState title="No messages yet" text="Answer today's question to start the conversation." />
         ) : (
-          <ul className="space-y-3">
-            {messages.map((m) => {
-              const mine = m.author.id === myId;
-              return (
-                <li key={m.id} className={cn("flex gap-4 rounded-card border border-line p-4", mine ? "bg-black/[0.03]" : "bg-white")}>
-                  <Avatar first={m.author.firstName ?? undefined} size={40} />
-                  <div className="min-w-0 flex-1">
-                    <p className="flex flex-wrap items-baseline gap-x-2">
-                      <span className="font-semibold">{memberName(m.author, mine)}</span>
-                      {m.authorLeft && <span className="text-xs text-muted">former member</span>}
-                      <span className="text-xs text-muted">{timeAgo(m.createdAt)}</span>
-                    </p>
-                    <p className="mt-1 whitespace-pre-wrap break-words">{m.body}</p>
-                  </div>
-                  {!mine && (
-                    <button onClick={() => setReporting(m)} aria-label={`Report the message of ${memberName(m.author)}`}
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted hover:bg-black/5">
-                      <Flag size={16} />
-                    </button>
-                  )}
-                </li>
-              );
-            })}
+          <ul className="space-y-4">
+            {groupMessages(messages).map((g) => g.author.id === myId ? (
+              <li key={g.messages[0].id} className="flex flex-col items-end gap-1">
+                <p className="px-1 text-sm text-muted"><span className="sr-only">You · </span>{clock(g.startedAt)}</p>
+                {g.messages.map((m) => (
+                  <p key={m.id} className={cn(BUBBLE, "rounded-br-input bg-ink text-white")}>{m.body}</p>
+                ))}
+              </li>
+            ) : (
+              <li key={g.messages[0].id} className="flex items-end gap-2">
+                {/* A former member: "?" on light grey (Avatar's own background), like a member without a first name. */}
+                <Avatar first={g.authorLeft ? undefined : g.author.firstName ?? undefined} size={32} className="shrink-0" />
+                <div className="min-w-0 flex-1 space-y-1">
+                  <p className="px-1 text-sm text-muted">
+                    {g.authorLeft ? "Former member" : <span className="font-medium text-ink">{memberName(g.author)}</span>} · {clock(g.startedAt)}
+                  </p>
+                  {g.messages.map((m) => (
+                    <div key={m.id} className="flex items-center">
+                      <p className={cn(BUBBLE, "rounded-bl-input border border-line bg-white")}>{m.body}</p>
+                      <button onClick={() => setReporting(m)} aria-label={`Report the message of ${memberName(m.author)}`}
+                        className="group flex h-11 w-11 shrink-0 items-center justify-center text-muted">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full group-hover:bg-black/5"><Flag size={16} /></span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </li>
+            ))}
           </ul>
         )}
       </div>

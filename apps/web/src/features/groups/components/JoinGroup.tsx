@@ -28,11 +28,11 @@ export default function JoinGroup() {
       <PageHeader title="Find your practice group" subtitle="Write in English with students of your level, every day." />
       <Card>
         <ul className="space-y-4">
-          <li className="flex gap-4"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-mint"><Users size={20} /></span>
+          <li className="flex gap-4"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface"><Users size={20} /></span>
             <p><span className="font-semibold">Up to 8 students of your level.</span> <span className="text-muted">You join the most active group with a free place.</span></p></li>
-          <li className="flex gap-4"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-butter"><Lightbulb size={20} /></span>
+          <li className="flex gap-4"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface"><Lightbulb size={20} /></span>
             <p><span className="font-semibold">A theme every week, a question every day.</span> <span className="text-muted">Answer it in the group chat.</span></p></li>
-          <li className="flex gap-4"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-black/[0.06]"><ShieldCheck size={20} /></span>
+          <li className="flex gap-4"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface"><ShieldCheck size={20} /></span>
             <p><span className="font-semibold">Check your message before sending it.</span> <span className="text-muted">Only you see the corrections.</span></p></li>
         </ul>
         <div className="mt-6 flex flex-wrap items-center gap-3">

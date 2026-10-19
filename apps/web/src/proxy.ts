@@ -13,7 +13,8 @@ const isPublicRoute = createRouteMatcher([
   // visitors without account (guest mode, docs/CREDITS.md): the API itself enforces who may do what
   "/practice(.*)",
   "/ai-chat(.*)",
-  "/groups(.*)",
+  "/plan(.*)",
+  "/groups(.*)", // guests see a read-only preview; the API refuses everything else to them
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

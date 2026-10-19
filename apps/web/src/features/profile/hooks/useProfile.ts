@@ -13,6 +13,7 @@ export function useUpdateProfile() {
     mutationFn: updateProfile,
     onSuccess: (me) => {
       qc.setQueryData(CURRENT_USER_KEY, me);
+      qc.setQueryData([...CURRENT_USER_KEY, "guest"], (old: unknown) => (old ? me : old)); // a guest has its own cache entry
       // The daily goal is part of /me/progress, and the level unlocks a badge.
       qc.invalidateQueries({ queryKey: ["progress"] });
       qc.invalidateQueries({ queryKey: ACHIEVEMENTS_KEY });

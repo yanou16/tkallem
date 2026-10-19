@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { addNewer, addOlder, applyMemberEvent, catchUp, firstPage, hideMessage, lastId, markAuthor, mergeMessages } from "./messages";
+import { addNewer, addOlder, applyMemberEvent, catchUp, firstPage, groupMessages, hideMessage, lastId, markAuthor, mergeMessages } from "./messages";
 import type { GroupDetail, GroupMessage } from "../types/groups";
 
 const AMINA = { id: 1, firstName: "Amina" };
@@ -61,6 +61,37 @@ describe("live events", () => {
     const joined = applyMemberEvent(detail, "member.joined", YACINE);
     expect(applyMemberEvent(joined, "member.joined", YACINE).members).toEqual([AMINA, YACINE]);
     expect(applyMemberEvent(joined, "member.left", AMINA).members).toEqual([YACINE]);
+  });
+});
+
+describe("groupMessages (bubbles)", () => {
+  const at = (id: number, author: typeof AMINA, time: string, authorLeft = false): GroupMessage => ({
+    ...msg(id, author), createdAt: `2026-10-14T${time}:00Z`, authorLeft,
+  });
+  const shape = (list: GroupMessage[]) => groupMessages(list).map((g) => [g.author.id, ids(g.messages)]);
+
+  it("puts consecutive messages of one author less than 5 minutes apart in one group, timed by its first message", () => {
+    const groups = groupMessages([at(1, AMINA, "18:42"), at(2, AMINA, "18:44"), at(3, AMINA, "18:48")]);
+    expect(groups).toHaveLength(1);
+    expect(ids(groups[0].messages)).toEqual([1, 2, 3]); // each gap is under 5 minutes, even if the group lasts longer
+    expect(groups[0].startedAt).toBe("2026-10-14T18:42:00Z");
+  });
+
+  it("starts a new group after 5 minutes or more", () => {
+    expect(shape([at(1, AMINA, "18:00"), at(2, AMINA, "18:05"), at(3, AMINA, "18:20")])).toEqual([[1, [1]], [1, [2]], [1, [3]]]);
+  });
+
+  it("starts a new group when the author changes, even a few seconds later", () => {
+    expect(shape([at(1, AMINA, "18:00"), at(2, YACINE, "18:00"), at(3, AMINA, "18:01")])).toEqual([[1, [1]], [2, [2]], [1, [3]]]);
+  });
+
+  it("groups a former member's messages like the others, and says the author left", () => {
+    const groups = groupMessages([at(1, YACINE, "18:00", true), at(2, YACINE, "18:01", true), at(3, AMINA, "18:02")]);
+    expect(groups.map((g) => [ids(g.messages), g.authorLeft])).toEqual([[[1, 2], true], [[3], false]]);
+  });
+
+  it("has no group for an empty chat", () => {
+    expect(groupMessages([])).toEqual([]);
   });
 });
 
