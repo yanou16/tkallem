@@ -1,6 +1,9 @@
 import type { Config } from "tailwindcss";
+import preset from "./tailwind.preset";
 
 const config: Config = {
+  // Keep this front's overrides while generating the semantic styles used by the live group components.
+  presets: [preset as Config],
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
