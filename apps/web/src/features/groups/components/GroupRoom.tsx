@@ -38,50 +38,104 @@ export default function GroupRoom({ summary }: { summary: GroupSummary }) {
   };
 
   return (
-    <div className="relative flex h-[calc(100dvh-164px)] min-h-[320px] flex-col overflow-hidden rounded-card border border-line bg-white md:h-[calc(100dvh-112px)]">
-      <header className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-tint-visa text-lg font-semibold">{name[0]}</span>
+    <div className="relative flex min-h-0 flex-1 flex-col bg-white">
+      {/* Compact group header integrated into page background */}
+      <header className="flex shrink-0 items-center gap-3 px-4 py-2.5 sm:px-6 sm:py-3">
+        <span className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-tint-visa text-base sm:text-lg font-semibold">{name[0]}</span>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-lg font-semibold tracking-tight">{name}</h1>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+          <h1 className="truncate text-base sm:text-lg font-semibold tracking-tight text-ink">{name}</h1>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted">
             <span className="flex items-center gap-1"><Users size={13} /> {plural(group.data?.members.length ?? summary.memberCount, "member")}</span>
-            <span>{summary.level}</span><LiveStatus status={status} />
+            <span>{summary.level}</span>
+            <LiveStatus status={status} />
           </div>
         </div>
-        <details className="group">
-          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-full border border-line px-3 text-sm font-medium [&::-webkit-details-marker]:hidden"><Trophy size={16} /><span className="hidden sm:inline">Leaderboard</span><span className="sr-only sm:hidden">Leaderboard</span></summary>
-          <aside className="absolute right-3 top-[76px] z-30 max-h-[60%] w-[min(340px,calc(100%-24px))] overflow-y-auto rounded-card bg-white shadow-soft" aria-label="Leaderboard"><Leaderboard query={leaderboard} /></aside>
+        <details className="group relative">
+          <summary className="flex min-h-9 sm:min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-full border border-line px-3 text-xs sm:text-sm font-medium hover:bg-surface [&::-webkit-details-marker]:hidden">
+            <Trophy size={15} />
+            <span className="hidden sm:inline">Leaderboard</span>
+            <span className="sr-only sm:hidden">Leaderboard</span>
+          </summary>
+          <aside className="absolute right-0 top-full z-30 mt-2 max-h-[60dvh] w-[min(340px,calc(100vw-32px))] overflow-y-auto" aria-label="Leaderboard">
+            <Leaderboard query={leaderboard} />
+          </aside>
         </details>
-        <Button dark={false} onClick={() => setLeaving(true)} aria-label="Leave group" className="!px-3"><LogOut size={16} /><span className="hidden lg:inline">Leave group</span></Button>
+        <Button dark={false} onClick={() => setLeaving(true)} aria-label="Leave group" className="!min-h-9 sm:!min-h-10 !px-3 text-xs sm:text-sm">
+          <LogOut size={15} />
+          <span className="hidden lg:inline">Leave group</span>
+        </Button>
       </header>
-      {status.state === "closed" && <p role="alert" className="shrink-0 bg-bad-bg px-4 py-2 text-sm">{closedReason(status.code)}</p>}
-      <div className="relative flex shrink-0 items-center gap-3 border-b border-line px-4">
-        <div className="flex gap-6" role="tablist" aria-label="Group view">
+
+      {status.state === "closed" && <p role="alert" className="shrink-0 bg-bad-bg px-4 py-1.5 text-xs sm:text-sm sm:px-6">{closedReason(status.code)}</p>}
+
+      {/* Slim toolbar: Discussion / Members tabs and Topic */}
+      <div className="relative flex shrink-0 items-center justify-between border-y border-line/60 px-4 sm:px-6">
+        <div className="flex gap-4 sm:gap-6" role="tablist" aria-label="Group view">
           {(["discussion", "members"] as Tab[]).map((t) => (
-            <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={cn("-mb-px min-h-11 border-b-2 text-sm font-medium capitalize", tab === t ? "border-ink" : "border-transparent text-muted")}>{t}</button>
+            <button
+              key={t}
+              role="tab"
+              aria-selected={tab === t}
+              onClick={() => setTab(t)}
+              className={cn(
+                "-mb-px flex h-10 items-center border-b-2 text-xs sm:text-sm font-medium capitalize transition-colors",
+                tab === t ? "border-ink text-ink font-semibold" : "border-transparent text-muted hover:text-ink"
+              )}
+            >
+              {t}
+            </button>
           ))}
         </div>
-        <details className="ml-auto">
-          <summary className="my-1 flex min-h-9 cursor-pointer list-none items-center gap-2 rounded-full bg-tint-campus px-3 text-sm [&::-webkit-details-marker]:hidden"><Lightbulb size={16} /><span>Topic</span></summary>
-          <div className="absolute left-0 right-0 top-full z-20 flex max-h-[40dvh] flex-wrap items-center justify-between gap-3 overflow-y-auto border-b border-line bg-tint-campus p-4 shadow-soft"><div className="min-w-0 flex-1"><p className="text-xs text-charcoal">This week's theme: {summary.theme.title}</p><p className="mt-1 text-sm font-medium">{group.data?.theme.question ?? summary.theme.title}</p></div><Button dark={false} onClick={() => composer.current?.focus()}>Answer it</Button></div>
+        <details className="relative my-1">
+          <summary className="flex h-7 sm:h-8 cursor-pointer list-none items-center gap-1.5 rounded-full bg-tint-campus px-3 text-xs sm:text-sm font-medium hover:opacity-90 [&::-webkit-details-marker]:hidden">
+            <Lightbulb size={14} /><span>Topic</span>
+          </summary>
+          <div className="absolute right-0 top-full z-20 mt-1 flex max-h-[40dvh] w-[min(400px,calc(100vw-32px))] flex-wrap items-center justify-between gap-3 overflow-y-auto rounded-2xl border border-line bg-tint-campus p-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-charcoal">This week's theme: {summary.theme.title}</p>
+              <p className="mt-1 text-sm font-medium">{group.data?.theme.question ?? summary.theme.title}</p>
+            </div>
+            <Button dark={false} className="text-xs sm:text-sm" onClick={() => composer.current?.focus()}>Answer it</Button>
+          </div>
         </details>
       </div>
-      {tab === "discussion" ? <>
-        <section className="flex min-h-0 flex-1 flex-col bg-surface/40" aria-label="Discussion">
+
+      {tab === "discussion" ? (
+        <section className="flex min-h-0 flex-1 flex-col bg-white" aria-label="Discussion">
           <div className="flex min-h-0 flex-1 flex-col">
-            <Async query={messages} skeleton={<Skeleton className="m-4 h-40" />}>
+            <Async query={messages} skeleton={<div className="p-4 sm:p-6"><Skeleton className="h-40" /></div>}>
               {(log) => <MessageList groupId={id} log={log} myId={myId} fill />}
             </Async>
           </div>
-          <form className="relative z-10 shrink-0 border-t border-line bg-white p-3" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+          {/* Bottom composer: anchored within layout, no overlapping, subtle surface fill */}
+          <form className="relative z-10 shrink-0 border-t border-line/40 bg-white px-4 pb-3 pt-2 sm:px-6 sm:pb-4 sm:pt-2.5" onSubmit={(e) => { e.preventDefault(); submit(); }}>
             <label htmlFor="group-message" className="sr-only">Your message</label>
-            <div className="flex items-end gap-2">
-              <textarea id="group-message" ref={composer} value={draft} rows={1}
-                onChange={(e) => { setDraft(e.target.value); if (send.error) send.reset(); e.currentTarget.style.height = "auto"; e.currentTarget.style.height = `${Math.min(e.currentTarget.scrollHeight, 120)}px`; }}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); } }}
+            <div className="flex items-end gap-2 sm:gap-3">
+              <textarea
+                id="group-message"
+                ref={composer}
+                value={draft}
+                rows={1}
+                onChange={(e) => {
+                  setDraft(e.target.value);
+                  if (send.error) send.reset();
+                  e.currentTarget.style.height = "auto";
+                  e.currentTarget.style.height = `${Math.min(e.currentTarget.scrollHeight, 120)}px`;
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    submit();
+                  }
+                }}
                 placeholder="Write a message in English…"
-                className="max-h-[120px] min-h-12 min-w-0 flex-1 resize-none rounded-2xl border border-line bg-surface px-4 py-3 text-base outline-none focus:border-ink" />
-              <Button type="submit" disabled={!canSend} className="!min-h-12 !px-4"><SendHorizontal size={18} /><span className="hidden sm:inline">{send.isPending ? "Sending…" : "Send"}</span><span className="sr-only sm:hidden">{send.isPending ? "Sending…" : "Send"}</span></Button>
+                className="max-h-[120px] min-h-11 sm:min-h-12 min-w-0 flex-1 resize-none rounded-2xl border border-line/60 bg-surface/70 px-4 py-2.5 sm:py-3 text-base outline-none focus:border-ink focus:bg-surface transition-colors"
+              />
+              <Button type="submit" disabled={!canSend} className="!min-h-11 sm:!min-h-12 !px-4 shrink-0 rounded-full">
+                <SendHorizontal size={18} />
+                <span className="hidden sm:inline">{send.isPending ? "Sending…" : "Send"}</span>
+                <span className="sr-only sm:hidden">{send.isPending ? "Sending…" : "Send"}</span>
+              </Button>
             </div>
             <div className="mt-2 flex items-center justify-between gap-3">
               <CheckPanel groupId={id} draft={draft} maxLength={MESSAGE_MAX} compact />
@@ -90,11 +144,22 @@ export default function GroupRoom({ summary }: { summary: GroupSummary }) {
             {send.error && <p role="alert" className="mt-2 rounded-xl bg-bad-bg px-3 py-2 text-sm">{sendError(send.error)}</p>}
           </form>
         </section>
-      </> : <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        <Async query={group} skeleton={<Skeleton className="h-40" />}>
-          {(g) => <div className="grid gap-3 md:grid-cols-2">{g.members.map((m) => <div key={m.id} className="flex items-center gap-3 rounded-2xl border border-line bg-white p-3"><Avatar first={m.firstName ?? undefined} size={44} /><p className="font-semibold">{memberName(m, m.id === myId)}</p></div>)}</div>}
-        </Async>
-      </div>}
+      ) : (
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
+          <Async query={group} skeleton={<Skeleton className="h-40" />}>
+            {(g) => (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {g.members.map((m) => (
+                  <div key={m.id} className="flex items-center gap-3 rounded-2xl border border-line/60 bg-surface/30 p-3">
+                    <Avatar first={m.firstName ?? undefined} size={42} />
+                    <p className="font-semibold text-ink">{memberName(m, m.id === myId)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Async>
+        </div>
+      )}
       {leaving && <LeaveDialog groupId={id} name={name} onClose={() => setLeaving(false)} />}
     </div>
   );

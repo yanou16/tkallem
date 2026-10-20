@@ -23,11 +23,11 @@ export default function CheckPanel({ groupId, draft, maxLength, compact = false 
 
   if (compact) return <div>
     <button type="button" disabled={disabled} onClick={review} aria-expanded={open} aria-controls="group-draft-feedback"
-      className="inline-flex min-h-11 items-center gap-2 rounded-full px-2 text-sm font-medium text-charcoal hover:bg-surface disabled:opacity-40">
-      <SpellCheck size={17} />{check.isPending ? "Checking…" : "Check my English"}
+      className="inline-flex min-h-9 sm:min-h-10 items-center gap-1.5 rounded-full px-2.5 text-xs sm:text-sm font-medium text-charcoal hover:bg-surface disabled:opacity-40 transition-colors">
+      <SpellCheck size={16} />{check.isPending ? "Checking…" : "Check my English"}
     </button>
-    {open && <section id="group-draft-feedback" aria-label="Private draft corrections" className="absolute bottom-full left-3 right-3 z-20 mb-2 max-h-[min(45dvh,360px)] overflow-y-auto rounded-2xl border border-line bg-white p-4 shadow-soft sm:right-auto sm:w-[min(440px,calc(100%-24px))]">
-      <div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Check my English</h2><button type="button" onClick={() => setOpen(false)} aria-label="Close draft corrections" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-surface"><X size={18} /></button></div>
+    {open && <section id="group-draft-feedback" aria-label="Private draft corrections" className="absolute bottom-full left-4 right-4 sm:left-6 sm:right-auto sm:w-[min(460px,calc(100%-48px))] z-30 mb-2 max-h-[min(50dvh,380px)] overflow-y-auto rounded-2xl border border-line bg-white p-4 shadow-[0_4px_20px_rgba(0,0,0,0.08)]">
+      <div className="flex items-center justify-between gap-3"><h2 className="text-sm sm:text-base font-semibold text-ink">Check my English</h2><button type="button" onClick={() => setOpen(false)} aria-label="Close draft corrections" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full hover:bg-surface"><X size={16} /></button></div>
       <p className="mb-3 text-xs text-muted">Private feedback. Your message has not been sent.</p>
       {feedback}
     </section>}

@@ -81,7 +81,7 @@ function MobileNav() {
   );
 }
 
-function HeaderBar() {
+function HeaderBar({ isGroups }: { isGroups?: boolean }) {
   const { user, isLoaded } = useUser();
   const { user: appUser } = useCurrentUser();
   const { signOut } = useClerk();
@@ -92,7 +92,8 @@ function HeaderBar() {
   const displayName = appUser?.firstName || user?.firstName || user?.primaryEmailAddress?.emailAddress;
 
   return (
-    <div className="flex items-center justify-between px-6 pt-5 md:justify-end md:px-10">
+    <div className={cn("flex shrink-0 items-center justify-between",
+      isGroups ? "border-b border-line/60 px-4 py-2.5 sm:px-6 md:justify-end md:px-8" : "px-6 pt-5 md:justify-end md:px-10")}>
       <div className="md:hidden"><Logo /></div>
       <div className="flex items-center gap-5">
         <CreditsPill />
@@ -128,9 +129,11 @@ function HeaderBar() {
 /** Auth guard + chrome. No user data is rendered until the backend answers. */
 export default function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const path = usePathname();
   const { user, error, refetch, hasProfile, isGuest } = useCurrentUser();
   const { guestFailed } = useIdentity();
   const needsLevel = hasProfile && !isGuest && !user?.level; // new account: no session can start without a level
+  const isGroups = isActive(path, "/groups");
 
   useEffect(() => {
     setUnauthorizedHandler(() => router.replace(ROUTES.signIn));
@@ -146,13 +149,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <div className="min-w-0 flex-1 pb-20 md:pb-0">
-        <HeaderBar />
-        <main className="px-6 pb-10 pt-2 md:px-10">
-          {fatal ? <ErrorState error={error} onRetry={() => refetch()} className="mt-8" />
-            : !user && !error && guestFailed ? <GuestUnavailable />
-            : !user && !error ? <PageSkeleton />
-            : needsLevel ? <ChooseLevel /> : children}
+      <div className={cn("min-w-0 flex-1 flex flex-col", isGroups ? "h-dvh overflow-hidden pb-[57px] md:pb-0" : "min-h-screen pb-20 md:pb-0")}>
+        <HeaderBar isGroups={isGroups} />
+        <main className={cn("flex-1 min-h-0 flex flex-col", isGroups ? "p-0" : "px-6 pb-10 pt-2 md:px-10")}>
+          {fatal ? <ErrorState error={error} onRetry={() => refetch()} className={cn(isGroups ? "m-6" : "mt-8")} />
+            : !user && !error && guestFailed ? <div className={cn(isGroups && "p-6")}><GuestUnavailable /></div>
+            : !user && !error ? <div className={cn(isGroups && "p-6")}><PageSkeleton /></div>
+            : needsLevel ? <div className={cn(isGroups && "p-6")}><ChooseLevel /></div> : children}
         </main>
       </div>
       <MobileNav />
