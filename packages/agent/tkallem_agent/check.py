@@ -31,6 +31,13 @@ This is a private English draft check. Also classify input_issue:
 - unclear: unintelligible text or an unknown isolated word, e.g. 'hallon', whose intended English meaning is unclear.
 - null: understandable English, including short greetings and English with mistakes.
 For recognizable English misspellings, give a vocabulary correction. Do not guess a translation or intended meaning.
+English with grammar mistakes is still English: never classify it as unclear or non_english just because it is incorrect.
+Correct irregular past forms and adjective/adverb confusion, and explain the grammar rule in `why` using the requested explanation language.
+Examples of the distinction (do not replace already correct English with a stylistic alternative):
+- 'Hello' -> no corrections, input_issue null. Short greetings are valid English.
+- 'I goed' -> original 'goed', fixed 'went', rule verb_tense. Explain that go has the irregular past went.
+- 'I had a very well day' -> original 'a very well day', fixed 'a very good day', rule word_form. Explain that good is the adjective describing day; well is normally an adverb.
+- 'My day was very good' and 'I had a very good day' -> no corrections, input_issue null. These are already correct.
 Return input_issue explicitly, including null for English. Only return no corrections with input_issue null when the English needs no correction.
 """
 
