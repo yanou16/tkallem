@@ -136,3 +136,19 @@ def test_invalid_output_retries_instead_of_marking_the_draft_correct(raw):
 def test_repeated_invalid_output_is_unavailable_not_correct():
     with pytest.raises(AgentError):
         check_text(TEXT, "B1", llm=FakeChat(found=[None, None]))
+
+
+@pytest.mark.parametrize("text", ["Hello", "My day was very good", "I had a very good day"])
+def test_correct_short_and_adjective_drafts_stay_unchanged(text):
+    assert check_text(text, "B1", llm=FakeChat(found=[{"input_issue": None, "corrections": []}])) == []
+
+
+@pytest.mark.parametrize("text, original, fixed, rule, explanation", [
+    ("I goed", "goed", "went", "verb_tense", "Le passé de go est irrégulier : went."),
+    ("I had a very well day", "a very well day", "a very good day", "word_form",
+     "Good est un adjectif qui décrit day. Well est normalement un adverbe."),
+])
+def test_english_errors_keep_the_correction_and_explanation(text, original, fixed, rule, explanation):
+    proposed = {"original": original, "fixed": fixed, "type": "grammar", "why": explanation, "rule": rule}
+    result = check_text(text, "B1", llm=FakeChat(found=[{"input_issue": None, "corrections": [proposed]}]))
+    assert result == [Correction(**proposed)]
