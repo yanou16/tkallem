@@ -1,6 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
-import { Lightbulb, LogOut, SendHorizontal, Users } from "lucide-react";
+import { Lightbulb, LogOut, SendHorizontal, Trophy, Users } from "lucide-react";
 import { Async, Avatar, Button, Dialog, Pill, Skeleton } from "@/components/ui";
 import { cn, plural } from "@/lib/utils";
 import { useGroup, useGroupSocket, useLeaderboard, useLeaveGroup, useMessages, useSendMessage } from "../hooks/useGroups";
@@ -34,104 +34,67 @@ export default function GroupRoom({ summary }: { summary: GroupSummary }) {
   const text = draft.trim();
   const canSend = text.length >= 1 && text.length <= MESSAGE_MAX && !send.isPending;
   const submit = () => {
-    if (canSend) send.mutate(text, { onSuccess: () => setDraft("") });
+    if (canSend) send.mutate(text, { onSuccess: () => { setDraft(""); if (composer.current) { composer.current.style.height = ""; composer.current.focus(); } } });
   };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-start gap-4">
-          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-tint-visa text-2xl font-semibold">{name[0]}</span>
-          <div className="min-w-0 flex-1 basis-[220px]">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">{name}</h1>
-                <p className="mt-1 flex items-center gap-2 text-muted"><Users size={16} /> {plural(group.data?.members.length ?? summary.memberCount, "member")}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <Pill className="border border-line">Level {summary.level}</Pill>
-                  <LiveStatus status={status} />
-                </div>
-              </div>
-              <Button dark={false} onClick={() => setLeaving(true)}><LogOut size={16} /> Leave group</Button>
-            </div>
+    <div className="relative flex h-[calc(100dvh-164px)] min-h-[320px] flex-col overflow-hidden rounded-card border border-line bg-white md:h-[calc(100dvh-112px)]">
+      <header className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-tint-visa text-lg font-semibold">{name[0]}</span>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-lg font-semibold tracking-tight">{name}</h1>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+            <span className="flex items-center gap-1"><Users size={13} /> {plural(group.data?.members.length ?? summary.memberCount, "member")}</span>
+            <span>{summary.level}</span><LiveStatus status={status} />
           </div>
         </div>
-        {status.state === "closed" && <p role="alert" className="mt-4 rounded-2xl bg-bad-bg px-4 py-3 text-sm">{closedReason(status.code)}</p>}
-
-        <div className="mt-6 flex gap-8 border-b border-line" role="tablist">
+        <details className="group">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-full border border-line px-3 text-sm font-medium [&::-webkit-details-marker]:hidden"><Trophy size={16} /><span className="hidden sm:inline">Leaderboard</span><span className="sr-only sm:hidden">Leaderboard</span></summary>
+          <aside className="absolute right-3 top-[76px] z-30 max-h-[60%] w-[min(340px,calc(100%-24px))] overflow-y-auto rounded-card bg-white shadow-soft" aria-label="Leaderboard"><Leaderboard query={leaderboard} /></aside>
+        </details>
+        <Button dark={false} onClick={() => setLeaving(true)} aria-label="Leave group" className="!px-3"><LogOut size={16} /><span className="hidden lg:inline">Leave group</span></Button>
+      </header>
+      {status.state === "closed" && <p role="alert" className="shrink-0 bg-bad-bg px-4 py-2 text-sm">{closedReason(status.code)}</p>}
+      <div className="relative flex shrink-0 items-center gap-3 border-b border-line px-4">
+        <div className="flex gap-6" role="tablist" aria-label="Group view">
           {(["discussion", "members"] as Tab[]).map((t) => (
-            <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
-              className={cn("-mb-px min-h-11 border-b-2 pb-3 font-medium capitalize", tab === t ? "border-ink" : "border-transparent text-muted")}>
-              {t}
-            </button>
+            <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={cn("-mb-px min-h-11 border-b-2 text-sm font-medium capitalize", tab === t ? "border-ink" : "border-transparent text-muted")}>{t}</button>
           ))}
         </div>
-
-        {tab === "discussion" && (
-          <>
-            <div className="mt-5 flex flex-wrap items-center gap-4 rounded-2xl bg-tint-campus p-4">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/60"><Lightbulb size={20} /></span>
-              <div className="min-w-0 flex-1 basis-[180px]">
-                <p className="text-sm">Theme of the week: {summary.theme.title}</p>
-                {group.data ? <h2 className="text-lg font-semibold">{group.data.theme.question}</h2>
-                  : group.isLoading ? <Skeleton className="mt-1 h-7 w-3/4" />
-                  : <h2 className="text-lg font-semibold">{summary.theme.title}</h2>}
-              </div>
-              <Button dark={false} onClick={() => composer.current?.focus()}>Answer it</Button>
-            </div>
-
-            <section className="mt-5 overflow-hidden rounded-card border border-line bg-surface/40" aria-label="Discussion">
-              <div>
-                <Async query={messages} skeleton={<Skeleton className="h-64" />}>
-                  {(log) => <MessageList groupId={id} log={log} myId={myId} />}
-                </Async>
-              </div>
-
-              <div className="border-t border-line bg-white p-4">
-                <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
-                  <label htmlFor="group-message" className="sr-only">Your message</label>
-                  <textarea id="group-message" ref={composer} value={draft} rows={2}
-                    onChange={(e) => { setDraft(e.target.value); if (send.error) send.reset(); }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); }
-                    }}
-                    placeholder="Write in English… (Enter to send, Shift+Enter for a new line)"
-                    className="w-full resize-none rounded-2xl border border-line bg-surface p-3 text-base outline-none focus:border-ink" />
-                  <div className="mt-2 flex items-center justify-end gap-3">
-                    <Button type="submit" disabled={!canSend}><SendHorizontal size={16} /> {send.isPending ? "Sending…" : "Send"}</Button>
-                  </div>
-                  {send.error && <p role="alert" className="mt-3 rounded-2xl bg-bad-bg px-4 py-3 text-sm">{sendError(send.error)}</p>}
-                </form>
-                <div className="mt-4">
-                  <CheckPanel groupId={id} draft={draft} maxLength={MESSAGE_MAX} />
-                </div>
-              </div>
-            </section>
-          </>
-        )}
-
-        {tab === "members" && (
-          <div className="mt-6">
-            <Async query={group} skeleton={<Skeleton className="h-40" />}>
-              {(g) => (
-                <div className="grid gap-3 md:grid-cols-2">
-                  {g.members.map((m) => (
-                    <div key={m.id} className="flex items-center gap-3 rounded-2xl border border-line bg-white p-3">
-                      <Avatar first={m.firstName ?? undefined} size={44} />
-                      <p className="font-semibold">{memberName(m, m.id === myId)}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
+        <details className="ml-auto">
+          <summary className="my-1 flex min-h-9 cursor-pointer list-none items-center gap-2 rounded-full bg-tint-campus px-3 text-sm [&::-webkit-details-marker]:hidden"><Lightbulb size={16} /><span>Topic</span></summary>
+          <div className="absolute left-0 right-0 top-full z-20 flex max-h-[40dvh] flex-wrap items-center justify-between gap-3 overflow-y-auto border-b border-line bg-tint-campus p-4 shadow-soft"><div className="min-w-0 flex-1"><p className="text-xs text-charcoal">This week's theme: {summary.theme.title}</p><p className="mt-1 text-sm font-medium">{group.data?.theme.question ?? summary.theme.title}</p></div><Button dark={false} onClick={() => composer.current?.focus()}>Answer it</Button></div>
+        </details>
+      </div>
+      {tab === "discussion" ? <>
+        <section className="flex min-h-0 flex-1 flex-col bg-surface/40" aria-label="Discussion">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <Async query={messages} skeleton={<Skeleton className="m-4 h-40" />}>
+              {(log) => <MessageList groupId={id} log={log} myId={myId} fill />}
             </Async>
           </div>
-        )}
-      </div>
-
-      <aside className="space-y-4">
-        <Leaderboard query={leaderboard} />
-      </aside>
-
+          <form className="relative z-10 shrink-0 border-t border-line bg-white p-3" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+            <label htmlFor="group-message" className="sr-only">Your message</label>
+            <div className="flex items-end gap-2">
+              <textarea id="group-message" ref={composer} value={draft} rows={1}
+                onChange={(e) => { setDraft(e.target.value); if (send.error) send.reset(); e.currentTarget.style.height = "auto"; e.currentTarget.style.height = `${Math.min(e.currentTarget.scrollHeight, 120)}px`; }}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit(); } }}
+                placeholder="Write a message in English…"
+                className="max-h-[120px] min-h-12 min-w-0 flex-1 resize-none rounded-2xl border border-line bg-surface px-4 py-3 text-base outline-none focus:border-ink" />
+              <Button type="submit" disabled={!canSend} className="!min-h-12 !px-4"><SendHorizontal size={18} /><span className="hidden sm:inline">{send.isPending ? "Sending…" : "Send"}</span><span className="sr-only sm:hidden">{send.isPending ? "Sending…" : "Send"}</span></Button>
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <CheckPanel groupId={id} draft={draft} maxLength={MESSAGE_MAX} compact />
+              <p className="hidden text-xs text-muted sm:block">Enter to send · Shift+Enter for a new line</p>
+            </div>
+            {send.error && <p role="alert" className="mt-2 rounded-xl bg-bad-bg px-3 py-2 text-sm">{sendError(send.error)}</p>}
+          </form>
+        </section>
+      </> : <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        <Async query={group} skeleton={<Skeleton className="h-40" />}>
+          {(g) => <div className="grid gap-3 md:grid-cols-2">{g.members.map((m) => <div key={m.id} className="flex items-center gap-3 rounded-2xl border border-line bg-white p-3"><Avatar first={m.firstName ?? undefined} size={44} /><p className="font-semibold">{memberName(m, m.id === myId)}</p></div>)}</div>}
+        </Async>
+      </div>}
       {leaving && <LeaveDialog groupId={id} name={name} onClose={() => setLeaving(false)} />}
     </div>
   );
