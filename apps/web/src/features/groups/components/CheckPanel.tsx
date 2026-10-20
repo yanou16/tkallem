@@ -17,8 +17,8 @@ export default function CheckPanel({ groupId, draft, maxLength, compact = false 
     {check.isPending && <p className="text-sm text-muted">Checking your draft…</p>}
     {check.error && <p role="alert" className="rounded-xl bg-bad-bg p-3 text-sm">{checkError(check.error)}</p>}
     {check.isSuccess && !checkedThisDraft && <p className="text-sm text-muted">Your draft changed. Check it again before sending.</p>}
-    {check.isSuccess && check.data.length === 0 && <p className="flex items-center gap-2 rounded-xl bg-good-bg p-3 text-sm"><Check size={16} />No mistakes found.</p>}
-    {check.data && check.data.length > 0 && <ul className="space-y-3">{check.data.map((c, i) => <li key={i} className="rounded-xl bg-surface p-3 text-sm"><p><s className="text-bad">{c.original}</s> → <strong className="text-good">{c.correction}</strong></p><p className="mt-1 text-muted">{c.explanation}</p><Pill className="mt-2 border border-line">{correctionLabel(c)}</Pill></li>)}</ul>}
+    {checkedThisDraft && check.data.length === 0 && <p className="flex items-center gap-2 rounded-xl bg-good-bg p-3 text-sm"><Check size={16} />No mistakes found.</p>}
+    {checkedThisDraft && check.data && check.data.length > 0 && <ul className="space-y-3">{check.data.map((c, i) => <li key={i} className="rounded-xl bg-surface p-3 text-sm"><p><s className="text-bad">{c.original}</s> → <strong className="text-good">{c.correction}</strong></p><p className="mt-1 text-muted">{c.explanation}</p><Pill className="mt-2 border border-line">{correctionLabel(c)}</Pill></li>)}</ul>}
   </div>;
 
   if (compact) return <div>
