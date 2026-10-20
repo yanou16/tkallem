@@ -12,7 +12,7 @@ import { REPORT_REASONS, type GroupMessage, type MessageLog, type ReportReason }
 const NEAR_BOTTOM = 120;
 
 /** A chat bubble (DESIGN.md radii: --radius-bubble, the tail corner --radius-input). Long words wrap inside it. */
-const BUBBLE = "min-w-0 max-w-[85%] whitespace-pre-wrap rounded-bubble px-4 py-3 text-ink [overflow-wrap:anywhere] sm:max-w-[75%]";
+const BUBBLE = "min-w-0 max-w-[85%] whitespace-pre-wrap rounded-bubble px-4 py-2.5 text-ink [overflow-wrap:anywhere] sm:max-w-[75%]";
 
 /** "18:42": the time of a group's first message, in the student's time zone. */
 const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
@@ -21,7 +21,7 @@ const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-d
  * The chat, oldest first. A new message keeps the list at the bottom when she was already there (or wrote it); an older
  * page loaded above keeps the same message in view.
  */
-export default function MessageList({ groupId, log, myId }: { groupId: number; log: MessageLog; myId?: number }) {
+export default function MessageList({ groupId, log, myId, fill = false }: { groupId: number; log: MessageLog; myId?: number; fill?: boolean }) {
   const { messages } = log;
   const older = useLoadOlder(groupId);
   const [reporting, setReporting] = useState<GroupMessage | null>(null);
@@ -54,7 +54,7 @@ export default function MessageList({ groupId, log, myId }: { groupId: number; l
 
   return (
     <>
-      <div ref={box} onScroll={onScroll} className="max-h-[60vh] min-h-[240px] space-y-3 overflow-y-auto p-4 sm:p-6" aria-label="Group conversation" aria-live="polite">
+      <div ref={box} onScroll={onScroll} className={cn("space-y-3 overflow-y-auto overscroll-contain p-4 sm:p-6", fill ? "min-h-0 flex-1" : "max-h-[60vh] min-h-[240px]")} aria-label="Group conversation" aria-live="polite">
         {log.hasOlder && (
           <div className="flex justify-center">
             <Button dark={false} onClick={() => older.mutate()} disabled={older.isPending} className="text-sm">
@@ -66,7 +66,7 @@ export default function MessageList({ groupId, log, myId }: { groupId: number; l
         {messages.length === 0 ? (
           <EmptyState title="No messages yet" text="Answer today's question to start the conversation." />
         ) : (
-          <ul className="space-y-6">
+          <ul className="space-y-4">
             {groupMessages(messages).map((g) => g.author.id === myId ? (
               <li key={g.messages[0].id} className="flex flex-col items-end gap-1">
                 <p className="flex items-center gap-2 px-1 text-sm text-muted"><span className="font-medium text-ink">You</span><span>{clock(g.startedAt)}</span></p>
