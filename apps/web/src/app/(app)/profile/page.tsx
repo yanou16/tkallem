@@ -1,13 +1,13 @@
 "use client";
 import { useState } from "react";
 import { useClerk } from "@clerk/nextjs";
-import { Camera, ChevronRight, Mail, Pencil, UserRound } from "lucide-react";
+import { Camera, ChevronRight, LockKeyhole, Mail, Pencil, UserRound } from "lucide-react";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { DAILY_GOALS, FOCUS_AREAS, LEVELS, type DailyGoalMinutes, type ExplainLang, type FocusArea, type Level, type User } from "@/features/auth/types/user";
 import { useMySessions } from "@/features/practice/hooks/usePractice";
 import { useAchievements, useUpdateProfile } from "@/features/profile/hooks/useProfile";
 import type { Achievement, UpdateProfileInput } from "@/features/profile/types/profile";
-import { Async, Avatar, Button, Card, Dialog, EmptyState, Pill, SectionTitle, Skeleton, toneAt, toneBg, toneDeep } from "@/components/ui";
+import { Async, Avatar, Button, Card, Dialog, EmptyState, Pill, Skeleton, toneAt, toneDeep } from "@/components/ui";
 import { SessionList } from "@/components/cards";
 import { Icon } from "@/lib/icons";
 import { cn } from "@/lib/utils";
@@ -96,34 +96,58 @@ export default function ProfilePage() {
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
 
   const Pen = ({ onClick, label }: { onClick: () => void; label: string }) => (
-    <button onClick={onClick} aria-label={`Edit ${label}`} className="rounded-full p-1.5 text-muted hover:bg-black/5"><Pencil size={15} /></button>
+    <button onClick={onClick} aria-label={`Edit ${label}`} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-black/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"><Pencil size={15} /></button>
   );
 
   return (
-    <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
-      <div>
-        <p className="text-sm text-muted">Profile</p>
-        <h1 className="mb-6 text-5xl font-extrabold tracking-tight">{user.firstName}</h1>
+    <div className="w-full pb-10 pt-3 lg:pt-5">
+      <header className="mb-9 sm:mb-12">
+        <p className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-muted">Your profile</p>
+        <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl xl:text-5xl">Your learning, your way.</h1>
+        <p className="mt-3 text-base text-muted sm:text-lg">A little about you, and how you like to learn.</p>
+      </header>
 
-        <div className="flex flex-wrap items-center gap-6">
-          <div className="relative">
-            <Avatar src={user.avatarUrl} first={user.firstName} last={user.lastName} size={132} />
-            <button onClick={openAccount} aria-label="Change photo" className="absolute bottom-0 right-0 flex h-11 w-11 items-center justify-center rounded-full bg-ink text-white hover:opacity-90">
-              <Camera size={18} />
-            </button>
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-3xl font-bold">{fullName}</h2>
-              <Pen label="name" onClick={openAccount} />
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-8">
+        <Card className="flex flex-col justify-center p-7 sm:p-8 lg:p-10">
+          <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:gap-8">
+            <div className="relative shrink-0">
+              <Avatar src={user.avatarUrl} first={user.firstName} last={user.lastName} size={132} className="ring-4 ring-mint/60" />
+              <button onClick={openAccount} aria-label="Change photo" className="absolute bottom-0 right-0 flex h-11 w-11 items-center justify-center rounded-full bg-ink text-white ring-4 ring-white transition-colors hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink">
+                <Camera size={18} aria-hidden="true" />
+              </button>
             </div>
-            {user.email && <p className="mt-1 text-muted">{user.email}</p>}
-            {user.level && <div className="mt-3"><Pill className="bg-black/[0.05] px-4 py-2 text-sm">Learning English · {user.level}</Pill></div>}
+            <div className="min-w-0 flex-1">
+              <p className="mb-2 text-sm text-muted">Salam {user.firstName}</p>
+              <div className="flex items-center gap-3">
+                <h2 className="min-w-0 break-words text-2xl font-bold tracking-tight sm:text-3xl">{fullName}</h2>
+                <Pen label="name" onClick={openAccount} />
+              </div>
+              {user.email && <p className="mt-2 break-words text-sm text-muted sm:text-base">{user.email}</p>}
+              {user.level && <div className="mt-5"><Pill className="bg-mint/70 px-4 py-2 text-sm">Learning English · {user.level}</Pill></div>}
+            </div>
           </div>
-        </div>
+        </Card>
 
-        <h2 className="mb-3 mt-8 text-lg font-semibold">My learning setup</h2>
-        <div className="grid gap-4 md:grid-cols-3">
+        <aside aria-label="Account settings">
+          <Card className="h-full p-7 sm:p-8">
+            <h2 className="mb-4 text-lg font-semibold">Account settings</h2>
+            <div className="divide-y divide-line">
+              {ACCOUNT_ROWS.map(({ title, icon: I }) => (
+                <button key={title} onClick={openAccount} className="group flex min-h-16 w-full items-center gap-3 rounded-xl py-4 text-left transition-colors hover:bg-black/[0.025] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink">
+                  <I size={19} className="shrink-0 text-muted" aria-hidden="true" /><span className="flex-1 text-sm font-medium">{title}</span><ChevronRight size={16} aria-hidden="true" className="shrink-0 text-muted transition-transform motion-safe:group-hover:translate-x-0.5" />
+                </button>
+              ))}
+            </div>
+          </Card>
+        </aside>
+      </div>
+
+      <section aria-labelledby="learning-setup-title" className="mt-10 lg:mt-12">
+        <div className="mb-5 lg:mb-6">
+          <h2 id="learning-setup-title" className="text-xl font-semibold sm:text-2xl">My learning setup</h2>
+          <p className="mt-2 text-sm text-muted sm:text-base">Your preferences, ready for your next practice.</p>
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 xl:gap-6">
           <SetupCard tone={3} icon="chart" title="English level" onEdit={() => open("level", user.level ?? "B1")}
             text={user.level ? `${user.level} · ${LEVEL_NAMES[user.level]}` : undefined} empty="Choose your level before your first session" />
           <SetupCard tone={4} icon="book" title="Explanation language" onEdit={() => open("explainLang", user.explainLang)}
@@ -132,47 +156,37 @@ export default function ProfilePage() {
             text={user.learningGoal ?? undefined} empty="Set a learning goal" />
           <SetupCard tone={1} icon="laptop" title="Preferred practice mode" onEdit={() => open("mode", user.practiceMode ?? "text")}
             text={user.practiceMode ? PRACTICE_MODES[user.practiceMode] ?? user.practiceMode : undefined} empty="Choose how you like to practice" />
-          <SetupCard tone={2} icon="chart" title="Daily goal" onEdit={() => open("daily", String(user.dailyGoalMinutes))}
+          <SetupCard tone={2} icon="target" title="Daily goal" onEdit={() => open("daily", String(user.dailyGoalMinutes))}
             text={`${user.dailyGoalMinutes} minutes of speaking practice`} empty="Set a daily goal" />
           <SetupCard tone={4} icon="star" title="Focus areas" onEdit={() => open("focus")}
             text={user.focusAreas.map((f) => FOCUS_NAMES[f]).join(", ") || undefined} empty="Pick what you want to improve" />
         </div>
-        {/* Hidden for the MVP: "Languages studied" and "Add another language" (English only). */}
+      </section>
 
-        <div className="mt-8">
-          <SectionTitle title="My achievements" />
-          <Async query={achievements} skeleton={<Skeleton className="h-28" />} isEmpty={(d) => d.length === 0}
-            empty={<EmptyState title="No badges yet" text="Badges will show up here." />}>
-            {(list) => (
-              <div className="grid gap-3 md:grid-cols-3">
-                {list.map((a, i) => <Badge key={a.id} a={a} tone={i} />)}
-              </div>
-            )}
+      <section aria-labelledby="achievements-title" className="mt-10 lg:mt-12">
+        <div className="mb-5 lg:mb-6">
+          <h2 id="achievements-title" className="text-xl font-semibold sm:text-2xl">My achievements</h2>
+          <p className="mt-2 text-sm text-muted sm:text-base">Every milestone starts with a little practice.</p>
+        </div>
+        <Async query={achievements} skeleton={<Skeleton className="h-40" />} isEmpty={(d) => d.length === 0}
+          empty={<EmptyState title="No badges yet" text="Badges will show up here." />}>
+          {(list) => (
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 xl:gap-6">
+              {list.map((a) => <Badge key={a.id} a={a} />)}
+            </div>
+          )}
+        </Async>
+      </section>
+
+      <section aria-labelledby="recent-activity-title" className="mt-10 lg:mt-12">
+        <h2 id="recent-activity-title" className="mb-5 text-xl font-semibold sm:text-2xl lg:mb-6">Recent activity</h2>
+        <Card className="p-6 sm:p-8">
+          <Async query={sessions} skeleton={<Skeleton className="h-32" />} isEmpty={(d) => d.length === 0}
+            empty={<EmptyState title="No activity yet" text="Your recent practice sessions will show up here." />}>
+            {(list) => <SessionList sessions={list} />}
           </Async>
-        </div>
-
-        <div className="mt-8">
-          <SectionTitle title="Recent activity" />
-          <Card>
-            <Async query={sessions} skeleton={<Skeleton className="h-32" />} isEmpty={(d) => d.length === 0}
-              empty={<EmptyState title="No activity yet" text="Your recent practice sessions will show up here." />}>
-              {(list) => <SessionList sessions={list} />}
-            </Async>
-          </Card>
-        </div>
-      </div>
-
-      <aside className="space-y-5">
-        <Card>
-          <h2 className="mb-2 text-lg font-bold">Account settings</h2>
-          {ACCOUNT_ROWS.map(({ title, icon: I }) => (
-            <button key={title} onClick={openAccount} className="flex w-full items-center gap-4 rounded-lg border-b border-line px-1 py-4 text-left last:border-0 hover:bg-black/[0.02]">
-              <I size={20} className="text-muted" /><span className="flex-1">{title}</span><ChevronRight size={16} />
-            </button>
-          ))}
         </Card>
-        {/* TODO: "Notification preferences" and "AI learning preferences" once the API stores them. */}
-      </aside>
+      </section>
 
       <Dialog open={edit !== null} title={edit ? DIALOG_TITLES[edit] : ""} onClose={close}>
         <div className="space-y-4">
@@ -228,30 +242,36 @@ export default function ProfilePage() {
 }
 
 /** Locked badges are greyed out and say so in words (never color alone). */
-function Badge({ a, tone }: { a: Achievement; tone: number }) {
-  const t = toneAt(tone + 1);
+function Badge({ a }: { a: Achievement }) {
   return (
-    <div className={cn("flex items-center gap-3 rounded-2xl p-4", a.unlocked ? toneBg[t] : "bg-black/[0.04] opacity-60")}>
-      <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full", a.unlocked ? toneDeep[t] : "bg-black/[0.06]")}>
-        <Icon name={a.icon} />
+    <div className={cn("flex min-h-36 items-start gap-4 rounded-card border p-6 sm:p-7", a.unlocked ? "border-transparent bg-butter/65" : "border-line bg-white")}>
+      <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full", a.unlocked ? "bg-butter-deep/70 text-ink" : "bg-black/[0.04] text-muted")}>
+        <Icon name={a.icon} size={23} />
       </span>
       <div className="min-w-0">
         <p className="font-semibold">{a.title}</p>
-        <p className="text-sm text-muted">{a.description}</p>
-        {!a.unlocked && <p className="mt-1 text-xs font-semibold text-muted">Locked</p>}
+        <p className="mt-1 text-sm leading-relaxed text-muted">{a.description}</p>
+        <p className={cn("mt-3 inline-flex items-center gap-1.5 text-xs font-medium", a.unlocked ? "text-ink/70" : "text-muted")}>
+          {a.unlocked ? "Unlocked" : <><LockKeyhole size={12} aria-hidden="true" />Locked</>}
+        </p>
       </div>
     </div>
   );
 }
 
+const SETUP_BACKGROUNDS = ["bg-mint/65", "bg-butter/65", "bg-peach/65", "bg-rose/65", "bg-lilac/65"];
+
 function SetupCard({ tone, icon, title, text, empty, onEdit }: { tone: number; icon: string; title: string; text?: string; empty: string; onEdit: () => void }) {
   const t = toneAt(tone);
   return (
-    <div className={cn("flex gap-4 rounded-card p-5", toneBg[t])}>
-      <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl", toneDeep[t])}><Icon name={icon} /></span>
-      <div className="flex-1"><p className="font-semibold">{title}</p><p className={cn("text-sm", text ? "text-muted" : "italic text-muted")}>{text || empty}</p></div>
-      <button onClick={onEdit} aria-label={`Edit ${title}`} className="h-fit rounded-full p-1.5 text-muted hover:bg-black/5"><Pencil size={15} /></button>
-    </div>
+    <button type="button" onClick={onEdit} aria-label={`Edit ${title}`} className={cn("group flex min-h-44 w-full flex-col rounded-card p-7 text-left transition-shadow hover:shadow-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink lg:p-8", SETUP_BACKGROUNDS[tone % SETUP_BACKGROUNDS.length])}>
+      <span className="mb-5 flex w-full items-center justify-between gap-4">
+        <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl", toneDeep[t])}><Icon name={icon} size={23} /></span>
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/50 text-ink/60 transition-colors group-hover:bg-white/80"><Pencil size={16} aria-hidden="true" /></span>
+      </span>
+      <span className="text-base font-semibold">{title}</span>
+      <span className={cn("mt-2 break-words text-sm leading-relaxed text-ink/70", !text && "italic")}>{text || empty}</span>
+    </button>
   );
 }
 
