@@ -622,3 +622,20 @@ def test_check_explains_uncheckable_drafts(students, client, db, text, issue):
     response = check(client, group, text)
     assert response.status_code == 422
     assert response.json()["detail"] == "Write a clear message in English so your draft can be checked."
+
+
+@pytest.mark.parametrize("text, original, fixed, rule, why", [
+    ("I goed", "goed", "went", "verb_tense", "Le passé irrégulier de go est went."),
+    ("I had a very well day", "a very well day", "a very good day", "word_form",
+     "Good est un adjectif qui décrit day ; well est normalement un adverbe."),
+])
+def test_check_delivers_english_correction_and_explanation(students, client, db, text, original, fixed, rule, why):
+    group = new_group(db)
+    students.act_as(member(students, group))
+    use_llm(FakeChat(found=[{"input_issue": None, "corrections": [
+        {"original": original, "fixed": fixed, "type": "grammar", "why": why, "rule": rule}
+    ]}]))
+    response = check(client, group, text)
+    assert response.status_code == 200
+    assert response.json() == [{"original": original, "correction": fixed,
+                                "explanation": why, "type": "grammar", "rule": rule}]
