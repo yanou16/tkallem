@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { ScenarioArt, scenarioContext } from "./ScenarioArt";
 import { ArrowRight, Clock } from "lucide-react";
 import { Icon } from "@/lib/icons";
 import { Pill, Skeleton, toneBg, toneDeep, type Tone } from "@/components/ui";
@@ -25,22 +26,19 @@ export function StartButton({ href, label = "Start" }: { href: string; label?: s
   );
 }
 
-export function ScenarioCard({ s, tone }: { s: Scenario; tone: Tone }) {
+export function ScenarioCard({ s }: { s: Scenario; tone?: Tone }) {
+  const context = scenarioContext(s);
   return (
-    <article className={cn("flex flex-col justify-between gap-4 rounded-card p-5", toneBg[tone])}>
-      <div className="flex gap-4">
-        {/* The API sends no icon yet: lib/icons.tsx maps the scenario id instead. */}
-        <IconBadge name={s.icon ?? s.id} tone={tone} />
-        <div className="min-w-0">
-          <h3 className="font-semibold leading-tight">{s.title}</h3>
-          <p className="text-sm text-muted">
-            {s.mode === "free" ? "Free conversation" : s.totalQuestions ? plural(s.totalQuestions, "question") : "Guided questions"}
-          </p>
-        </div>
+    <article className={cn("relative isolate flex min-h-[240px] flex-col justify-between gap-4 overflow-hidden rounded-card p-5", context.surface)}>
+      <ScenarioArt scenario={s} />
+      <div className="relative z-10 min-w-0">
+        <p className="mb-2 text-xs font-medium text-charcoal">{context.title}</p>
+        <h3 className="max-w-[85%] font-semibold leading-tight">{s.title}</h3>
+        <p className="mt-1 text-xs text-charcoal">{s.mode === "free" ? "Free conversation" : s.totalQuestions ? plural(s.totalQuestions, "question") : "Guided questions"}</p>
+        {s.description && <p className="mt-2 max-w-[72%] text-sm text-charcoal">{s.description}</p>}
       </div>
-      {s.description && <p className="text-sm text-muted">{s.description}</p>}
-      <div className="flex items-center justify-between">
-        <span className="flex items-center gap-2 text-sm text-muted">
+      <div className="relative z-10 flex flex-wrap items-center gap-3">
+        <span className="flex items-center gap-2 text-sm text-charcoal">
           {s.minutes !== null && <><Clock size={14} /> {s.minutes} min</>}
           {s.level && <Pill>{s.level}</Pill>}
         </span>
