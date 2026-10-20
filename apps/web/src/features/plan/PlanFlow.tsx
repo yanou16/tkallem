@@ -45,7 +45,7 @@ export default function PlanFlow() {
         <span aria-live="polite">Question {step + 1} of {STEPS}</span>
       </div>
       <div className="mb-6 h-1.5 overflow-hidden rounded-full bg-hairline" aria-hidden>
-        <div className="h-full rounded-full bg-ink transition-all" style={{ width: `${((step + 1) / STEPS) * 100}%` }} />
+        <div className="h-full origin-left rounded-full bg-ink transition-transform duration-300 ease-out" style={{ transform: `scaleX(${(step + 1) / STEPS})` }} />
       </div>
 
       {step === 0 && (

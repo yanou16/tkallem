@@ -70,11 +70,11 @@ function MobileNav() {
   const path = usePathname();
   const nav = useNav();
   return (
-    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-line bg-white/95 py-2 md:hidden">
+    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-line bg-white/95 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:hidden">
       {nav.map(({ href, label, icon: I, also }) => {
         const active = isActive(path, href, also);
         return (
-          <Link key={href} href={href} className={cn("flex min-h-11 flex-col items-center justify-center gap-0.5 px-2 text-xs", active ? "font-semibold text-ink" : "text-muted")}>
+          <Link key={href} href={href} className={cn("flex min-h-11 flex-col items-center justify-center gap-0.5 px-2 text-xs transition-transform active:scale-95", active ? "font-semibold text-ink" : "text-muted")}>
             <I size={20} /> {label}
           </Link>
         );
@@ -148,7 +148,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <div className="min-w-0 flex-1 pb-20 md:pb-0">
+      <div className="min-w-0 flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
         <HeaderBar />
         <main className="px-6 pb-10 pt-2 md:px-10">
           {fatal ? <ErrorState error={error} onRetry={() => refetch()} className="mt-8" />

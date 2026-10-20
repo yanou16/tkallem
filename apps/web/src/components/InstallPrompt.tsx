@@ -40,7 +40,7 @@ export default function InstallPrompt() {
   };
 
   return (
-    <div role="region" aria-label="Install the app" className="fixed inset-x-3 bottom-20 z-50 flex items-center gap-3 rounded-2xl border border-line bg-white p-3 shadow-lg md:hidden">
+    <div role="region" aria-label="Install the app" className="fixed inset-x-3 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-50 flex items-center gap-3 rounded-2xl border border-line bg-white p-3 shadow-lg md:hidden">
       <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand text-lg font-semibold text-ink" aria-hidden>T</div>
       <p className="min-w-0 flex-1 text-sm text-ink">
         {offer === "ios-hint" ? "Install Tkallem: tap Share, then “Add to Home Screen”." : "Install Tkallem on your phone for quick practice."}

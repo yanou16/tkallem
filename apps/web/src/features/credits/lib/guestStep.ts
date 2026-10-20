@@ -1,5 +1,8 @@
-/** Routes a visitor may use without an account (must match the public routes of src/proxy.ts). */
-export const GUEST_ROUTES = ["/practice", "/ai-chat", "/plan", "/groups"];
+import { GUEST_PATHS } from "@/lib/publicRoutes";
+
+/** Routes where a visitor without a token gets a guest account. The menu pages come from `GUEST_PATHS`, so a page added
+ *  there (Progress was missed once) is covered; the conversation and the plan are public but not in the menu. */
+export const GUEST_ROUTES = [...GUEST_PATHS, "/ai-chat", "/plan"];
 
 /**
  * What the app does about the visitor's identity on this screen:

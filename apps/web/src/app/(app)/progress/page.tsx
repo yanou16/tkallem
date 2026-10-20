@@ -88,11 +88,11 @@ export default function ProgressPage() {
               <ul className="mt-4 divide-y divide-line">
                 {p.topMistakes.map((m) => (
                   <li key={m.id} className="flex items-center justify-between gap-4 py-3">
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-medium">{mistakeLabel(m.category)}</p>
-                      <p className="text-sm text-slate">{m.original} → {m.correction}</p>
+                      <p className="text-sm text-slate [overflow-wrap:anywhere]">{m.original} → {m.correction}</p>
                     </div>
-                    <span aria-label={`${m.count} times`} className="rounded-full bg-surface px-2.5 py-1 text-sm font-semibold">{m.count}×</span>
+                    <span aria-label={`${m.count} times`} className="shrink-0 rounded-full bg-surface px-2.5 py-1 text-sm font-semibold">{formatNumber(m.count)}×</span>
                   </li>
                 ))}
               </ul>

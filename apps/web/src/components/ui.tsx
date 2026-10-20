@@ -42,7 +42,7 @@ export function Button({ dark = true, className, ...p }: React.ButtonHTMLAttribu
     <button
       {...p}
       className={cn(
-        "inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50",
         dark ? "bg-ink text-white hover:bg-black/80" : "border border-line bg-white text-ink hover:bg-black/5",
         className,
       )}
@@ -120,9 +120,10 @@ export function Toggle({ checked, onChange, label, disabled }: { checked: boolea
     <button
       role="switch" aria-checked={checked} aria-label={label} disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={cn("relative h-7 w-12 shrink-0 rounded-full transition", checked ? "bg-ink" : "bg-black/15", disabled && "opacity-50")}
+      className={cn("relative h-7 w-12 shrink-0 rounded-full transition-colors", checked ? "bg-ink" : "bg-black/15", disabled && "opacity-50")}
     >
-      <span className={cn("absolute top-0.5 h-6 w-6 rounded-full bg-white transition-all", checked ? "left-[22px]" : "left-0.5")} />
+      {/* Moves with transform (not `left`): the knob never triggers a layout. */}
+      <span className={cn("absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-white transition-transform duration-150 ease-out", checked ? "translate-x-5" : "translate-x-0")} />
     </button>
   );
 }
@@ -136,8 +137,8 @@ export function Dialog({ open, title, onClose, children }: { open: boolean; titl
   }, [open, onClose]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
-      <div role="dialog" aria-modal aria-label={title} onClick={(e) => e.stopPropagation()} className="w-full max-w-md rounded-card bg-white p-6 shadow-soft">
+    <div className="tk-fade fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
+      <div role="dialog" aria-modal aria-label={title} onClick={(e) => e.stopPropagation()} className="tk-pop w-full max-w-md rounded-card bg-white p-6 shadow-soft">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold">{title}</h3>
           <button onClick={onClose} aria-label="Close" className="-mr-2 flex size-11 items-center justify-center rounded-full hover:bg-black/5"><X size={18} /></button>
@@ -156,7 +157,7 @@ export function ProgressRing({ value, max, size = 120, stroke = 12, children }: 
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
         <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--hairline-soft)" strokeWidth={stroke} fill="none" />
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--ink)" strokeWidth={stroke} fill="none" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} />
+        <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--ink)" strokeWidth={stroke} fill="none" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} className="transition-[stroke-dashoffset] duration-500 ease-out" />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">{children}</div>
     </div>

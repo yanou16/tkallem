@@ -74,5 +74,10 @@ export const MISTAKE_LABELS: Record<string, string> = {
   word_choice: "Word choice",
 };
 
-/** A category the front does not know yet is shown as the API sent it. */
-export const mistakeLabel = (category: string) => MISTAKE_LABELS[category] ?? category;
+/** A category the front does not know yet is shown readable ("spelling_error" becomes "Spelling error"). */
+export const mistakeLabel = (category: string) => {
+  const known = MISTAKE_LABELS[category];
+  if (known) return known;
+  const words = category.replace(/[_-]+/g, " ").trim();
+  return words ? words[0].toUpperCase() + words.slice(1) : category;
+};
