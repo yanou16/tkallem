@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { guestStep } from "./guestStep";
+import { isPublicPath } from "@/lib/publicRoutes";
+import { GUEST_ROUTES, guestStep } from "./guestStep";
 
 describe("guestStep", () => {
   it("creates a guest when a visitor starts practising", () => {
@@ -7,6 +8,12 @@ describe("guestStep", () => {
     expect(guestStep(false, null, "/practice")).toBe("create");
     expect(guestStep(false, null, "/plan")).toBe("create");
     expect(guestStep(false, null, "/groups")).toBe("create");
+  });
+  it("creates a guest for a visitor who opens Progress directly (it used to stay on the loading skeleton)", () => {
+    expect(guestStep(false, null, "/progress")).toBe("create");
+  });
+  it("covers every guest route that is public, so the two lists cannot drift apart", () => {
+    for (const route of GUEST_ROUTES) expect(isPublicPath(route), route).toBe(true);
   });
   it("creates nobody on the welcome or sign-in pages", () => {
     expect(guestStep(false, null, "/welcome")).toBe("none");

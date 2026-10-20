@@ -19,7 +19,7 @@ export default function HomePage() {
   const goal = user?.dailyGoalMinutes;
 
   return (
-    <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div>
         <PageHeader
           eyebrow={user && <>Salam{user.firstName && user.firstName !== "Guest" ? ` ${user.firstName}` : ""}{user.level ? ` · ${user.level}` : ""}</>}

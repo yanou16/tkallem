@@ -63,7 +63,7 @@ export function PrimaryButton({ children, loading, ...props }: React.ButtonHTMLA
     <button
       {...props}
       disabled={loading || props.disabled}
-      className="h-12 w-full rounded-full bg-ink text-sm font-semibold text-white transition hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-60"
+      className="h-12 w-full rounded-full bg-ink text-sm font-semibold text-white transition active:scale-[0.98] hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-60"
     >
       {loading ? "Please wait…" : children}
     </button>

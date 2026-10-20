@@ -12,7 +12,7 @@ export const startHref = (scenarioId: string, mode: "practice" | "interview" = "
 
 export function StartButton({ href, label = "Start", aria }: { href: string; label?: string; aria?: string }) {
   return (
-    <Link href={href} aria-label={aria} className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-black/80">
+    <Link href={href} aria-label={aria} className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white transition-transform hover:bg-black/80 active:scale-[0.97]">
       {label} <ArrowRight size={14} />
     </Link>
   );
@@ -48,7 +48,7 @@ export const sessionHref = (s: SessionSummary) =>
   `/ai-chat?sessionId=${encodeURIComponent(s.id)}&scenarioId=${encodeURIComponent(s.scenarioId)}`;
 
 function answered(s: SessionSummary) {
-  return s.totalQuestions === null ? plural(s.answered, "answer") : `${s.answered}/${s.totalQuestions} answers`;
+  return s.totalQuestions === null ? plural(s.answered, "answer") : `${s.answered}/${s.totalQuestions} ${s.totalQuestions === 1 ? "answer" : "answers"}`;
 }
 
 /** The student's sessions from GET /me/sessions. `actions` adds "Continue" (unfinished) or "Practice again" (finished). */
@@ -58,7 +58,7 @@ export function SessionList({ sessions, actions }: { sessions: SessionSummary[];
       {sessions.map((s) => (
         <li key={s.id} className="flex items-center gap-3 py-3">
           <div className="min-w-0 flex-1">
-            <Link href={sessionHref(s)} className="flex min-h-11 items-center truncate font-medium hover:underline">{s.title}</Link>
+            <Link href={sessionHref(s)} title={s.title} className="flex min-h-11 items-center font-medium hover:underline"><span className="truncate">{s.title}</span></Link>
             <p className="text-sm text-muted">
               {answered(s)} · {s.endedAt ? "Finished" : "Not finished"} · {timeAgo(s.startedAt)}
             </p>

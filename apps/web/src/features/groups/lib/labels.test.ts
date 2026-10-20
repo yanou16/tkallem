@@ -13,8 +13,8 @@ describe("correctionLabel", () => {
     expect(correctionLabel({ rule: null, type: "word_choice" })).toBe("Word choice");
   });
 
-  it("shows a rule the front does not know yet as the API sent it", () => {
-    expect(correctionLabel({ rule: "new_rule", type: "grammar" })).toBe("new_rule");
+  it("shows a rule the front does not know yet in words", () => {
+    expect(correctionLabel({ rule: "new_rule", type: "grammar" })).toBe("New rule");
   });
 });
 

@@ -14,7 +14,7 @@ export default function PracticePage() {
   const recent = useMySessions(5);
 
   return (
-    <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="grid grid-cols-1 gap-8 xl:grid-cols-[minmax(0,1fr)_340px]">
       <div>
         <PageHeader
           eyebrow={user?.level ? `Coach at ${user.level}` : undefined}

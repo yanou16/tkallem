@@ -23,7 +23,8 @@ describe("mistakeLabel", () => {
     for (const category of [...RULES, ...TYPES]) expect(MISTAKE_LABELS[category]).toBeTruthy();
   });
 
-  it("shows an unknown category as the API sent it", () => {
-    expect(mistakeLabel("spelling")).toBe("spelling");
+  it("shows an unknown category in words, not as a code", () => {
+    expect(mistakeLabel("spelling")).toBe("Spelling");
+    expect(mistakeLabel("spelling_and_punctuation_error")).toBe("Spelling and punctuation error");
   });
 });

@@ -244,7 +244,7 @@ function PlanPreview({ plan, act }: { plan: PlanDemo; act: (a: PlanAction) => vo
                 {plan.step > 0 ? <button type="button" onClick={() => act({ type: "back" })} className="inline-flex min-h-8 items-center gap-1 font-medium"><ArrowLeft size={14} aria-hidden /> Back</button> : <span />}
                 <span>Question {plan.step + 1} of {PLAN_STEPS}</span>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-hairline"><div className="h-full rounded-full bg-ink transition-all" style={{ width: `${((plan.step + 1) / PLAN_STEPS) * 100}%` }} /></div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-hairline"><div className="h-full origin-left rounded-full bg-ink transition-transform duration-300 ease-out" style={{ transform: `scaleX(${(plan.step + 1) / PLAN_STEPS})` }} /></div>
             </R>
             <R id="question" className="mb-3">
               <h3 className="text-[22px] font-medium leading-tight">{["Why do you need English?", "How is your English when you speak?", "How much time can you practice each day?", "What is hardest for you?", "Which subjects do you like?"][plan.step]}</h3>
@@ -282,7 +282,7 @@ function VoicePreview() {
         <R id="state" className="text-center">
           <p className="text-[15px] font-semibold">Listening…</p>
           <div className="mt-1 flex h-7 items-center justify-center gap-1" aria-hidden>
-            {[0, 1, 2, 3, 4, 5, 6].map((i) => <i key={i} className="w-1 animate-[tour-wave_1s_ease-in-out_infinite] rounded bg-ink motion-reduce:h-3.5 motion-reduce:animate-none" style={{ animationDelay: `${(i % 3) * 0.2}s`, height: 6 }} />)}
+            {[0, 1, 2, 3, 4, 5, 6].map((i) => <i key={i} className="h-6 w-1 animate-[tour-wave_1s_ease-in-out_infinite] rounded bg-ink motion-reduce:scale-y-50 motion-reduce:animate-none" style={{ animationDelay: `${(i % 3) * 0.2}s` }} />)}
           </div>
         </R>
         <R id="mic" className="my-1 flex size-24 items-center justify-center !rounded-full bg-ink text-white shadow-[0_0_0_8px_#fff,0_0_0_11px_var(--brand-yellow)]"><Mic size={38} aria-hidden /></R>
