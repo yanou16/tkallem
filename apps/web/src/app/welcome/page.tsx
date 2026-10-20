@@ -1,14 +1,11 @@
 "use client";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
-import { ArrowRight, Clock, MessageCircle, Mic, FileText } from "lucide-react";
+import { ArrowRight, MessageCircle, Mic, FileText } from "lucide-react";
+import { CONTEXTS, scenarioContext } from "@/components/ScenarioArt";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
-import { startHref } from "@/components/cards";
-import { Icon } from "@/lib/icons";
-import { cn } from "@/lib/utils";
+import { ScenarioCard, startHref } from "@/components/cards";
 
-/** One tint per kind of situation (DESIGN.md: a pastel always carries a scenario meaning). */
-const TINT: Record<string, string> = { travel: "bg-mint", study: "bg-butter", work: "bg-peach", exams: "bg-rose" };
 const FIRST_SCENARIO = "visa-us";
 
 /**
@@ -19,7 +16,7 @@ export default function WelcomePage() {
   const { isSignedIn } = useAuth();
   const scenarios = useScenarios();
   const primaryHref = isSignedIn ? "/practice" : startHref(FIRST_SCENARIO);
-  const list = [...(scenarios.data ?? [])].sort((a, b) => Number(b.id === FIRST_SCENARIO) - Number(a.id === FIRST_SCENARIO));
+  const list = [...(scenarios.data ?? [])].sort((a, b) => CONTEXTS.indexOf(scenarioContext(a)) - CONTEXTS.indexOf(scenarioContext(b)));
 
   return (
     <div className="min-h-screen bg-white text-ink">
@@ -73,19 +70,7 @@ export default function WelcomePage() {
             {scenarios.isLoading && [0, 1, 2].map((i) => <li key={i} className="h-36 animate-pulse rounded-[28px] bg-black/[0.04]" />)}
             {list.map((s) => (
               <li key={s.id}>
-                <Link href={startHref(s.id)} className={cn("flex h-full flex-col justify-between gap-4 rounded-[28px] p-5 hover:opacity-90", (s.category && TINT[s.category]) || "bg-black/[0.03]")}>
-                  <span className="flex items-start gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/70"><Icon name={s.icon ?? undefined} /></span>
-                    <span>
-                      <span className="block font-semibold">{s.title}</span>
-                      <span className="block text-sm text-muted">{s.description}</span>
-                    </span>
-                  </span>
-                  <span className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1.5 text-muted"><Clock size={14} /> {s.minutes ?? 10} min{s.level ? ` · ${s.level}` : ""}</span>
-                    <span className="inline-flex items-center gap-1 font-semibold">Start <ArrowRight size={14} /></span>
-                  </span>
-                </Link>
+                <ScenarioCard s={s} />
               </li>
             ))}
           </ul>
