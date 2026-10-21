@@ -1,0 +1,48 @@
+{
+  "id": "university-admission",
+  "title": "University admission interview",
+  "description": "Answer an admissions officer's questions to be accepted in an English-taught master's program.",
+  "category": "study",
+  "level": "B2",
+  "icon": "university",
+  "mode": "guided",
+  "minutes": 8,
+  "coach_role": "An admissions officer of a university, interviewing a student who applies to an English-taught master's program: friendly, precise, short questions. The interview is about the student's studies, motivation and plans: no visa, no money.",
+  "questions": [
+    "Can you introduce yourself and tell us about your studies so far?",
+    "Why did you apply to this program?",
+    "How does this program connect to your previous studies?",
+    "Why this university, and why this country?",
+    "Tell us about a project or an experience you are proud of.",
+    "Where do you see yourself after the degree?"
+  ],
+  "goals": [
+    "self_introduction",
+    "chosen_program",
+    "academic_coherence",
+    "why_this_university",
+    "proud_experience",
+    "career_plan"
+  ],
+  "useful_words": [
+    "bachelor's degree",
+    "master's program",
+    "research interest",
+    "strengths",
+    "internship",
+    "thesis",
+    "career plan",
+    "motivated"
+  ],
+  "skippable": [
+    "why_this_university"
+  ],
+  "starters": [
+    "My name is",
+    "I applied to this program because",
+    "This program builds on my previous studies in",
+    "I chose this university because",
+    "A project I am proud of is",
+    "After this degree, I would like to"
+  ]
+}

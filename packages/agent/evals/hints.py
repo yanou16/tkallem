@@ -22,20 +22,20 @@ from outage import retry_outage  # noqa: E402
 # (scenario, question index, level)
 STARTER_CASES = [
     ("visa-us", 0, "B1"), ("visa-us", 1, "B1"), ("visa-us", 2, "A2"), ("visa-us", 3, "B1"), ("visa-us", 4, "B2"),
-    ("visa-us", 5, "A2"), ("campus-france", 1, "B2"), ("campus-france", 4, "B1"), ("job-remote", 1, "B2"),
+    ("visa-us", 5, "A2"), ("university-admission", 1, "B2"), ("university-admission", 4, "B1"), ("renting-a-room", 2, "B1"), ("job-remote", 1, "B2"),
     ("ielts-part2", 0, "B2"),
 ]
 # (scenario, question index, level, the student's idea): names and numbers to keep in every case.
 TRANSLATION_CASES = [
     ("visa-us", 1, "B1", "Je vais étudier l'informatique à Ohio State University pendant 2 ans."),
     ("visa-us", 2, "B1", "Mon père paie mes études, il gagne 120000 dinars par mois."),
-    ("campus-france", 4, "B2", "J'ai une bourse de 615 euros par mois donnée par Campus France."),
+    ("university-admission", 4, "B2", "J'ai créé un projet de reconnaissance vocale avec 2 camarades à l'USTHB pendant 6 mois."),
     ("job-remote", 2, "B2", "J'ai créé une application pour la pharmacie Benali à Oran avec 3 amis."),
     ("visa-us", 5, "A2", "Après mon master je rentre en Algérie pour travailler chez Sonatrach."),
     ("visa-us", 0, "A2", "nroh l Amrika bach nqra master f data science"),
     ("visa-us", 4, "B1", "3andi familti f Oran w ana nkhdem m3a baba f l'entreprise ta3o"),
-    ("visa-business", 1, "B1", "nb9a 10 jours f New York w nwelli"),
-    ("campus-france", 3, "B2", "khtart France 3la khater les études mlah w l'master ta3hom m3rouf"),
+    ("renting-a-room", 1, "B1", "nb9a 6 mois f Lyon w nwelli"),
+    ("university-admission", 3, "B2", "khtart had l'université 3la khater l'master ta3hom m3rouf f l'IA"),
     ("job-remote", 3, "B2", "nkhdem men dar men 9 sbah hta 5 l3chiya w nhadar m3a l'équipe f Slack"),
 ]
 

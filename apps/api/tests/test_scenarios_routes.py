@@ -48,7 +48,9 @@ def test_scenarios_are_public():
     # The welcome page lists them before any account or guest exists (no student data in them).
     response = TestClient(app).get("/scenarios")
     assert response.status_code == 200
-    assert {"visa-us", "visa-business"} <= {s["id"] for s in response.json()}
+    ids = {s["id"] for s in response.json()}
+    assert {"visa-us", "university-admission", "renting-a-room"} <= ids
+    assert not {"campus-france", "visa-business"} & ids  # one visa card, and the admission interview has no visa
 
 
 def test_scenarios_include_card_fields(client):

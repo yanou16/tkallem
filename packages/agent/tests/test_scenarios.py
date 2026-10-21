@@ -15,7 +15,7 @@ def test_all_scenario_files_are_valid():
         read_scenario(f)  # strict: raises on the first broken file
     ids = [s.id for s in list_scenarios()]
     assert len(ids) == len(files)
-    assert {"visa-us", "campus-france", "job-remote", "ielts-part2", "free-talk"} <= set(ids)
+    assert {"visa-us", "university-admission", "renting-a-room", "job-remote", "ielts-part2", "free-talk"} <= set(ids)
     assert len(ids) == len(set(ids))
     for s in list_scenarios():
         if s.mode == "guided":
