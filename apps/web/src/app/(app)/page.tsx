@@ -12,6 +12,7 @@ import { usePlanOrder } from "@/features/plan/usePlanOrder";
 import type { Scenario } from "@/features/practice/types/practice";
 import { Icon } from "@/lib/icons";
 import { cn, formatMinutes, formatNumber, plural } from "@/lib/utils";
+import PhraseOfTheDay from "@/features/phrase-of-day/components/PhraseOfTheDay";
 
 export default function HomePage() {
   const { user } = useCurrentUser();
@@ -47,6 +48,7 @@ export default function HomePage() {
       </div>
 
       <aside className="space-y-5">
+        <PhraseOfTheDay />
         <TopMistakesCard />
         <DailyGoalCard />
         <RecentSessionsCard />

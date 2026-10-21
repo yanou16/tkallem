@@ -36,5 +36,6 @@ class RateLimiter:
 
 
 explain_notes = RateLimiter(limit=10, window_seconds=3600)  # report notes written again in the other language, per student and per hour
+phrase_checks = RateLimiter(limit=15, window_seconds=3600)  # recordings of the phrase of the day per student and per hour (each one is a paid transcription)
 group_messages = RateLimiter(limit=20, window_seconds=60)  # messages per student and per minute
 group_checks = RateLimiter(limit=30, window_seconds=24 * 3600)  # private checks per student over 24 hours (phase 4)

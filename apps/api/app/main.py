@@ -13,6 +13,7 @@ from app.db.connection import ConnFactory, close_pool, get_conn_factory, open_po
 
 from app.routes.credits import router as credits_router
 from app.routes.group_ws import router as group_ws_router
+from app.routes.phrase_of_the_day import router as phrase_router
 from app.routes.groups import router as groups_router
 from app.routes.me import router as me_router
 from app.routes.scenarios import router as scenarios_router
@@ -50,6 +51,7 @@ app.include_router(credits_router)
 app.include_router(me_router)
 app.include_router(groups_router)
 app.include_router(group_ws_router)
+app.include_router(phrase_router)
 app.include_router(scenarios_router)
 app.include_router(sessions_router)
 app.include_router(webrtc_router)
