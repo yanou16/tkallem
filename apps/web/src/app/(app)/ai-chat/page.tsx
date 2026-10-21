@@ -13,6 +13,7 @@ import { MAX_RECORDING_S, useVoiceRecorder, type Recording } from "@/features/ai
 import { useCoachVoice } from "@/features/ai-chat/hooks/useCoachVoice";
 import { useRealtimeVoice } from "@/features/ai-chat/hooks/useRealtimeVoice";
 import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOfCredits";
+import { VoiceCoachView, VoiceCallButton } from "@/features/ai-chat/components/VoiceCoachView";
 import CorrectionCard from "@/features/ai-chat/components/CorrectionCard";
 import { correctionHistory } from "@/features/ai-chat/lib/correctionHistory";
 import { applyVoiceCorrection } from "@/features/ai-chat/lib/voiceCorrection";
@@ -362,12 +363,9 @@ function Chat() {
               {answers.length > 0 && s && !s.finished && <Button dark={false} onClick={finish} disabled={end.isPending} className="!px-4 !py-2 text-xs">{end.isPending ? "Preparing your report…" : "End session"}</Button>}
               <button type="button" onClick={toggleAvatar} className="min-h-9 rounded-full border border-line px-3 py-1 text-xs font-semibold">{avatarOn ? "Hide 3D coach" : "Show 3D coach"}</button>
             </div>
-            <div className="mx-auto flex max-w-lg flex-col items-center text-center">
-              {avatarOn ? <div className="w-full max-w-xs overflow-hidden rounded-3xl bg-mint/30"><CoachAvatar {...coach.avatarProps} /></div> : <span className="flex h-40 w-40 items-center justify-center rounded-3xl bg-mint/50 sm:h-52 sm:w-52"><Icon name={icon ?? "speaking"} size={64} className="text-ink/50" /></span>}
-              <h2 className="mt-5 text-xl font-bold">Your AI tutor</h2>
-              <p role="status" className="mt-2 text-sm text-muted">
-                {rtVoice.isConnecting ? "Requesting microphone and connecting…" : rtVoice.isConnected ? rtVoice.isMuted ? "Microphone muted" : "Connected — speak naturally" : "Start a call, then speak naturally."}
-              </p>
+            <VoiceCoachView
+              avatar={avatarOn ? <div className="w-full max-w-xs overflow-hidden rounded-3xl bg-mint/30"><CoachAvatar {...coach.avatarProps} /></div> : <span className="flex h-40 w-40 items-center justify-center rounded-3xl bg-mint/50 sm:h-52 sm:w-52"><Icon name={icon ?? "speaking"} size={64} className="text-ink/50" /></span>}
+              status={rtVoice.isConnecting ? "Requesting microphone and connecting…" : rtVoice.isConnected ? rtVoice.isMuted ? "Microphone muted" : "Connected — speak naturally" : "Start a call, then speak naturally."}>
               {rtVoice.isConnected && <div className="mt-3 flex min-h-9 items-center gap-3">
                 <VoiceState state={rtVoice.state} /><span className="text-xs text-muted">{formatTime(rtVoice.duration)}</span>
                 {!rtVoice.isMuted && <div className="flex h-8 items-center gap-1" aria-label="Microphone activity">
@@ -375,18 +373,14 @@ function Chat() {
                 </div>}
               </div>}
               <div className="mt-6 flex w-full items-center justify-center gap-3">
-                <button type="button" onClick={() => (rtVoice.isConnected || rtVoice.isConnecting) ? rtVoice.stop() : startCall()} disabled={!sessionId || !s || s.finished}
-                  className={cn("inline-flex min-h-14 w-full max-w-xs items-center justify-center gap-3 rounded-full px-7 py-4 text-base font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink disabled:opacity-40", rtVoice.isConnected || rtVoice.isConnecting ? "bg-rose text-ink hover:bg-rose-deep" : "bg-ink text-white hover:bg-black/80")}>
-                  {rtVoice.isConnected || rtVoice.isConnecting ? <PhoneOff size={22} aria-hidden="true" /> : <PhoneCall size={22} aria-hidden="true" />}
-                  {rtVoice.isConnecting ? "Cancel connection" : rtVoice.isConnected ? "End call" : "Start voice call"}
-                </button>
+                <VoiceCallButton active={rtVoice.isConnected} connecting={rtVoice.isConnecting} onClick={() => (rtVoice.isConnected || rtVoice.isConnecting) ? rtVoice.stop() : startCall()} disabled={!sessionId || !s || s.finished} />
                 {rtVoice.isConnected && <button type="button" onClick={rtVoice.toggleMute} aria-label={rtVoice.isMuted ? "Unmute microphone" : "Mute microphone"} className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-line hover:bg-black/5">
                   {rtVoice.isMuted ? <MicOff size={21} /> : <Mic size={21} />}
                 </button>}
               </div>
               <p className="mb-3 mt-3 text-xs text-muted">Your microphone is used during the call.</p>
               {voiceError && <p role="alert" className="mt-3 w-full rounded-xl bg-rose/60 px-4 py-3 text-sm">{voiceError}</p>}
-            </div>
+            </VoiceCoachView>
           </section>
         )}
 
