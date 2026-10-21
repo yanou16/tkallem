@@ -162,22 +162,32 @@ export async function apiStream(endpoint: string, form: FormData, onEvent: (name
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
-  for (;;) {
-    const { value, done } = await reader.read();
-    buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
-    let cut: number;
-    while ((cut = buffer.indexOf("\n\n")) >= 0) {
-      const block = buffer.slice(0, cut);
-      buffer = buffer.slice(cut + 2);
-      let name = "message";
-      const lines: string[] = [];
-      for (const line of block.split("\n")) {
-        if (line.startsWith("event: ")) name = line.slice(7);
-        else if (line.startsWith("data: ")) lines.push(line.slice(6));
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+      let boundary: RegExpExecArray | null;
+      // SSE permits CRLF as well as LF, including boundaries split across chunks.
+      while ((boundary = /\r?\n\r?\n/.exec(buffer)) !== null) {
+        const block = buffer.slice(0, boundary.index);
+        buffer = buffer.slice(boundary.index + boundary[0].length);
+        let name = "message";
+        const lines: string[] = [];
+        for (const line of block.split(/\r?\n/)) {
+          if (line.startsWith("event:")) name = line.slice(6).trimStart();
+          else if (line.startsWith("data:")) lines.push(line.slice(5).replace(/^ /, ""));
+        }
+        if (lines.length) {
+          onEvent(name, JSON.parse(lines.join("\n")));
+          // done is emitted only after persistence; do not wait for a proxy to close the socket.
+          if (name === "done" || name === "error") return;
+        }
       }
-      if (lines.length) onEvent(name, JSON.parse(lines.join("\n")));
+      if (done) return;
     }
-    if (done) return;
+  } finally {
+    await reader.cancel().catch(() => {});
+    reader.releaseLock();
   }
 }
 
