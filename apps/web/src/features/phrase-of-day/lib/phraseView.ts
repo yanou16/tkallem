@@ -3,14 +3,16 @@
 import type { ExplainLang } from "@/features/auth/types/user";
 import type { PhraseChecked, PhraseKind, PhraseOfDay } from "../types/phraseOfDay";
 
-export const KIND_LABEL: Record<PhraseKind, string> = { interview: "Interview", everyday: "Everyday", idiom: "Idiom" };
-
 /** An idiom is fun to know but is not for an interview: say it, so nobody learns it for the wrong place. */
 export const KIND_NOTE: Record<PhraseKind, string | null> = {
   interview: null,
   everyday: null,
-  idiom: "An expression to know, not to use in an interview.",
+  idiom: "An idiom: fun to know, not for an interview.",
 };
+
+/** The label that opens the meaning: it names the language the meaning is written in. */
+export const meaningToggle = (lang: ExplainLang) => (lang === "fr" ? "Meaning in French" : "Meaning in English");
+export const otherLang = (lang: ExplainLang): ExplainLang => (lang === "fr" ? "en" : "fr");
 
 export const meaningOf = (p: PhraseOfDay, lang: ExplainLang) => (lang === "fr" ? p.fr : p.en);
 

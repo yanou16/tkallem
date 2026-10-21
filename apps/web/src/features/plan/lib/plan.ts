@@ -93,6 +93,15 @@ export function planOrder<T extends Orderable>(list: T[], goal: GoalId | null, i
   return list.map((s, i) => ({ s, i })).sort((a, b) => rank(a.s) - rank(b.s) || a.i - b.i).map((x) => x.s);
 }
 
+/** The situation the product is about. The API lists situations alphabetically, so without a plan it would be the fourth card. */
+export const FEATURED_SCENARIO = "visa-us";
+
+/** The featured situation first, the others in their order. A list without it is returned as it is. */
+export function featuredFirst<T extends { id: string }>(list: T[]): T[] {
+  const i = list.findIndex((s) => s.id === FEATURED_SCENARIO);
+  return i <= 0 ? list : [list[i], ...list.slice(0, i), ...list.slice(i + 1)];
+}
+
 /** The path shown at the end: guided situations only (free talk has no goal), at most four. */
 export const planPath = <T extends Orderable & { mode: "guided" | "free" }>(list: T[], goal: GoalId | null, interests: Interest[]) =>
   planOrder(list, goal, interests).filter((s) => s.mode === "guided").slice(0, 4);
