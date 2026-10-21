@@ -10,6 +10,7 @@ import type { GroupSummary } from "../types/groups";
 import CheckPanel from "./CheckPanel";
 import Leaderboard from "./Leaderboard";
 import MessageList from "./MessageList";
+import { memberColors } from "../lib/memberColors";
 
 const MESSAGE_MAX = 500; // as the API: 1 to 500 characters, spaces at both ends removed
 type Tab = "discussion" | "members";
@@ -31,6 +32,7 @@ export default function GroupRoom({ summary }: { summary: GroupSummary }) {
   // GET /me has no id: the leaderboard says which member she is (no Report button on her own messages).
   const myId = leaderboard.data?.find((e) => e.isMe)?.member.id;
   const name = group.data?.name ?? summary.name;
+  const colors = memberColors(group.data?.members ?? []);
   const text = draft.trim();
   const canSend = text.length >= 1 && text.length <= MESSAGE_MAX && !send.isPending;
   const submit = () => {
@@ -104,7 +106,7 @@ export default function GroupRoom({ summary }: { summary: GroupSummary }) {
         <section className="flex min-h-0 flex-1 flex-col bg-white" aria-label="Discussion">
           <div className="flex min-h-0 flex-1 flex-col">
             <Async query={messages} skeleton={<div className="p-4 sm:p-6"><Skeleton className="h-40" /></div>}>
-              {(log) => <MessageList groupId={id} log={log} myId={myId} fill />}
+              {(log) => <MessageList groupId={id} log={log} myId={myId} colors={colors} fill />}
             </Async>
           </div>
           {/* Bottom composer: anchored within layout, no overlapping, subtle surface fill */}
@@ -151,7 +153,7 @@ export default function GroupRoom({ summary }: { summary: GroupSummary }) {
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {g.members.map((m) => (
                   <div key={m.id} className="flex items-center gap-3 rounded-2xl border border-line/60 bg-surface/30 p-3">
-                    <Avatar first={m.firstName ?? undefined} size={42} />
+                    <Avatar first={m.firstName ?? undefined} size={42} className={colors.get(m.id)} />
                     <p className="font-semibold text-ink">{memberName(m, m.id === myId)}</p>
                   </div>
                 ))}
