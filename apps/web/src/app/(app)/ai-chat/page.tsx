@@ -747,6 +747,11 @@ function Report({ report, title, sessionId, explainDefault, onRestart }: { repor
         <Link href="/practice" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-black/5">
           Back to practice
         </Link>
+        {report.lines.some((l) => l.corrections.length > 0) && (
+          <Link href="/phrases" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:bg-black/5">
+            Say your phrases again
+          </Link>
+        )}
         <InstallButton />
       </div>
     </div>

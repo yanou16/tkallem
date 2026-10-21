@@ -98,7 +98,10 @@ export default function ProgressPage() {
               </ul>
             )}
             {p.topMistakes.length > 0 && (
-              <Link href="/practice" className="mt-4 inline-flex min-h-11 items-center rounded-full border border-hairline-strong px-5 text-sm font-semibold hover:bg-surface">Practice again</Link>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Link href="/practice" className="inline-flex min-h-11 items-center rounded-full border border-hairline-strong px-5 text-sm font-semibold hover:bg-surface">Practice again</Link>
+                <Link href="/phrases" className="inline-flex min-h-11 items-center rounded-full border border-hairline-strong px-5 text-sm font-semibold hover:bg-surface">See all your phrases</Link>
+              </div>
             )}
           </Card>
           <Card>
