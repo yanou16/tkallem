@@ -1,100 +1,65 @@
 "use client";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
-import { ArrowRight, MessageCircle, Mic, FileText } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { CONTEXTS, scenarioContext } from "@/components/ScenarioArt";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
 import { ScenarioCard, startHref } from "@/components/cards";
+import InstallButton from "@/components/InstallButton";
+import HeroExample from "@/features/landing/HeroExample";
+import HowItWorks from "@/features/landing/HowItWorks";
+import ScreenshotTour from "@/features/landing/ScreenshotTour";
 
 const FIRST_SCENARIO = "visa-us";
+const PRIMARY = "inline-flex min-h-14 items-center justify-center gap-3 rounded-full bg-ink px-7 py-4 text-base font-semibold text-white transition-colors hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink";
 
-/**
- * Public entry page: what a judge or a student sees first when signed out. One primary action, trying a real
- * interview without an account (guest mode, 40 free answers); signing in is secondary.
- */
 export default function WelcomePage() {
   const { isSignedIn } = useAuth();
   const scenarios = useScenarios();
-  const primaryHref = isSignedIn ? "/practice" : startHref(FIRST_SCENARIO);
+  const primaryHref = isSignedIn ? "/practice" : "/plan";
+  const primaryLabel = isSignedIn ? "Continue practicing" : "Build my speaking plan";
   const list = [...(scenarios.data ?? [])].sort((a, b) => CONTEXTS.indexOf(scenarioContext(a)) - CONTEXTS.indexOf(scenarioContext(b)));
+  return <div className="min-h-screen bg-white text-ink">
+    <header className="flex w-full items-center justify-between gap-4 px-5 py-6 sm:px-8 lg:px-12 2xl:px-16">
+      <Link href="/welcome" className="flex shrink-0 items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-lg font-extrabold">T</span><span className="text-xl font-bold tracking-tight">Tkallem</span></Link>
+      <nav aria-label="Page" className="flex flex-wrap items-center justify-end gap-1 sm:gap-3">
+        <a href="#how" className="hidden min-h-11 items-center rounded-full px-3 text-sm font-medium text-muted hover:bg-black/5 sm:inline-flex">How it works</a>
+        <a href="#tour" className="hidden min-h-11 items-center rounded-full px-3 text-sm font-medium text-muted hover:bg-black/5 md:inline-flex">Look inside</a>
+        <a href="#situations" className="hidden min-h-11 items-center rounded-full px-3 text-sm font-medium text-muted hover:bg-black/5 sm:inline-flex">Situations</a>
+        <Link href={isSignedIn ? "/" : "/sign-in"} className="inline-flex min-h-11 items-center justify-center rounded-full border border-line px-5 text-sm font-semibold hover:bg-black/5">{isSignedIn ? "My dashboard" : "Sign in"}</Link>
+      </nav>
+    </header>
+    <main className="w-full px-5 pb-12 sm:px-8 lg:px-12 2xl:px-16">
+      <section className="grid items-center gap-10 pb-6 pt-8 lg:grid-cols-2 lg:gap-12 lg:pb-12 lg:pt-14 2xl:gap-20">
+        <div className="max-w-3xl">
+          <p className="inline-flex rounded-full bg-butter/60 px-4 py-2 text-xs font-medium sm:text-sm">For Algerian students · Visa, Campus France, jobs, IELTS</p>
+          <h1 className="mt-6 text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl xl:text-6xl 2xl:text-7xl">You know English.<br />Now speak with confidence.</h1>
+          <p className="mt-6 max-w-2xl text-base leading-relaxed text-muted sm:text-lg xl:text-xl">Rehearse the real interview out loud with an AI coach that corrects you kindly and explains mistakes in French.</p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap"><Link href={primaryHref} className={PRIMARY}>{primaryLabel} <ArrowRight size={19} aria-hidden="true" /></Link>{!isSignedIn && <Link href={startHref(FIRST_SCENARIO)} className="inline-flex min-h-14 items-center justify-center rounded-full border border-ink px-6 py-4 text-base font-semibold transition-colors hover:bg-black/5">Try a visa interview</Link>}</div>
+          <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted">{["No account needed", "40 free answers", "Works on your phone"].map((note) => <li key={note} className="flex items-center gap-1.5"><Check size={15} aria-hidden="true" className="text-success" />{note}</li>)}</ul>
+        </div>
+        <HeroExample />
+      </section>
 
-  return (
-    <div className="min-h-screen bg-white text-ink">
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5 sm:px-6">
-        <Link href="/welcome" className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-lg font-extrabold">T</span>
-          <span className="text-xl font-bold tracking-tight">Tkallem</span>
-        </Link>
-        {isSignedIn ? (
-          <Link href="/" className="rounded-full border border-black/15 px-4 py-2 text-sm font-medium">My dashboard</Link>
-        ) : (
-          <Link href="/sign-in" className="rounded-full border border-black/15 px-4 py-2 text-sm font-medium">Sign in</Link>
-        )}
-      </header>
+      <div className="mt-16 lg:mt-24"><HowItWorks ctaHref={isSignedIn ? "/practice" : startHref(FIRST_SCENARIO)} ctaLabel={isSignedIn ? "Continue practicing" : "Try a visa interview now"} /></div>
+      <div className="mt-20 lg:mt-28"><ScreenshotTour /></div>
 
-      <main className="mx-auto max-w-5xl px-4 pb-16 sm:px-6">
-        <section className="grid items-center gap-10 py-6 md:grid-cols-[1.1fr_0.9fr] md:py-12">
-          <div>
-            <p className="text-sm font-medium text-muted">For Algerian students preparing an interview in English</p>
-            <h1 className="mt-3 text-4xl font-semibold leading-[1.1] tracking-tight sm:text-5xl">
-              Rehearse your interview in English before the real one.
-            </h1>
-            <p className="mt-4 max-w-xl text-lg leading-relaxed text-muted">
-              Answer out loud or by typing. Your AI coach plays the visa officer, the Campus France advisor or the
-              recruiter, corrects every sentence and explains each mistake in French.
-            </p>
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Link href={primaryHref} className="inline-flex items-center justify-center gap-2 rounded-full bg-ink px-6 py-3.5 text-base font-semibold text-white hover:bg-black/80">
-                {isSignedIn ? "Continue practising" : "Try a visa interview now"} <ArrowRight size={18} />
-              </Link>
-              {!isSignedIn && <p className="text-sm text-muted">No account needed · 40 free answers</p>}
-            </div>
-          </div>
+      <section id="situations" aria-labelledby="situations-title" className="mt-20 scroll-mt-8 lg:mt-28">
+        <p className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-muted">Real moments, real practice</p>
+        <h2 id="situations-title" className="text-3xl font-bold tracking-tight sm:text-4xl">Pick a real situation.</h2>
+        <p className="mt-3 text-base text-muted sm:text-lg">Five to ten minutes each, with a report on your answers at the end.</p>
+        <ul className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          {scenarios.isLoading && [0, 1, 2, 3].map((i) => <li key={i} aria-hidden="true" className="h-60 animate-pulse rounded-card bg-black/[0.04]" />)}
+          {list.map((scenario) => <li key={scenario.id}><ScenarioCard s={scenario} /></li>)}
+        </ul>
+        {scenarios.error && <p role="alert" className="mt-4 rounded-2xl bg-butter/40 p-4 text-sm">The scenarios could not be loaded. <Link href={startHref(FIRST_SCENARIO)} className="font-semibold underline">Start the visa interview</Link>.</p>}
+      </section>
 
-          {/* A real correction from the coach (correction set, sentence s01), so the value shows before any click. */}
-          <figure aria-label="Example of a correction" className="space-y-3 rounded-[28px] bg-black/[0.03] p-5">
-            <p className="max-w-[85%] rounded-[20px] bg-white px-4 py-3">What is the purpose of your trip?</p>
-            <p className="ml-auto max-w-[85%] rounded-[20px] bg-ink px-4 py-3 text-white">I go to the US for study.</p>
-            <div className="ml-auto max-w-[90%] rounded-2xl border border-black/5 bg-white p-3 text-sm">
-              <p className="text-muted">I go to the US <s className="text-red-700">for study</s>.</p>
-              <p className="font-medium">I go to the US <span className="font-semibold text-emerald-700">to study</span>.</p>
-              <p className="mt-1 text-muted">Pour exprimer le but, on utilise to + verbe.</p>
-            </div>
-          </figure>
-        </section>
-
-        <section className="mt-6">
-          <h2 className="text-2xl font-semibold">Pick a real situation</h2>
-          <p className="mt-1 text-muted">Each one takes 5 to 10 minutes and ends with a report on your answers.</p>
-          <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {scenarios.isLoading && [0, 1, 2].map((i) => <li key={i} className="h-36 animate-pulse rounded-[28px] bg-black/[0.04]" />)}
-            {list.map((s) => (
-              <li key={s.id}>
-                <ScenarioCard s={s} />
-              </li>
-            ))}
-          </ul>
-          {scenarios.error && <p className="mt-3 text-sm text-muted">The scenarios could not be loaded. <Link href={startHref(FIRST_SCENARIO)} className="underline">Start the visa interview</Link>.</p>}
-        </section>
-
-        <section className="mt-12 grid gap-4 sm:grid-cols-3">
-          {[
-            { icon: MessageCircle, title: "1. Choose a situation", text: "A US visa, Campus France, a remote job interview, IELTS speaking." },
-            { icon: Mic, title: "2. Answer like on the day", text: "Speak into your phone or type. The coach replies and asks the next question." },
-            { icon: FileText, title: "3. Fix what matters", text: "Every mistake explained in French or simple English, then a report with what to redo." },
-          ].map(({ icon: I, title, text }) => (
-            <div key={title} className="rounded-[28px] border border-black/10 p-5">
-              <I size={20} strokeWidth={1.75} />
-              <p className="mt-3 font-semibold">{title}</p>
-              <p className="mt-1 text-sm text-muted">{text}</p>
-            </div>
-          ))}
-        </section>
-
-        <p className="mt-10 text-sm text-muted">
-          Free to try: 40 answers without an account. Sign in for 60 more, then 15 new answers every day.
-        </p>
-      </main>
-    </div>
-  );
+      <section className="mt-20 flex flex-col items-start justify-between gap-8 rounded-[28px] bg-ink p-7 text-white sm:p-10 lg:mt-28 lg:flex-row lg:items-center lg:p-14">
+        <div><h2 className="max-w-3xl text-3xl font-bold leading-tight tracking-tight sm:text-4xl">Your real interview is coming.<br />Rehearse it first.</h2><p className="mt-4 text-base text-white/70 sm:text-lg">Five minutes, your voice, nobody watching.</p></div>
+        <div className="flex shrink-0 flex-col items-start gap-4"><Link href={primaryHref} className="inline-flex min-h-14 items-center justify-center gap-3 rounded-full bg-white px-7 py-4 text-base font-semibold text-ink hover:bg-white/90">{primaryLabel} <ArrowRight size={19} aria-hidden="true" /></Link><InstallButton className="[&_*]:!text-white" /></div>
+      </section>
+      <footer className="mt-8 flex flex-col gap-4 border-t border-line pt-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between"><span className="font-semibold text-ink">Tkallem</span><p>Free to try: 40 answers without an account. Sign in for 60 more, then 15 new answers every day.</p></footer>
+    </main>
+  </div>;
 }
