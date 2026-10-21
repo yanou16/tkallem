@@ -55,7 +55,7 @@ export const PAGE_CALLOUTS: Record<PlatformPage, Callout[]> = {
     c("nav", "Click the menu", "Every page of the app is live in this preview: try Practice, Progress, Profile.", "left"),
     c("kpi", "Progress that is measured", "Mistakes per 100 words, practice time and streak, from your own sessions.", "left"),
     c("plan", "Your plan, in order", "The situations that match your goal come first.", "left"),
-    c("situations", "Real situations", "Visa, Campus France, job, IELTS and everyday scenes like the taxi or the cafe.", "left"),
+    c("situations", "Real situations", "Visa, university admission, job, IELTS and everyday scenes like the taxi or renting a room.", "left"),
     c("credits", "Free to try", "Guests get 40 free answers. No account needed.", "right"),
     c("goal", "Today's goal", "Your daily minutes of speaking, as a ring.", "right"),
     c("real", "Real interview mode", "Nothing is corrected until the end, like the real one.", "right"),
@@ -112,13 +112,13 @@ export function visibleCallouts(tab: TourTab, page: PlatformPage, planDone: bool
 export const DEMO_SCENARIOS = [
   { id: "airport", title: "At the airport", category: "speaking", mode: "guided" as const, minutes: 6, level: "B1" },
   { id: "cafe", title: "Ordering at a cafe", category: "speaking", mode: "guided" as const, minutes: 5, level: "A2" },
-  { id: "campus-france", title: "Campus France interview", category: "study", mode: "guided" as const, minutes: 8, level: "B2" },
+  { id: "university-admission", title: "University admission interview", category: "study", mode: "guided" as const, minutes: 8, level: "B2" },
   { id: "free-talk", title: "Free talk", category: "speaking", mode: "free" as const, minutes: 10, level: "B1" },
   { id: "ielts-part2", title: "IELTS Speaking, part 2", category: "exams", mode: "guided" as const, minutes: 6, level: "B2" },
   { id: "job-remote", title: "Remote job interview", category: "work", mode: "guided" as const, minutes: 10, level: "B2" },
   { id: "shop", title: "In a clothes shop", category: "speaking", mode: "guided" as const, minutes: 5, level: "A2" },
   { id: "taxi", title: "Taking a taxi", category: "speaking", mode: "guided" as const, minutes: 5, level: "A2" },
-  { id: "visa-business", title: "Business or tourist visa", category: "travel", mode: "guided" as const, minutes: 8, level: "B1" },
+  { id: "renting-a-room", title: "Renting a room", category: "speaking", mode: "guided" as const, minutes: 6, level: "B1" },
   { id: "visa-us", title: "Visa interview", category: "travel", mode: "guided" as const, minutes: 8, level: "B1" },
 ];
 export type DemoScenario = (typeof DEMO_SCENARIOS)[number];

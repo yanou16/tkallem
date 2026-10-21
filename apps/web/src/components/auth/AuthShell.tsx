@@ -107,7 +107,7 @@ export function OrDivider() {
 function AuthFacts({ isSignUp }: { isSignUp: boolean }) {
   const facts = isSignUp
     ? ["60 answers to start, then 15 more every day", "Every mistake explained in French", "Your progress and your answers are saved"]
-    : ["The real questions of visa, Campus France, job and IELTS interviews", "Every mistake explained in French", "40 free answers without an account"];
+    : ["The real questions of visa, admission, job and IELTS interviews", "Every mistake explained in French", "40 free answers without an account"];
   return (
     <ul className="mt-10 space-y-3">
       {facts.map((t) => (
@@ -144,7 +144,7 @@ export function AuthShell({ mode, children }: { mode: "sign-in" | "sign-up"; chi
               <p className="mt-3 max-w-[400px] text-base leading-relaxed text-slate">
                 {isSignUp
                   ? "Free account: 60 answers to start, then 15 new answers every day. Your progress is saved."
-                  : "Rehearse visa, Campus France and job interviews by voice, with every mistake explained in French."}
+                  : "Rehearse visa, admission and job interviews by voice, with every mistake explained in French."}
               </p>
             </div>
 

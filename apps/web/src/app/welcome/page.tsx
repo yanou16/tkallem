@@ -12,7 +12,6 @@ import { scenarioTint } from "@/lib/tint";
 import { cn } from "@/lib/utils";
 
 const FIRST_SCENARIO = "visa-us";
-const HIDDEN_HERE = new Set(["visa-business"]); // a second visa card next to the first one: still on the Practice page
 
 /**
  * Public entry page: what a judge or a student sees first when signed out. One message (you understand English, you freeze
@@ -24,7 +23,6 @@ export default function WelcomePage() {
   const scenarios = useScenarios();
   const primaryHref = isSignedIn ? "/practice" : "/plan";
   const list = [...(scenarios.data ?? [])]
-    .filter((s) => !HIDDEN_HERE.has(s.id))
     .sort((a, b) => Number(b.id === FIRST_SCENARIO) - Number(a.id === FIRST_SCENARIO));
 
   return (
@@ -50,7 +48,7 @@ export default function WelcomePage() {
         <section className="grid items-center gap-14 pb-4 pt-8 md:pb-10 md:pt-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
           <div>
             <p className="inline-flex rounded-full bg-surface px-4 py-2 text-sm font-medium text-charcoal">
-              For Algerian students: visa, Campus France, jobs, IELTS
+              For Algerian students: visa, admission, jobs, IELTS
             </p>
             <h1 className="mt-6 text-[2.125rem] font-medium leading-[1.08] tracking-tight min-[400px]:text-[2.5rem] sm:text-6xl">
               <span className="text-steel">You know English.</span><br />

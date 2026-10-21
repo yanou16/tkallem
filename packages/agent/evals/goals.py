@@ -16,18 +16,21 @@ from tkallem_agent.session import TurnLog
 
 # (scenario, index of the question being asked, student answer, expected goal id or None)
 CASES = [
-    ("visa-business", 0, "I'm going to a medical conference in Boston.", "purpose_of_trip"),
-    ("visa-business", 1, "Two weeks, from the 3rd to the 17th of March.", "length_of_stay"),
-    ("visa-business", 1, "I am a software developer in Algiers.", "occupation"),
-    ("visa-business", 2, "I work as a nurse at Mustapha hospital.", "occupation"),
-    ("visa-business", 2, "I'm a student at USTHB, in computer science.", "occupation"),
-    ("visa-business", 3, "My employer pays for the flight and the hotel.", "funding"),
-    ("visa-business", 3, "I will stay ten days only.", "length_of_stay"),
-    ("visa-business", 4, "Yes, I went to France and Turkey last year.", "travel_history"),
-    ("visa-business", 5, "What do you mean by ties?", None),
-    ("visa-business", 5, "My wife and children live in Oran and I have a permanent job.", "ties_to_algeria"),
-    ("visa-business", 1, "Sorry, can you repeat the question?", None),
-    ("visa-business", 0, "Hello, how are you?", None),
+    ("renting-a-room", 0, "I'm a master's student in biology, I come from Algeria.", "introduce_yourself"),
+    ("renting-a-room", 1, "For ten months, from September to June.", "length_of_stay"),
+    ("renting-a-room", 1, "My budget is around 400 euros.", "budget"),
+    ("renting-a-room", 2, "I can pay 350 euros a month.", "budget"),
+    ("renting-a-room", 2, "Sorry, how much is the rent?", None),
+    ("renting-a-room", 3, "Are the bills included in the rent?", "ask_about_bills"),
+    ("renting-a-room", 4, "Yes, that is fine, I can pay the deposit.", "deposit"),
+    ("renting-a-room", 5, "I could move in on the first of September.", "move_in_date"),
+    ("renting-a-room", 1, "Sorry, can you repeat the question?", None),
+    ("renting-a-room", 0, "Hello, how are you?", None),
+    ("university-admission", 1, "I applied because the program is strong in artificial intelligence.", "chosen_program"),
+    ("university-admission", 3, "I chose this university for its research lab, and this country for its quality of life.", "why_this_university"),
+    ("university-admission", 4, "I built a voice assistant with two classmates for my final project.", "proud_experience"),
+    ("university-admission", 5, "I would like to become a researcher in data science.", "career_plan"),
+    ("university-admission", 2, "What do you mean by connect?", None),
     ("visa-us", 1, "I will attend Georgia Tech for a master's in computer science.", "chosen_program"),
     ("visa-us", 2, "I have a Fulbright scholarship.", "funding"),
     ("visa-us", 4, "Je ne comprends pas la question.", None),
@@ -39,8 +42,8 @@ CASES = [
 
 # (scenario, question index, answer, goal expected in goal_covered or also_covered, the other one expected too)
 DOUBLE = [
-    ("visa-business", 0, "I'm going to a conference in Boston for two weeks.", "purpose_of_trip", "length_of_stay"),
-    ("visa-business", 1, "Ten days. My company pays for everything.", "length_of_stay", "funding"),
+    ("renting-a-room", 0, "I am a student and I need the room for six months.", "introduce_yourself", "length_of_stay"),
+    ("renting-a-room", 2, "About 400 euros, and yes, the deposit is fine.", "budget", "deposit"),
     ("visa-us", 1, "Georgia Tech, computer science, and I have a full scholarship.", "chosen_program", "funding"),
 ]
 

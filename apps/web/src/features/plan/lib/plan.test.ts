@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { EMPTY_PLAN, goalFromLabel, goalLabel, groupSituations, isComplete, planOrder, planPath, toggleFocus, toProfileUpdate } from "./plan";
 
 const S = (id: string, category: string | null, mode: "guided" | "free" = "guided") => ({ id, category, mode });
-const ALL = [S("visa-us", "travel"), S("campus-france", "study"), S("job-remote", "work"), S("ielts-part2", "exams"),
+const ALL = [S("visa-us", "travel"), S("university-admission", "study"), S("job-remote", "work"), S("ielts-part2", "exams"),
   S("free-talk", "speaking", "free"), S("taxi", "speaking"), S("shop", "speaking"), S("cafe", "speaking"), S("airport", "travel")];
 const ids = (l: { id: string }[]) => l.map((s) => s.id);
 
@@ -15,7 +15,7 @@ describe("planOrder", () => {
     const order = ids(planOrder(ALL, "job", ["exams"]));
     expect(order.slice(0, 4)).toEqual(["job-remote", "free-talk", "cafe", "shop"]);
     expect(order[4]).toBe("ielts-part2");
-    expect(order.slice(5)).toEqual(["visa-us", "campus-france", "taxi", "airport"]);
+    expect(order.slice(5)).toEqual(["visa-us", "university-admission", "taxi", "airport"]);
   });
   it("leaves the list unchanged without goal and interests, and never loses a situation", () => {
     expect(ids(planOrder(ALL, null, []))).toEqual(ids(ALL));
@@ -55,11 +55,11 @@ describe("groupSituations", () => {
   it("puts the interviews and exams first, then the everyday situations, in the plan's order inside each group", () => {
     const groups = groupSituations(planOrder(ALL, null, []));
     expect(groups.map((g) => g.title)).toEqual(["Interviews and exams", "Everyday situations"]);
-    expect(groups[0].list.map((s) => s.id)).toEqual(["visa-us", "campus-france", "job-remote", "ielts-part2", "airport"]);
+    expect(groups[0].list.map((s) => s.id)).toEqual(["visa-us", "university-admission", "job-remote", "ielts-part2", "airport"]);
     expect(groups[1].list.map((s) => s.id)).toEqual(["free-talk", "taxi", "shop", "cafe"]);
   });
   it("without a plan keeps the interviews first even when the API's order starts with an everyday scene", () => {
-    const apiOrder = [S("airport", "travel"), S("cafe", "speaking"), S("campus-france", "study"), S("taxi", "speaking"), S("visa-us", "travel")];
+    const apiOrder = [S("airport", "travel"), S("cafe", "speaking"), S("university-admission", "study"), S("taxi", "speaking"), S("visa-us", "travel")];
     expect(groupSituations([S("cafe", "speaking"), ...apiOrder.filter((s) => s.id !== "cafe")]).map((g) => g.title)[0]).toBe("Interviews and exams");
   });
   it("starts with the everyday group when the plan starts with an everyday scene", () => {

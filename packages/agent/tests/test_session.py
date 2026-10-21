@@ -279,24 +279,24 @@ def test_clarification_question_gets_the_question_again_then_the_interview_goes_
 
 
 def test_an_answer_given_in_advance_is_not_asked_again_after_a_roundtrip():
-    qs = load_scenario("visa-business").questions
-    goals = load_scenario("visa-business").goals
-    llm = FakeChat([NONE] * 3, [reply(goal=goals[0]), reply("You are a developer.", goal="occupation"), reply(goal="length_of_stay")])
-    s = CoachSession("visa-business", "B1", "fr", llm=llm)
-    s.turn("A conference in Boston.")
-    assert s.turn("I am a software developer.").reply == f"You are a developer. {qs[1]}"  # length not answered yet
+    qs = load_scenario("renting-a-room").questions
+    goals = load_scenario("renting-a-room").goals
+    llm = FakeChat([NONE] * 3, [reply(goal=goals[0]), reply("A fair budget.", goal="budget"), reply(goal="length_of_stay")])
+    s = CoachSession("renting-a-room", "B1", "fr", llm=llm)
+    s.turn("I am a student of biology.")
+    assert s.turn("My budget is about 400 euros.").reply == f"A fair budget. {qs[1]}"  # the stay is not answered yet
     again = CoachSession.from_state(s.to_state(), llm=llm)
-    assert again.turn("Two weeks.").reply.endswith(qs[3])  # occupation (q2) already answered: straight to funding
+    assert again.turn("Six months.").reply.endswith(qs[3])  # budget (q2) already answered: straight to the bills
 
 
 def test_one_answer_can_cover_two_questions_and_both_are_remembered():
-    qs = load_scenario("visa-business").questions
-    two = {"reaction": "A conference, for two weeks.", "goal_covered": "purpose_of_trip", "also_covered": ["length_of_stay", "not_a_goal"]}
-    s = CoachSession("visa-business", "B1", "fr", llm=FakeChat([NONE], [two]))
-    assert s.turn("A conference in Boston, for two weeks.").reply.endswith(qs[2])  # length of stay not asked
-    again = CoachSession.from_state(s.to_state(), llm=FakeChat([NONE], [reply(goal="occupation")]))
+    qs = load_scenario("renting-a-room").questions
+    two = {"reaction": "A student, for six months.", "goal_covered": "introduce_yourself", "also_covered": ["length_of_stay", "not_a_goal"]}
+    s = CoachSession("renting-a-room", "B1", "fr", llm=FakeChat([NONE], [two]))
+    assert s.turn("I am a student and I need the room for six months.").reply.endswith(qs[2])  # the stay is not asked
+    again = CoachSession.from_state(s.to_state(), llm=FakeChat([NONE], [reply(goal="budget")]))
     assert again.turns[0].also_covered == ["length_of_stay"]  # unknown ids dropped, kept across requests
-    assert again.turn("I am a nurse.").reply.endswith(qs[3])
+    assert again.turn("About 400 euros.").reply.endswith(qs[3])
 
 
 def test_an_empty_structured_answer_from_the_coach_is_retried_not_a_crash():

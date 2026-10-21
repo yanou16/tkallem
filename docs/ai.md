@@ -133,7 +133,7 @@ We would rather say them:
   trip that has not happened. The guardrails cannot catch a grammar judgement like that. It is the next thing to add to the
   correction set.
 - **Darija translation depends on the model;** a translation the code refuses falls back to a generic starter.
-- **Scenarios are few** (ten), and a real Campus France interview is in French while ours trains the English version.
+- **Scenarios are few** (ten), and a real admission or visa interview may be held in another language while ours trains the English version.
 - **Voice quality and latency depend on the providers' free quotas;** backups exist, but a long outage falls back to the
   browser's voice.
 - **The API contains a real-time voice route** (Pipecat over WebRTC) that the app does not use yet.

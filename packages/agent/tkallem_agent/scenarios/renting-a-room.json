@@ -1,0 +1,48 @@
+{
+  "id": "renting-a-room",
+  "title": "Renting a room",
+  "description": "Call a landlord about a room to rent: the rent, the bills, the deposit and when you can move in.",
+  "category": "speaking",
+  "level": "B1",
+  "icon": "room",
+  "mode": "guided",
+  "minutes": 6,
+  "coach_role": "A friendly landlord on the phone, with a room to rent to a student: natural, short questions and answers.",
+  "questions": [
+    "Hello, thanks for calling about the room. Can you tell me a little about yourself?",
+    "How long would you like to stay?",
+    "What is your budget per month?",
+    "Do you have any questions about the room or the bills?",
+    "There is a deposit to pay before you move in. Is that fine for you?",
+    "When could you move in?"
+  ],
+  "goals": [
+    "introduce_yourself",
+    "length_of_stay",
+    "budget",
+    "ask_about_bills",
+    "deposit",
+    "move_in_date"
+  ],
+  "useful_words": [
+    "rent",
+    "bills included",
+    "deposit",
+    "contract",
+    "furnished",
+    "move in",
+    "per month",
+    "landlord"
+  ],
+  "skippable": [
+    "ask_about_bills"
+  ],
+  "starters": [
+    "My name is",
+    "I would like to stay for",
+    "My budget is about",
+    "Could you tell me if",
+    "That is fine for me because",
+    "I could move in on"
+  ]
+}

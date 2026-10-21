@@ -7,7 +7,7 @@
 **Rehearse the real interview out loud, with an AI coach that explains every mistake in French.**
 
 An English speaking coach for Algerian students who understand English but freeze when they have to speak it:
-a US visa interview, Campus France, a remote job interview, IELTS Speaking.
+a US student visa interview, a university admission interview, a remote job interview, IELTS Speaking.
 
 [**Try it now**](https://tkallem.vercel.app) · [Demo video](#) `[TEAM: link]` · [API docs](https://tkallem-api-rayane.azurewebsites.net/docs) · [Documentation](#documentation)
 
@@ -61,7 +61,7 @@ A guest's sessions, reports and progress are kept on that device; creating an ac
 
 | | |
 |---|---|
-| **Pick a real situation** | Visa interview, Campus France, remote job interview, IELTS Speaking, everyday scenes. 5 to 10 minutes each. |
+| **Pick a real situation** | Visa interview, university admission interview, remote job interview, IELTS Speaking, everyday scenes (renting a room, the airport, a taxi…). 5 to 10 minutes each. |
 | **Choose a mode** | *Practice* (corrections after each answer, hints) or *Real interview* (the coach plays the officer, nothing is shown until the report). |
 | **Answer out loud or type** | The coach replies in text and in a natural voice. |
 | **Be reassured, then corrected** | One true compliment, then the single correction that matters most, explained in French or simple English. |
@@ -179,7 +179,7 @@ no errors ([`apps/api/loadtest/`](apps/api/loadtest/README.md)).
   audio. `[TEAM: update after the phone tests]`
 - **The evaluation sets are small and labelled by one person** (33 sentences, 9 attacks, 20 "Help me start" cases). A
   correction can still be wrong; one example is described in [docs/ai.md](docs/ai.md#limits).
-- **Scenarios are few** (ten). A real Campus France interview is in French; ours trains the English version of it.
+- **Scenarios are few** (ten). A real admission or visa interview may be held in another language; ours trains the English version of it.
 - **One API process:** several instances would need Redis first.
 - **Sign-in uses a Clerk development instance** and the interface is in English only.
 - **The optional 3D avatar** comes from the TalkingHead project, whose sample avatars are for non-commercial use; it is off by default.
@@ -192,7 +192,7 @@ the student starts** (the freeze meter), **confidence before and after** (1 to 5
 words**. Honest limits: confidence is self-reported, the number of sessions is small, and there is no control group.
 `apps/api/scripts/impact.py` prints the averages.
 
-**Next three months.** We will put Tkallem in front of 30 students preparing visa and Campus France interviews, through
+**Next three months.** We will put Tkallem in front of 30 students preparing visa and admission interviews, through
 student clubs and language centers, and check whether their mistakes per 100 words and their time before speaking drop
 over five sessions. We will add the scenarios they ask for, such as scholarship interviews, and a French interface. It
 stays free to try with daily answers; intensive preparation packs and language-center partnerships would pay for it.
