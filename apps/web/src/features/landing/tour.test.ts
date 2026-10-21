@@ -18,8 +18,8 @@ describe("tabs and captions", () => {
 
 describe("the platform sidebar", () => {
   it("has the five entries of the real menu, Practice and AI Chat being one, and the conversation opens from Practice", () => {
-    expect(PAGES.map((p) => p.label)).toEqual(["Home", "Practice", "Groups", "Progress", "Profile"]);
-    expect(PAGE_ORDER).toEqual(["home", "practice", "chat", "groups", "progress", "profile"]);
+    expect(PAGES.map((p) => p.label)).toEqual(["Home", "Practice", "Progress", "Profile"]);
+    expect(PAGE_ORDER).toEqual(["home", "practice", "chat", "progress", "profile"]);
     expect(menuOf("chat")).toBe("practice");
     expect(menuOf("home")).toBe("home");
     for (const p of PAGE_ORDER) expect(PAGE_CALLOUTS[p].length).toBeGreaterThanOrEqual(4);

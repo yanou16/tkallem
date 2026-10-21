@@ -37,7 +37,7 @@ Sign up at `/sign-up`, then sign in at `/sign-in`. Every API call sends the Cler
 Not in the API yet (TODO in the code, the block is hidden):
 - Audio in `POST /sessions/{id}/turn`: the mic is hidden.
 - Recommendations, today's focus, notifications.
-- Groups (`/api/groups/*`): hidden on home; the Groups pages show their error state until the API exists.
+- Practice groups: taken out of the app (the API still has the routes, see `apps/api/README.md`).
 
 Missing data → the block shows its empty state or is hidden. Never fake data.
 

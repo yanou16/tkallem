@@ -205,21 +205,9 @@ It only receives: sending always goes through `POST /groups/{id}/messages`.
 
 After a reconnection, the web app catches up with `GET /groups/{id}/messages?after_id=<last id shown>`.
 
-### Hidden in the web app
+### Removed from the web app
 
-The screen exists in `apps/web` but is hidden unless the web app is built with `NEXT_PUBLIC_FEATURE_GROUPS=1`
-(`apps/web/src/lib/features.ts`): without it, there is no menu link and `/groups` redirects to `/practice`.
-The API routes above stay active either way.
-
-### One uvicorn process until Redis
-
-Run **one** process: `uvicorn` without `--workers`, as `start.sh` does, and one server instance (the Azure plan
-setting: to be confirmed). Several things live in the memory of that process:
-
-- the open group WebSockets (`app/realtime.py`, `# TODO: Redis pub/sub`);
-- the group limits (`app/rate_limit.py`, `# TODO: Redis`);
-- the hint, "Say it again" and voice replay limits (`app/routes/sessions.py`);
-- the resting voice providers (`app/voice/failover.py`).
-
-With two processes, a message posted on one would not reach the WebSockets open on the other, and each process would
-count its own limits.
+The practice groups screen was **taken out of the web app** (menu, page, landing preview) before the jury: a visitor sees no
+groups. The routes, the WebSocket and the tables (`groups`, members, messages) are still in the API and in the database,
+untouched and unused: no data was deleted. `/groups` in the browser redirects to `/practice`.
+TODO after the competition: remove the routes, or build the screen again.
