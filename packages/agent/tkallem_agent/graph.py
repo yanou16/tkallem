@@ -264,6 +264,8 @@ def build_graph(llm: BaseChatModel):
         for attempt in range(MAX_RETRIES + 1):
             try:
                 raw = hedged_invoke(corrector, messages, config)
+                if not isinstance(raw, dict) or not isinstance(raw.get("corrections"), list):
+                    raise ValueError("invalid corrector response")
                 break
             except Exception:  # unparseable or runaway output, provider error: one more try, then the turn fails
                 if attempt == MAX_RETRIES:
