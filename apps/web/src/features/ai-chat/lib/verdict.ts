@@ -9,6 +9,8 @@ export type VerdictTone = "good" | "warn" | "bad";
 
 export type VerdictView = {
   status: VerdictDto["status"];
+  /** "For your level (A2)": said under the status, so a student knows what the verdict is measured against. */
+  levelNote: string;
   tone: VerdictTone;
   label: string;
   reasons: string[];
@@ -92,6 +94,7 @@ export function verdictView(verdict: VerdictDto, lang: ExplainLang, redoIndex: n
   return {
     status: verdict.status,
     tone: TONE[verdict.status],
+    levelNote: lang === "fr" ? `Jugé au niveau ${verdict.level}.` : `Judged at level ${verdict.level}.`,
     label: LABEL[lang][verdict.status],
     reasons: verdict.reasons.map((r) => REASON[lang][r.metric][r.level](formatNumber(r.value))),
     action,

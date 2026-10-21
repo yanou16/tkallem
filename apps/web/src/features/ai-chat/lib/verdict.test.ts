@@ -4,6 +4,7 @@ import { noVerdictText, verdictTitle, verdictView } from "./verdict";
 
 const NOT_YET: VerdictDto = {
   status: "not_yet",
+  level: "B1",
   reasons: [
     { metric: "mistakes_per_100", level: "red", value: 16.7 },
     { metric: "words_per_answer", level: "orange", value: 6 },
@@ -11,6 +12,7 @@ const NOT_YET: VerdictDto = {
 };
 const READY: VerdictDto = {
   status: "ready",
+  level: "A2",
   reasons: [
     { metric: "mistakes_per_100", level: "green", value: 2 },
     { metric: "hesitations_per_min", level: "green", value: 1.2 },
@@ -42,6 +44,11 @@ describe("verdictView", () => {
     expect(v.tone).toBe("good");
     expect(v.action).toEqual({ kind: "practice", label: "Try another situation" });
     expect(v.reasons[1]).toBe("You spoke smoothly (1.2 hesitations per minute).");
+  });
+
+  it("says the level the practice was judged at, in the language of the note", () => {
+    expect(verdictView(READY, "en", null).levelNote).toBe("Judged at level A2.");
+    expect(verdictView(NOT_YET, "fr", null).levelNote).toBe("Jugé au niveau B1.");
   });
 
   it("never promises the real interview", () => {

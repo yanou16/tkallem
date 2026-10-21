@@ -99,6 +99,8 @@ export type ReportLineDto = {
 export type VerdictMetric = "mistakes_per_100" | "words_per_answer" | "hesitations_per_min";
 export type VerdictDto = {
   status: "ready" | "almost" | "not_yet";
+  /** The level the practice was judged at (the session's): the same numbers mean less at A2 than at C1. */
+  level: "A2" | "B1" | "B2" | "C1";
   reasons: { metric: VerdictMetric; level: SentenceStatus; value: number }[];
 };
 

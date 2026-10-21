@@ -25,6 +25,7 @@ export default function VerdictCard({ verdict, lang, redoIndex, mode }: { verdic
       <h2 id="verdict-title" className="mt-1 flex items-center gap-2 text-3xl font-semibold">
         <Icon size={28} aria-hidden /> {v.label}
       </h2>
+      <p className="mt-1 text-sm font-medium">{v.levelNote}</p>
       <ul className="mt-3 space-y-1 text-ink">
         {v.reasons.map((reason) => <li key={reason}>{reason}</li>)}
       </ul>

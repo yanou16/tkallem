@@ -9,19 +9,23 @@ from pathlib import Path
 from langchain_core.language_models import BaseChatModel
 from pydantic import BaseModel
 
+from .levels import MAX_WORDS
 from .schemas import Correction, ExplainLang, Level, Status
 
 NOTE_PROMPT = (Path(__file__).parent / "prompts" / "report_note.md").read_text()
 FILLERS = re.compile(r"\b(?:u+h+|u+m+|e+r+m*|h+m+|euh+)\b", re.I)
 LANG_NAME = {"en": "simple English", "fr": "French"}
 
-# Thresholds from the spec (starting points, to be tuned after tests with real students).
-# name: (green_if, red_if, higher_is_better)
-THRESHOLDS = {
-    "mistakes_per_100": (4, 8, False),
-    "words_per_answer": (12, 6, True),
-    "hesitations_per_min": (3, 6, False),
+# Traffic-light thresholds, per level of the student. Starting points, to be tuned after tests with real students.
+# - words per answer follows the coach's own sentence limit of the level (levels.MAX_WORDS): green above it, red under half
+#   of it (B1: 12 and 6, the values that were fixed for everybody before).
+# - the two rates ask more with the level: a B1 student keeps the old values (4 / 8 mistakes, 3 / 6 hesitations).
+# name -> (green_if, red_if); mistakes and hesitations: lower is better.
+RATE_THRESHOLDS = {
+    "mistakes_per_100": {"A2": (6, 12), "B1": (4, 8), "B2": (3, 6), "C1": (2, 4)},
+    "hesitations_per_min": {"A2": (5, 9), "B1": (3, 6), "B2": (2, 5), "C1": (1.5, 4)},
 }
+METRIC_NAMES = ("mistakes_per_100", "words_per_answer", "hesitations_per_min")  # the order of the report
 
 
 @dataclass
@@ -44,10 +48,19 @@ def words(text: str) -> int:
     return len(re.findall(r"[A-Za-z0-9']+", text))
 
 
-def level_of(name: str, value: float | None) -> Status | None:
+def thresholds(name: str, level: Level = "B1") -> tuple[float, float, bool]:
+    """(green_if, red_if, higher_is_better) of a metric for a level. An unknown level is judged as B1."""
+    if name == "words_per_answer":
+        longest = MAX_WORDS.get(level, MAX_WORDS["B1"])
+        return longest, longest / 2, True
+    green, red = RATE_THRESHOLDS[name].get(level, RATE_THRESHOLDS[name]["B1"])
+    return green, red, False
+
+
+def level_of(name: str, value: float | None, level: Level = "B1") -> Status | None:
     if value is None:
         return None
-    green, red, higher_better = THRESHOLDS[name]
+    green, red, higher_better = thresholds(name, level)
     if higher_better:
         return "green" if value > green else "red" if value < red else "orange"
     return "green" if value < green else "red" if value > red else "orange"
@@ -125,7 +138,7 @@ def build_report(
     """`coach_lines`: coach messages in order (coach[i] precedes student turn i, an extra last one closes the
     transcript). `config`: LangChain run config (tracing)."""
     metrics = compute_metrics(turns, speaking_seconds)
-    levels = {name: level_of(name, metrics[name]) for name in THRESHOLDS}
+    levels = {name: level_of(name, metrics[name], level) for name in METRIC_NAMES}
     lines: list[dict] = []
     student_line: list[int] = []
     for i, t in enumerate(turns):
