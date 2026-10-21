@@ -4,6 +4,7 @@ import { useMySessions, useScenarios } from "@/features/practice/hooks/usePracti
 import type { Scenario } from "@/features/practice/types/practice";
 import { Async, Card, EmptyState, PageHeader, SectionTitle, Skeleton } from "@/components/ui";
 import Link from "next/link";
+import PhraseOfTheDay from "@/features/phrase-of-day/components/PhraseOfTheDay";
 import { CardsSkeleton, ScenarioCard, SessionList } from "@/components/cards";
 import { groupSituations } from "@/features/plan/lib/plan";
 import { usePlanOrder } from "@/features/plan/usePlanOrder";
@@ -21,6 +22,8 @@ export default function PracticePage() {
           title="Choose your next practice"
           subtitle="Pick a situation. In Practice the coach corrects each answer. In Real interview nothing is shown until the end, like the real one."
         />
+
+        <div className="mb-6"><PhraseOfTheDay compact /></div>
 
         <SectionTitle title="Situations" action={<Link href="/plan" className="inline-flex min-h-11 items-center underline underline-offset-4">Your plan</Link>} />
         <Async query={all} skeleton={<CardsSkeleton n={4} h="h-48" cols="md:grid-cols-2 2xl:grid-cols-4" />}

@@ -44,7 +44,6 @@ export default function HomePage() {
           </Async>
         </div>
 
-        {/* TODO: show "Recommended groups" again once the groups API exists (GET /api/groups/suggested). */}
       </div>
 
       <aside className="space-y-5">

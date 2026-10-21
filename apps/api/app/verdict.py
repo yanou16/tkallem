@@ -1,4 +1,4 @@
-"""Interview verdict: one line at the top of the report of a real interview (ready / almost / not yet).
+"""Verdict: one line at the top of a finished session's report (ready / almost / not yet), in practice and in a real interview.
 
 Computed by code from the report's own traffic lights (the thresholds of tkallem_agent.report), never by the model, and
 never stored: it is derived from the stored metrics, so a report opened again later shows the same verdict.

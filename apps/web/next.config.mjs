@@ -14,4 +14,7 @@ nextConfig.headers = async () => [
   },
 ];
 
+// The practice groups were removed from the app: an old bookmark or link goes to Practice instead of a 404.
+nextConfig.redirects = async () => [{ source: "/groups/:path*", destination: "/practice", permanent: false }];
+
 export default nextConfig;

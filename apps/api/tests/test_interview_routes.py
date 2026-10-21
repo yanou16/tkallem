@@ -117,11 +117,17 @@ def test_a_finished_interview_gets_a_verdict_in_the_report_and_when_it_is_opened
     assert client.get(f"/sessions/{sid}").json()["verdict"] == report["verdict"]
 
 
-def test_no_verdict_with_fewer_than_three_answers_in_practice_or_before_the_end(client):
+def test_no_verdict_with_fewer_than_three_answers_or_before_the_end(client):
     _, short = finish_interview(client, "interview", 2)
     assert short["verdict"] is None
-    sid, practice = finish_interview(client, "practice", 3)
-    assert practice["verdict"] is None and client.get(f"/sessions/{sid}").json()["verdict"] is None
+    _, short_practice = finish_interview(client, "practice", 2)
+    assert short_practice["verdict"] is None
     running, _ = start(client, "interview", n=3)
     client.post(f"/sessions/{running}/turn", data={"text": TEXT})
     assert client.get(f"/sessions/{running}").json()["verdict"] is None
+
+
+def test_a_practice_session_gets_the_same_verdict_so_a_visitor_who_only_practises_sees_it(client):
+    sid, report = finish_interview(client, "practice", 3)
+    assert report["feedback_mode"] == "practice" and report["verdict"]["status"] == "not_yet"
+    assert client.get(f"/sessions/{sid}").json()["verdict"] == report["verdict"]

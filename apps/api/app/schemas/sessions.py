@@ -130,7 +130,7 @@ class VerdictReason(BaseModel):
 
 
 class Verdict(BaseModel):
-    """Real interview only: ready / almost / not yet for THIS practice, with the two metrics that explain it."""
+    """Ready / almost / not yet for THIS practice (any finished session of 3 answers or more), with the two metrics that explain it."""
     status: Literal["ready", "almost", "not_yet"]
     reasons: list[VerdictReason]
 
@@ -145,7 +145,7 @@ class SessionReport(BaseModel):
     feedback_mode: Literal["practice", "interview"] = "practice"
     progress: str | None = None  # first line of the report: progress since the last finished session, written by code
     freeze: Freeze | None = None  # time before starting to answer, with the previous session's when comparable
-    verdict: Verdict | None = None  # real interview with at least 3 answers, computed by code (app/verdict.py)
+    verdict: Verdict | None = None  # at least 3 answers, computed by code (app/verdict.py)
 
 
 class Phrase(BaseModel):
@@ -199,4 +199,4 @@ class SessionDetail(BaseModel):
     feedback_mode: Literal["practice", "interview"] = "practice"
     progress: str | None = None  # finished sessions: the report's first line
     freeze: Freeze | None = None
-    verdict: Verdict | None = None  # finished real interviews: derived from the stored metrics
+    verdict: Verdict | None = None  # finished sessions: derived from the stored metrics

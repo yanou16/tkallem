@@ -3,7 +3,7 @@
  *  kept pure so it is tested in verdict.test.ts. It speaks of THIS practice, never of the real interview. */
 import type { ExplainLang } from "@/features/auth/types/user";
 import { formatNumber } from "@/lib/utils";
-import type { SentenceStatus, VerdictDto, VerdictMetric } from "../types/ai";
+import type { FeedbackMode, SentenceStatus, VerdictDto, VerdictMetric } from "../types/ai";
 
 export type VerdictTone = "good" | "warn" | "bad";
 
@@ -72,10 +72,16 @@ const DISCLAIMER: Record<ExplainLang, string> = {
   fr: "Un point sur cet entraînement, pas une promesse pour le vrai entretien.",
 };
 
-export const NO_VERDICT: Record<ExplainLang, string> = {
-  en: "Answer at least 3 questions in a real interview to get a verdict.",
-  fr: "Réponds à au moins 3 questions d'un vrai entretien pour avoir un verdict.",
+const NO_VERDICT: Record<ExplainLang, string> = {
+  en: "Answer at least 3 questions to get a verdict.",
+  fr: "Réponds à au moins 3 questions pour avoir un verdict.",
 };
+export const noVerdictText = (lang: ExplainLang) => NO_VERDICT[lang];
+
+/** The card's small title: a real interview speaks of the interview, a practice session of the practice. */
+export const verdictTitle = (lang: ExplainLang, mode: FeedbackMode) =>
+  lang === "fr" ? (mode === "interview" ? "Verdict de l'entretien" : "Verdict de l'entraînement")
+    : mode === "interview" ? "Interview verdict" : "Practice verdict";
 
 /** `redoIndex` is the report's answer to redo first (null for a report opened again later: it is not stored). */
 export function verdictView(verdict: VerdictDto, lang: ExplainLang, redoIndex: number | null): VerdictView {

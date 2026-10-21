@@ -9,7 +9,7 @@ import { DEMO_SCENARIOS, PAGES, menuOf, planView, type DemoScenario, type PlanDe
 
 const URL: Record<PlatformPage, string> = {
   home: "tkallem.vercel.app", practice: "tkallem.vercel.app/practice", chat: "tkallem.vercel.app/ai-chat",
-  groups: "tkallem.vercel.app/groups", progress: "tkallem.vercel.app/progress", profile: "tkallem.vercel.app/profile",
+  progress: "tkallem.vercel.app/progress", profile: "tkallem.vercel.app/profile",
 };
 
 function Ring({ done, goal }: { done: number; goal: number }) {
@@ -129,26 +129,6 @@ function Chat() {
   );
 }
 
-function Groups() {
-  return (
-    <div className="flex min-h-[420px] flex-col gap-3">
-      <Head eyebrow="English B1 Club #2 · 5 students" title="Practice groups" />
-      <R id="theme"><Box className="bg-surface"><p className="flex items-center gap-1.5 text-xs font-semibold text-slate"><Lightbulb size={13} aria-hidden /> This week: Work and jobs</p>
-        <p className="mt-1 text-base font-medium leading-snug">Would you prefer to work from home or in an office?</p></Box></R>
-      <div className="grid gap-3 md:grid-cols-[1fr_160px]">
-        <R id="messages" className="flex flex-col gap-2">
-          {[["Yacine", "I prefer working from home because it is quiet.", false], ["You", "I like the office, I meet my colleagues.", true], ["Amina", "Same! Home is too distracting for me.", false]].map(([n, t, me]) => (
-            <div key={String(n)} className={cn("max-w-[88%] rounded-[18px] px-3 py-2", me ? "self-end bg-ink text-white" : "self-start bg-surface")}><b className="block text-xs opacity-70">{n}</b>{t}</div>
-          ))}
-        </R>
-        <R id="board"><Box><h4 className="mb-1 text-[13px] font-semibold">This week</h4><Row k="Amina" v="38 min" /><Row k="You" v="31 min" /><Row k="Yacine" v="12 min" /></Box></R>
-      </div>
-      <R id="check" className="mt-auto flex items-center gap-2"><span className="flex-1 rounded-full border border-hairline px-3.5 py-2.5 text-stone">Write to your group…</span>
-        <button type="button" className="min-h-11 md:min-h-9 rounded-full border border-hairline-strong px-3 text-xs font-semibold">Check my message</button></R>
-    </div>
-  );
-}
-
 function Progress() {
   return (
     <div className="min-h-[420px]">
@@ -227,7 +207,6 @@ export default function Platform({ plan, page, onPage }: { plan: PlanDemo; page:
           {page === "home" && <Home plan={plan} open={() => onPage("chat")} />}
           {page === "practice" && <Practice plan={plan} open={() => onPage("chat")} />}
           {page === "chat" && <Chat />}
-          {page === "groups" && <Groups />}
           {page === "progress" && <Progress />}
           {page === "profile" && <Profile plan={plan} />}
         </div>

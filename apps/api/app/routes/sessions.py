@@ -169,8 +169,8 @@ def read_session(
 
 
 def _verdict(session: dict, answers: int) -> dict | None:
-    """Real interview only, once finished: ready / almost / not yet, from the stored metrics (app/verdict.py)."""
-    if session["ended_at"] is None or session["state"].get("feedback_mode") != "interview":
+    """Once finished, in practice and in a real interview: ready / almost / not yet, from the stored metrics (app/verdict.py)."""
+    if session["ended_at"] is None:
         return None
     return interview_verdict({key: session[key] for key in METRIC_KEYS}, answers)
 
@@ -596,6 +596,6 @@ def end_practice_session(
             raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
         before, count = previous_finished(conn, user["id"], session_id, datetime.now(timezone.utc))
 
-    verdict = interview_verdict(report.metrics, len(session["state"]["turns"])) if coach.feedback_mode == "interview" else None
+    verdict = interview_verdict(report.metrics, len(session["state"]["turns"]))
     return {**report.model_dump(), "feedback_mode": coach.feedback_mode, "confidence": _confidence(session), "progress": progress_line(report.metrics, before, count),
             "freeze": _freeze(session["state"], before), "verdict": verdict}

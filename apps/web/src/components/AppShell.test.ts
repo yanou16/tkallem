@@ -12,7 +12,7 @@ describe("isActive", () => {
     expect(isActive("/progress", "/practice", ["/ai-chat"])).toBe(false);
   });
   it("matches sub-routes and tolerates an unknown path", () => {
-    expect(isActive("/groups/3", "/groups")).toBe(true);
-    expect(isActive(null, "/groups")).toBe(false);
+    expect(isActive("/phrases/3", "/phrases")).toBe(true);
+    expect(isActive(null, "/phrases")).toBe(false);
   });
 });

@@ -16,7 +16,7 @@ const storage = () => { try { return window.localStorage; } catch { return null;
 
 /** A secondary card on Home: one phrase a day, explained, to say out loud. It never gets in front of the practice cards,
  *  and it disappears quietly if the phrase cannot be loaded (nothing here is worth an error screen). */
-export default function PhraseOfTheDay() {
+export default function PhraseOfTheDay({ compact = false }: { compact?: boolean }) {
   const { user } = useCurrentUser();
   const phrase = usePhraseOfDay();
   const check = useCheckPhrase();
@@ -47,6 +47,13 @@ export default function PhraseOfTheDay() {
   const note = KIND_NOTE[p.kind];
   const shownLang = lang ?? user?.explainLang ?? "fr";
   const problem = rec.error ?? check.error?.message;
+  const meaning = (
+    <>
+      <ExplainToggle value={shownLang} onChange={setLang} label="Meaning in" />
+      <p className="mt-2 text-sm text-charcoal">{meaningOf(p, shownLang)}</p>
+      <p className="mt-2 break-words text-sm text-muted">Example: {p.example}</p>
+    </>
+  );
   const toggle = async () => {
     if (rec.isRecording) return send(await rec.stop());
     rec.clearError();
@@ -64,9 +71,14 @@ export default function PhraseOfTheDay() {
       </div>
       <p className="mt-3 break-words text-xl font-semibold leading-snug">{p.text}</p>
       {note && <p className="mt-1 text-sm text-muted">{note}</p>}
-      <ExplainToggle value={shownLang} onChange={setLang} label="Meaning in" className="mt-3" />
-      <p className="mt-2 text-sm text-charcoal">{meaningOf(p, shownLang)}</p>
-      <p className="mt-2 break-words text-sm text-muted">Example: {p.example}</p>
+      {compact ? (
+        <details className="mt-2 text-sm">
+          <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold underline underline-offset-4">Meaning and example</summary>
+          {meaning}
+        </details>
+      ) : (
+        <div className="mt-3">{meaning}</div>
+      )}
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         {listenable && (

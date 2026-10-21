@@ -39,20 +39,20 @@ export const REGIONS: Record<Exclude<TourTab, "platform">, string[]> = {
 };
 
 /* ---------- the platform tab: a sidebar that works, one set of captions per page ---------- */
-export type PlatformPage = "home" | "practice" | "chat" | "groups" | "progress" | "profile";
+export type PlatformPage = "home" | "practice" | "chat" | "progress" | "profile";
 /** The sidebar. The conversation ("chat") is not an entry: like the real app, it opens from Practice. */
 export const PAGES: { id: Exclude<PlatformPage, "chat">; label: string }[] = [
   { id: "home", label: "Home" }, { id: "practice", label: "Practice" },
-  { id: "groups", label: "Groups" }, { id: "progress", label: "Progress" }, { id: "profile", label: "Profile" },
+  { id: "progress", label: "Progress" }, { id: "profile", label: "Profile" },
 ];
 /** The order the automatic tour visits the pages in. */
-export const PAGE_ORDER: PlatformPage[] = ["home", "practice", "chat", "groups", "progress", "profile"];
+export const PAGE_ORDER: PlatformPage[] = ["home", "practice", "chat", "progress", "profile"];
 /** The sidebar entry lit for a page. */
 export const menuOf = (p: PlatformPage): Exclude<PlatformPage, "chat"> => (p === "chat" ? "practice" : p);
 const c = (id: string, label: string, detail: string, side: "left" | "right", region = id): Callout => ({ id, label, detail, side, region });
 export const PAGE_CALLOUTS: Record<PlatformPage, Callout[]> = {
   home: [
-    c("nav", "Click the menu", "Every page of the app is live in this preview: try Practice, Groups, Progress, Profile.", "left"),
+    c("nav", "Click the menu", "Every page of the app is live in this preview: try Practice, Progress, Profile.", "left"),
     c("kpi", "Progress that is measured", "Mistakes per 100 words, practice time and streak, from your own sessions.", "left"),
     c("plan", "Your plan, in order", "The situations that match your goal come first.", "left"),
     c("situations", "Real situations", "Visa, Campus France, job, IELTS and everyday scenes like the taxi or the cafe.", "left"),
@@ -76,12 +76,6 @@ export const PAGE_CALLOUTS: Record<PlatformPage, Callout[]> = {
     c("again", "Say it again", "Repeat the corrected sentence. The code checks it, not the AI.", "right"),
     c("answer", "Type or speak", "Answer the way you prefer. Two free hints per question.", "right"),
   ],
-  groups: [
-    c("theme", "A theme a week, a question a day", "The same for every group: you answer it in the chat.", "left"),
-    c("messages", "Up to 8 students of your level", "Write in English together, every day.", "left"),
-    c("check", "Check before you send", "The corrector runs on your draft. Only you see it.", "right"),
-    c("board", "A friendly leaderboard", "Minutes spoken this week, by members of your group.", "right"),
-  ],
   progress: [
     c("metrics", "Numbers, not feelings", "Mistakes, words per answer and hesitations, session after session.", "left"),
     c("freeze", "Time before you speak", "The seconds between the question and your first word: the freeze, made visible.", "left"),
@@ -99,7 +93,6 @@ export const PAGE_REGIONS: Record<PlatformPage, string[]> = {
   home: ["nav", "kpi", "plan", "situations", "credits", "goal", "real", "mistakes", "recent"],
   practice: ["planlink", "grid", "real", "recent"],
   chat: ["mode", "question", "help", "feedback", "again", "answer"],
-  groups: ["theme", "messages", "check", "board"],
   progress: ["metrics", "freeze", "confidence", "top"],
   profile: ["setup", "lang", "focus", "badges"],
 };

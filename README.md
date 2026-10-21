@@ -181,7 +181,6 @@ no errors ([`apps/api/loadtest/`](apps/api/loadtest/README.md)).
   correction can still be wrong; one example is described in [docs/ai.md](docs/ai.md#limits).
 - **Scenarios are few** (ten). A real Campus France interview is in French; ours trains the English version of it.
 - **One API process:** several instances would need Redis first.
-- **Practice groups:** a guest sees a read-only preview; joining and chatting need an account.
 - **Sign-in uses a Clerk development instance** and the interface is in English only.
 - **The optional 3D avatar** comes from the TalkingHead project, whose sample avatars are for non-commercial use; it is off by default.
 - Voice quality and latency depend on the providers' free quotas; a long outage falls back to the browser's voice.
@@ -207,7 +206,7 @@ Git history shows the real split (the same person sometimes commits under two na
 | | |
 |---|---|
 | **Rayane Louzazna** | Tech lead. The AI coach (agent, prompts, guardrails, evaluation sets), the voice pipeline and its backups, free answers and guest mode, deployment (Azure, Neon, Vercel), the CI/CD, the four improvements ("Help me start", "Say it again", Practice and Real interview modes, corrections that reassure first), the freeze meter and the report. |
-| **Zaki** | The API (sessions, profile, progress, database and migrations), the practice groups end to end (database, REST routes, live WebSocket, leaderboard, screen), the API documentation, the load test, the first diagrams. `[TEAM: Zaki, confirm]` |
+| **Zaki** | The API (sessions, profile, progress, database and migrations), the practice groups (database, REST routes, live WebSocket, leaderboard; the screen was taken out of the app before the jury), the API documentation, the load test, the first diagrams. `[TEAM: Zaki, confirm]` |
 | **Akram (Wad2o)** | The first front-end redesign (sign-in with Clerk), the dashboard and practice API routes, and the real-time voice route (Pipecat, WebRTC) in the API. `[TEAM: Akram, confirm]` |
 
 ## Documentation
@@ -220,7 +219,7 @@ Each document explains one part, with its diagram.
 | [**AI coach**](docs/ai.md) | How the coach works, the guardrails, providers and backups, evaluation, privacy, limits |
 | [**DevOps and delivery**](docs/devops.md) | The CI checks, the AI gate, build and deploy, secrets, monitoring, releases and tags, rollback |
 | [Agent integration](docs/agent-integration.md) | How the agent plugs into the API: endpoints, streaming events, errors |
-| [API reference](apps/api/README.md) | Routes, environment variables, migrations, the groups WebSocket |
+| [API reference](apps/api/README.md) | Routes, environment variables, migrations |
 | [Agent package](packages/agent/README.md) | `CoachSession`, scenarios, configuration, tests and evaluations |
 | [Azure deployment](infra/azure/README.md) | Setting up the API on Azure and the front on Vercel |
 | [Load test](apps/api/loadtest/README.md) | How to run the Locust test of the judge journey; its results are in the [system design](docs/system-design.md#performance) |

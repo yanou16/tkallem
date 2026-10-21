@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { VerdictDto } from "../types/ai";
-import { NO_VERDICT, verdictView } from "./verdict";
+import { noVerdictText, verdictTitle, verdictView } from "./verdict";
 
 const NOT_YET: VerdictDto = {
   status: "not_yet",
@@ -50,7 +50,13 @@ describe("verdictView", () => {
   });
 
   it("tells a student with too few answers what is missing", () => {
-    expect(NO_VERDICT.en).toMatch(/at least 3/);
-    expect(NO_VERDICT.fr).toMatch(/au moins 3/);
+    expect(noVerdictText("en")).toMatch(/at least 3/);
+    expect(noVerdictText("fr")).toMatch(/au moins 3/);
+  });
+
+  it("names the card after the interview or the practice", () => {
+    expect(verdictTitle("en", "interview")).toBe("Interview verdict");
+    expect(verdictTitle("en", "practice")).toBe("Practice verdict");
+    expect(verdictTitle("fr", "practice")).toBe("Verdict de l'entraînement");
   });
 });
