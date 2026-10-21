@@ -20,10 +20,10 @@ export function R({ id, className, children, as: Tag = "div" }: { id: string; cl
 
 export function Browser({ url, children }: { url: string; children: ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-[20px] border border-hairline bg-canvas">
-      <div className="flex items-center gap-3 border-b border-hairline-soft px-4 py-3">
+    <div className="overflow-hidden rounded-[24px] border border-line bg-white shadow-soft">
+      <div className="flex items-center gap-3 border-b border-line px-4 py-3">
         <span className="flex gap-1.5" aria-hidden>{[0, 1, 2].map((i) => <i key={i} className="size-[11px] rounded-full bg-hairline" />)}</span>
-        <span className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-surface px-3 py-1 text-[13px] text-slate"><Lock size={12} aria-hidden /> {url}</span>
+        <span className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-black/[0.025] px-3 py-1 text-[13px] text-slate"><Lock size={12} aria-hidden /> {url}</span>
       </div>
       {children}
     </div>
