@@ -132,6 +132,7 @@ class VerdictReason(BaseModel):
 class Verdict(BaseModel):
     """Ready / almost / not yet for THIS practice (any finished session of 3 answers or more), with the two metrics that explain it."""
     status: Literal["ready", "almost", "not_yet"]
+    level: Literal["A2", "B1", "B2", "C1"]  # the level the practice was judged at (the session's)
     reasons: list[VerdictReason]
 
 

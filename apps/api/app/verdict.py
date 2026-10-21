@@ -5,15 +5,19 @@ never stored: it is derived from the stored metrics, so a report opened again la
 
 It says whether the student is ready for THIS practice. It is not a promise about the real interview.
 """
-from tkallem_agent.report import THRESHOLDS, level_of
+from tkallem_agent.report import METRIC_NAMES, level_of
 
 MIN_ANSWERS = 3  # under three answers there is not enough to judge: no verdict, the report says so
-METRICS = tuple(THRESHOLDS)  # mistakes_per_100, words_per_answer, hesitations_per_min (this order breaks ties)
+METRICS = METRIC_NAMES  # mistakes_per_100, words_per_answer, hesitations_per_min (this order breaks ties)
+LEVELS = ("A2", "B1", "B2", "C1")
 _BADNESS = {"green": 0, "orange": 1, "red": 2}
 
 
-def interview_verdict(metrics: dict, answers: int) -> dict | None:
-    """{"status": "ready" | "almost" | "not_yet", "reasons": [{"metric", "level", "value"}, ...]} or None.
+def interview_verdict(metrics: dict, answers: int, level: str | None = "B1") -> dict | None:
+    """{"status": "ready" | "almost" | "not_yet", "level": "A2".."C1", "reasons": [{"metric", "level", "value"}, ...]} or None.
+
+    Judged at the student's level (the one of the session): an A2 student is not held to what a B2 student must reach. The
+    thresholds are the report's own for that level (tkallem_agent.report), so the verdict always agrees with the pills.
 
     - not_yet: a metric is red. ready: every available metric is green. almost: anything else.
     - reasons: the two weakest metrics (the two best when all are green), so the student reads why.
@@ -22,12 +26,13 @@ def interview_verdict(metrics: dict, answers: int) -> dict | None:
     """
     if answers < MIN_ANSWERS or metrics.get("mistakes_per_100") is None:
         return None
+    level = level if level in LEVELS else "B1"
     scored = [
-        {"metric": name, "level": level_of(name, metrics.get(name)), "value": metrics[name]}
+        {"metric": name, "level": level_of(name, metrics.get(name), level), "value": metrics[name]}
         for name in METRICS
         if metrics.get(name) is not None
     ]
     levels = [m["level"] for m in scored]
     status = "not_yet" if "red" in levels else "ready" if all(level == "green" for level in levels) else "almost"
     ordered = sorted(scored, key=lambda m: -_BADNESS[m["level"]])  # stable: ties keep the METRICS order
-    return {"status": status, "reasons": ordered[:2]}
+    return {"status": status, "level": level, "reasons": ordered[:2]}

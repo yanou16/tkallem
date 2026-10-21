@@ -1,4 +1,5 @@
-from tkallem_agent.report import TurnRecord, build_report, compute_metrics, fallback_note, level_of
+from tkallem_agent.levels import MAX_WORDS
+from tkallem_agent.report import TurnRecord, build_report, compute_metrics, fallback_note, level_of, thresholds
 from tkallem_agent.schemas import Correction
 
 C = Correction(original="for study", fixed="to study", type="grammar", why="Le but : to + verbe.")
@@ -81,3 +82,37 @@ def test_long_pauses_count_as_hesitations():
     m = compute_metrics(turns, speaking_seconds=60)
     assert m["hesitations_per_min"] == 4.0  # 1 filler ("Um") + 3 long pauses in one minute
     assert compute_metrics([TurnRecord("I go.", [], "green")], speaking_seconds=60)["hesitations_per_min"] == 0.0
+
+
+def test_a_b1_student_keeps_the_thresholds_that_were_fixed_for_everybody():
+    assert thresholds("mistakes_per_100", "B1") == (4, 8, False)
+    assert thresholds("words_per_answer", "B1") == (12, 6, True)
+    assert thresholds("hesitations_per_min", "B1") == (3, 6, False)
+    assert level_of("mistakes_per_100", 5) == level_of("mistakes_per_100", 5, "B1")  # B1 is the default
+
+
+def test_the_same_numbers_do_not_mean_the_same_thing_at_every_level():
+    lights = lambda name, value: [level_of(name, value, lvl) for lvl in ("A2", "B1", "B2", "C1")]
+    assert lights("words_per_answer", 10) == ["green", "orange", "orange", "red"]
+    assert lights("mistakes_per_100", 5) == ["green", "orange", "orange", "red"]
+    assert lights("hesitations_per_min", 4) == ["green", "orange", "orange", "orange"]
+    assert lights("hesitations_per_min", 7) == ["orange", "red", "red", "red"]
+
+
+def test_answer_length_follows_the_sentence_limit_of_the_level():
+    for lvl, longest in MAX_WORDS.items():
+        assert thresholds("words_per_answer", lvl) == (longest, longest / 2, True)
+
+
+def test_the_thresholds_get_stricter_with_the_level_and_an_unknown_level_is_judged_as_b1():
+    for name in ("mistakes_per_100", "hesitations_per_min"):
+        greens = [thresholds(name, lvl)[0] for lvl in ("A2", "B1", "B2", "C1")]
+        assert greens == sorted(greens, reverse=True) and len(set(greens)) == 4
+    assert thresholds("mistakes_per_100", "Z9") == thresholds("mistakes_per_100", "B1")
+
+
+def test_the_report_lights_use_the_level_of_the_session():
+    turns = [TurnRecord("I go to the US for study.", [], "green")] * 3  # 6 words per answer
+    a2 = build_report(turns, FakeLLM("Note."), "A2").levels["words_per_answer"]
+    b2 = build_report(turns, FakeLLM("Note."), "B2").levels["words_per_answer"]
+    assert (a2, b2) == ("orange", "red")  # A2: limit 8, half 4; B2: limit 18, half 9

@@ -87,7 +87,10 @@ Each correction also carries an optional `rule` (`verb_tense`, `subject_verb_agr
 - A finished **real interview** with at least 3 answers also gets a `verdict` (`ready`, `almost` or `not_yet`, with its two
   reasons). The API computes it from the report's own traffic lights (`apps/api/app/verdict.py`: any red is `not_yet`, all
   green is `ready`, otherwise `almost`), never the model, and derives it from the stored metrics, so a report opened
-  again shows the same verdict. It speaks about this practice, not about the real interview.
+  again shows the same verdict. It speaks about this practice, not about the real interview. The traffic lights, and so
+  the verdict, are judged at the **level of the session** (`report.RATE_THRESHOLDS` for the two rates; the answer length follows
+  the coach's own sentence limit of the level, `levels.MAX_WORDS`): the same numbers are green at A2 and orange at B1. They
+  are starting points, to be tuned with real students; B1 keeps the values that were fixed for everybody before.
 
 ## Configuration and privacy
 

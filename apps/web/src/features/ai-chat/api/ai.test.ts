@@ -173,7 +173,7 @@ describe("mapSessionDetail", () => {
   });
 
   it("keeps the verdict the API derived, for a report opened again", () => {
-    const verdict = { status: "almost" as const, reasons: [{ metric: "words_per_answer" as const, level: "orange" as const, value: 9 }] };
+    const verdict = { status: "almost" as const, level: "B2" as const, reasons: [{ metric: "words_per_answer" as const, level: "orange" as const, value: 9 }] };
     const session = mapSessionDetail({
       ...OPEN_SESSION,
       ended_at: "2026-10-10T10:08:00Z",

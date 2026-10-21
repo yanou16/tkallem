@@ -131,3 +131,27 @@ def test_a_practice_session_gets_the_same_verdict_so_a_visitor_who_only_practise
     sid, report = finish_interview(client, "practice", 3)
     assert report["feedback_mode"] == "practice" and report["verdict"]["status"] == "not_yet"
     assert client.get(f"/sessions/{sid}").json()["verdict"] == report["verdict"]
+
+
+LONG = "I go to the US for study because my father pay everything and I want to learn computer science and come back to my family."  # 25 words
+
+
+def finish_at(client, db, level, answers=3):
+    user = get_or_create_by_clerk_id(db, CLERK_ID)
+    update_profile(db, user["id"], {"level": level})
+    app.dependency_overrides[get_llm] = lambda: FakeChat(
+        [FOUND] * answers, [{"reaction": "I see.", "goal_covered": "purpose_of_trip"}] * answers, text=["Note."])
+    sid = client.post("/sessions", json={"scenario_id": "visa-us", "mode": "text"}).json()["session_id"]
+    for _ in range(answers):
+        client.post(f"/sessions/{sid}/turn", data={"text": LONG})
+    return sid, client.post(f"/sessions/{sid}/end").json()
+
+
+def test_the_verdict_is_judged_at_the_level_of_the_session_and_says_it(client, db):
+    # 3 fixes in 75 words = 4.0 mistakes per 100 words; 25 words per answer
+    sid_a2, a2 = finish_at(client, db, "A2")
+    assert a2["verdict"]["level"] == "A2" and a2["verdict"]["status"] == "ready"
+    sid_c1, c1 = finish_at(client, db, "C1")
+    assert c1["verdict"]["level"] == "C1" and c1["verdict"]["status"] == "almost"  # 4.0 is not under C1's 2, not over its 4
+    assert client.get(f"/sessions/{sid_a2}").json()["verdict"] == a2["verdict"]  # opened again: the same
+    assert client.get(f"/sessions/{sid_c1}").json()["verdict"] == c1["verdict"]

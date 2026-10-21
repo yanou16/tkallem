@@ -43,3 +43,27 @@ def test_the_thresholds_are_the_report_ones():
 def test_too_few_answers_or_nothing_said_gives_no_verdict():
     assert interview_verdict(GREEN, MIN_ANSWERS - 1) is None
     assert interview_verdict({**GREEN, "mistakes_per_100": None}, 5) is None
+
+
+def test_the_same_practice_is_judged_at_the_level_of_the_student():
+    typed = {"mistakes_per_100": 5.0, "words_per_answer": 10.0, "hesitations_per_min": None}
+    by_level = {lvl: interview_verdict(typed, 4, lvl)["status"] for lvl in ("A2", "B1", "B2", "C1")}
+    assert by_level == {"A2": "ready", "B1": "almost", "B2": "almost", "C1": "not_yet"}
+
+
+def test_the_verdict_says_the_level_it_was_judged_at():
+    assert interview_verdict(GREEN, 4, "A2")["level"] == "A2"
+    assert interview_verdict(GREEN, 4)["level"] == "B1"  # no level given: B1, as the report
+
+
+def test_an_unknown_or_missing_level_is_judged_as_b1():
+    typed = {"mistakes_per_100": 5.0, "words_per_answer": 10.0, "hesitations_per_min": None}
+    assert interview_verdict(typed, 4, "Z9") == interview_verdict(typed, 4, "B1")
+    assert interview_verdict(typed, 4, None)["level"] == "B1"
+
+
+def test_the_reasons_follow_the_level_too():
+    v = interview_verdict({"mistakes_per_100": 7.0, "words_per_answer": 18.0, "hesitations_per_min": 1.0}, 4, "A2")
+    assert [(r["metric"], r["level"]) for r in v["reasons"]] == [("mistakes_per_100", "orange"), ("words_per_answer", "green")]
+    v = interview_verdict({"mistakes_per_100": 7.0, "words_per_answer": 18.0, "hesitations_per_min": 1.0}, 4, "B2")
+    assert (v["status"], v["reasons"][0]["level"]) == ("not_yet", "red")
