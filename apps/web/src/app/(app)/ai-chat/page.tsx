@@ -8,6 +8,7 @@ import { useScenarios } from "@/features/practice/hooks/usePractice";
 import { useAiSession, useAnswer, useEndSession, useExplainNote, useSpeakLastLine, useStartSession } from "@/features/ai-chat/hooks/useAiChat";
 import { useUpdateProfile } from "@/features/profile/hooks/useProfile";
 import ExplainToggle from "@/features/ai-chat/components/ExplainToggle";
+import VerdictCard from "@/features/ai-chat/components/VerdictCard";
 import type { ExplainLang } from "@/features/auth/types/user";
 import { CoachAvatar } from "@/components/CoachAvatar";
 import InstallButton from "@/components/InstallButton";
@@ -654,6 +655,7 @@ function Report({ report, title, sessionId, explainDefault, onRestart }: { repor
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader eyebrow={`${title ?? ""} · ${MODE_LABEL[report.feedbackMode]}`} title="Your session report" />
+      {report.feedbackMode === "interview" && <VerdictCard verdict={report.verdict} lang={lang} redoIndex={report.redoIndex} />}
       {report.progress && (
         <p className="mb-4 flex items-start gap-2 rounded-2xl bg-good-bg px-4 py-3 font-medium text-good">
           <TrendingUp size={20} className="mt-0.5 shrink-0" aria-hidden /> <span>{report.progress}</span>

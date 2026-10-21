@@ -100,3 +100,28 @@ def test_practice_is_unchanged(client):
     assert answer["corrections"][0]["fixed"] == "to study" and answer["sentence_status"] == "orange"
     assert answer["praise"] == "Clear goal: you go to the US."
     assert client.post(f"/sessions/{sid}/hint", json={"type": "starter"}).status_code in (200, 429, 503)
+
+
+def finish_interview(client, mode, answers):
+    sid, _ = start(client, mode, n=answers)
+    for _ in range(answers):
+        client.post(f"/sessions/{sid}/turn", data={"text": TEXT})
+    return sid, client.post(f"/sessions/{sid}/end").json()
+
+
+def test_a_finished_interview_gets_a_verdict_in_the_report_and_when_it_is_opened_again(client):
+    sid, report = finish_interview(client, "interview", 3)
+    # 3 corrections in 18 words = 16.7 per 100 (red); 6 words per answer is orange; typed: no hesitations
+    assert report["verdict"]["status"] == "not_yet"
+    assert [(r["metric"], r["level"]) for r in report["verdict"]["reasons"]] == [("mistakes_per_100", "red"), ("words_per_answer", "orange")]
+    assert client.get(f"/sessions/{sid}").json()["verdict"] == report["verdict"]
+
+
+def test_no_verdict_with_fewer_than_three_answers_in_practice_or_before_the_end(client):
+    _, short = finish_interview(client, "interview", 2)
+    assert short["verdict"] is None
+    sid, practice = finish_interview(client, "practice", 3)
+    assert practice["verdict"] is None and client.get(f"/sessions/{sid}").json()["verdict"] is None
+    running, _ = start(client, "interview", n=3)
+    client.post(f"/sessions/{running}/turn", data={"text": TEXT})
+    assert client.get(f"/sessions/{running}").json()["verdict"] is None

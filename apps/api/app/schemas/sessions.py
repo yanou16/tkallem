@@ -123,6 +123,18 @@ class Freeze(BaseModel):
     previous: float | None = None  # the last finished session's, only when the same kind of answers
 
 
+class VerdictReason(BaseModel):
+    metric: Literal["mistakes_per_100", "words_per_answer", "hesitations_per_min"]
+    level: Status
+    value: float
+
+
+class Verdict(BaseModel):
+    """Real interview only: ready / almost / not yet for THIS practice, with the two metrics that explain it."""
+    status: Literal["ready", "almost", "not_yet"]
+    reasons: list[VerdictReason]
+
+
 class SessionReport(BaseModel):
     lines: list[ReportLine]
     note: str
@@ -133,6 +145,7 @@ class SessionReport(BaseModel):
     feedback_mode: Literal["practice", "interview"] = "practice"
     progress: str | None = None  # first line of the report: progress since the last finished session, written by code
     freeze: Freeze | None = None  # time before starting to answer, with the previous session's when comparable
+    verdict: Verdict | None = None  # real interview with at least 3 answers, computed by code (app/verdict.py)
 
 
 class SessionSummary(BaseModel):
@@ -173,3 +186,4 @@ class SessionDetail(BaseModel):
     feedback_mode: Literal["practice", "interview"] = "practice"
     progress: str | None = None  # finished sessions: the report's first line
     freeze: Freeze | None = None
+    verdict: Verdict | None = None  # finished real interviews: derived from the stored metrics

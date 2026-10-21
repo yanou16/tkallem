@@ -84,6 +84,10 @@ Each correction also carries an optional `rule` (`verb_tense`, `subject_verb_agr
   (negation, wrong person...), as in the spec.
 - The report also returns `levels` (traffic-light color per metric) and `redo_index` (line to redo: the red answer,
   else the orange answer with the most corrections). They are not in `openapi.yaml` yet.
+- A finished **real interview** with at least 3 answers also gets a `verdict` (`ready`, `almost` or `not_yet`, with its two
+  reasons). The API computes it from the report's own traffic lights (`apps/api/app/verdict.py`: any red is `not_yet`, all
+  green is `ready`, otherwise `almost`), never the model, and derives it from the stored metrics, so a report opened
+  again shows the same verdict. It speaks about this practice, not about the real interview.
 
 ## Configuration and privacy
 

@@ -27,6 +27,7 @@ from app.db.sessions import (
 )
 from app.dependencies import get_current_user, user_for_claims
 from app.progress_line import progress_line
+from app.verdict import interview_verdict
 from app.schemas.sessions import (
     ConfidenceAnswer, HintRequest, HintResult, NoteRequest, NoteResult, RepeatResult, SessionCreate, SessionDetail, SessionReport, SessionStarted, Spoken,
     TurnResult,
@@ -146,6 +147,8 @@ def read_session(
     session = get_session_detail(conn, session_id, user["id"])
     if session is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    turns = list_turns(conn, session_id, user["id"])
+    answers = len(turns)
 
     return {
         "session_id": session["id"].hex,
@@ -156,12 +159,20 @@ def read_session(
         **_scenario_view(session),
         "feedback_mode": session["state"].get("feedback_mode", "practice"),
         "confidence": _confidence(session),
-        "turns": _with_praise(list_turns(conn, session_id, user["id"]), session["state"], hide=_interview_running(session)),
+        "turns": _with_praise(turns, session["state"], hide=_interview_running(session)),
         "note": session["note"],
         "metrics": {key: session[key] for key in METRIC_KEYS} if session["ended_at"] else None,
         "progress": _progress(conn, user["id"], session),
         "freeze": _freeze_of(conn, user["id"], session),
+        "verdict": _verdict(session, answers),
     }
+
+
+def _verdict(session: dict, answers: int) -> dict | None:
+    """Real interview only, once finished: ready / almost / not yet, from the stored metrics (app/verdict.py)."""
+    if session["ended_at"] is None or session["state"].get("feedback_mode") != "interview":
+        return None
+    return interview_verdict({key: session[key] for key in METRIC_KEYS}, answers)
 
 
 def _freeze(state: dict, before: dict | None) -> dict | None:
@@ -585,5 +596,6 @@ def end_practice_session(
             raise HTTPException(status.HTTP_409_CONFLICT, "Session already ended")
         before, count = previous_finished(conn, user["id"], session_id, datetime.now(timezone.utc))
 
+    verdict = interview_verdict(report.metrics, len(session["state"]["turns"])) if coach.feedback_mode == "interview" else None
     return {**report.model_dump(), "feedback_mode": coach.feedback_mode, "confidence": _confidence(session), "progress": progress_line(report.metrics, before, count),
-            "freeze": _freeze(session["state"], before)}
+            "freeze": _freeze(session["state"], before), "verdict": verdict}
