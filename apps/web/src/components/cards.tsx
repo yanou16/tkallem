@@ -26,23 +26,23 @@ export function StartButton({ href, label = "Start" }: { href: string; label?: s
   );
 }
 
-export function ScenarioCard({ s }: { s: Scenario; tone?: Tone }) {
+export function ScenarioCard({ s, compact = false, onStart }: { s: Scenario; tone?: Tone; compact?: boolean; onStart?: () => void }) {
   const context = scenarioContext(s);
   return (
-    <article className={cn("relative isolate flex min-h-[240px] flex-col justify-between gap-4 overflow-hidden rounded-card p-5", context.surface)}>
-      <ScenarioArt scenario={s} />
+    <article className={cn("relative isolate flex flex-col justify-between overflow-hidden rounded-card", compact ? "min-h-[160px] gap-3 p-4 text-sm" : "min-h-[240px] gap-4 p-5", context.surface)}>
+      <span aria-hidden="true" className={compact ? "pointer-events-none absolute inset-0 opacity-40" : "pointer-events-none absolute inset-0"}><ScenarioArt scenario={s} /></span>
       <div className="relative z-10 min-w-0">
         <p className="mb-2 text-xs font-medium text-charcoal">{context.title}</p>
         <h3 className="max-w-[85%] font-semibold leading-tight">{s.title}</h3>
         <p className="mt-1 text-xs text-charcoal">{s.mode === "free" ? "Free conversation" : s.totalQuestions ? plural(s.totalQuestions, "question") : "Guided questions"}</p>
-        {s.description && <p className="mt-2 max-w-[72%] text-sm text-charcoal">{s.description}</p>}
+        {!compact && s.description && <p className="mt-2 max-w-[72%] text-sm text-charcoal">{s.description}</p>}
       </div>
       <div className="relative z-10 flex flex-wrap items-center gap-3">
         <span className="flex items-center gap-2 text-sm text-charcoal">
           {s.minutes !== null && <><Clock size={14} /> {s.minutes} min</>}
           {s.level && <Pill>{s.level}</Pill>}
         </span>
-        <StartButton href={startHref(s.id)} />
+        {onStart ? <button type="button" onClick={onStart} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-ink px-3 py-2 text-xs font-semibold text-white">Start <ArrowRight size={14} /></button> : <StartButton href={startHref(s.id)} />}
       </div>
     </article>
   );
