@@ -243,8 +243,9 @@ function Chat() {
     if (!answer || !sessionId || !s || s.finished || send.isPending) return;
     coach.stop();
     setPending({ kind: "text", text: answer });
-    // The text stays in the input until the API saved it, so a failed answer can be sent again.
-    send.mutate({ text: answer }, { onSuccess: () => setText(""), onSettled: () => setPending(null) });
+    setText("");
+    // Keep a newly typed draft intact; restore a failed answer only when the field is empty.
+    send.mutate({ text: answer }, { onError: () => setText((draft) => draft || answer), onSettled: () => setPending(null) });
   };
 
   function sendRecording(r: Recording) {
@@ -506,7 +507,7 @@ function Chat() {
                 ) : (
                   <div className="flex-1">
                     <input value={text} maxLength={MAX} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()}
-                      disabled={!s || send.isPending} placeholder="Type your response here…"
+                      disabled={!s} placeholder="Type your response here…"
                       className="w-full rounded-full border border-line px-5 py-3.5 outline-none focus:border-ink disabled:bg-black/[0.03]" />
                     <p className="mt-1 text-right text-xs text-muted">{text.length} / {MAX}</p>
                   </div>
