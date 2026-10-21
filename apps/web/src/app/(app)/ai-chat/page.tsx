@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowDown, ChartNoAxesColumn, ChevronDown, ChevronRight, CircleAlert, FileText, Lightbulb, MessageCircle, Mic, MicOff, PhoneCall, PhoneOff, Send, Square, Volume2 } from "lucide-react";
+import { ChartNoAxesColumn, ChevronDown, ChevronRight, CircleAlert, FileText, MessageCircle, Mic, MicOff, PhoneCall, PhoneOff, Send, Square, Volume2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
@@ -13,6 +13,7 @@ import { MAX_RECORDING_S, useVoiceRecorder, type Recording } from "@/features/ai
 import { useCoachVoice } from "@/features/ai-chat/hooks/useCoachVoice";
 import { useRealtimeVoice } from "@/features/ai-chat/hooks/useRealtimeVoice";
 import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOfCredits";
+import CorrectionCard from "@/features/ai-chat/components/CorrectionCard";
 import { correctionHistory } from "@/features/ai-chat/lib/correctionHistory";
 import { applyVoiceCorrection } from "@/features/ai-chat/lib/voiceCorrection";
 import { markSentence } from "@/features/ai-chat/lib/marks";
@@ -612,25 +613,6 @@ function InlineCorrection({ text, corrections }: { text: string; corrections: Co
   );
 }
 
-function CorrectionCard({ c }: { c: Correction }) {
-  const grammar = c.type === "grammar";
-  return (
-    <div className={cn("rounded-2xl p-4", grammar ? "bg-rose" : "bg-butter")}>
-      <p className="mb-3 flex items-center gap-2 font-semibold">
-        <span className={cn("flex h-8 w-8 items-center justify-center rounded-lg", grammar ? "bg-rose-deep" : "bg-butter-deep")}>
-          {grammar ? <CircleAlert size={18} /> : <Lightbulb size={18} />}
-        </span>
-        {grammar ? "Grammar correction" : "Better phrasing"}
-      </p>
-      <p className="text-xs font-medium">Your sentence</p>
-      <p className="mb-1 rounded-lg bg-rose-deep/60 px-3 py-1.5 text-sm">{c.original}</p>
-      <ArrowDown size={14} className="mx-auto my-1" />
-      <p className="text-xs font-medium">{grammar ? "Better version" : "More natural"}</p>
-      <p className="mb-2 rounded-lg bg-mint-deep/70 px-3 py-1.5 text-sm">{c.fixed}</p>
-      <p className="rounded-lg bg-white/60 px-3 py-2 text-xs text-muted">{c.why}</p>
-    </div>
-  );
-}
 
 function SummaryRow({ icon, tone, title, sub }: { icon: React.ReactNode; tone: string; title: string; sub: string }) {
   return (
