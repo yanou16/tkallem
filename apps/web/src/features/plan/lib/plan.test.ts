@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_PLAN, goalFromLabel, goalLabel, groupSituations, isComplete, planOrder, planPath, toggleFocus, toProfileUpdate } from "./plan";
+import { EMPTY_PLAN, featuredFirst, goalFromLabel, goalLabel, groupSituations, isComplete, planOrder, planPath, toggleFocus, toProfileUpdate } from "./plan";
 
 const S = (id: string, category: string | null, mode: "guided" | "free" = "guided") => ({ id, category, mode });
 const ALL = [S("visa-us", "travel"), S("university-admission", "study"), S("job-remote", "work"), S("ielts-part2", "exams"),
@@ -48,6 +48,23 @@ describe("answers", () => {
     expect(goalFromLabel(u.learningGoal)).toBe("job");
     expect(goalFromLabel("something I typed")).toBeNull();
     expect(goalLabel("daily").length).toBeLessThanOrEqual(200);
+  });
+});
+
+describe("featuredFirst", () => {
+  it("puts the visa interview first and keeps the others in their order", () => {
+    const api = [S("airport", "travel"), S("cafe", "speaking"), S("ielts-part2", "exams"), S("visa-us", "travel"), S("taxi", "speaking")];
+    expect(ids(featuredFirst(api))).toEqual(["visa-us", "airport", "cafe", "ielts-part2", "taxi"]);
+  });
+  it("leaves a list that has no visa interview, or starts with it, as it is", () => {
+    const none = [S("cafe", "speaking"), S("taxi", "speaking")];
+    expect(featuredFirst(none)).toBe(none);
+    const first = [S("visa-us", "travel"), S("cafe", "speaking")];
+    expect(featuredFirst(first)).toBe(first);
+  });
+  it("makes the visa interview the first card of the interviews group on the Practice page", () => {
+    const groups = groupSituations(featuredFirst(planOrder(ALL, null, [])));
+    expect(groups[0].list[0].id).toBe("visa-us");
   });
 });
 

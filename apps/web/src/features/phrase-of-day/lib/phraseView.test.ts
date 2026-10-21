@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PhraseChecked, PhraseOfDay } from "../types/phraseOfDay";
-import { checkView, KIND_LABEL, KIND_NOTE, meaningOf, streakText } from "./phraseView";
+import { checkView, KIND_NOTE, meaningOf, meaningToggle, otherLang, streakText } from "./phraseView";
 
 const P: PhraseOfDay = { date: "2026-10-29", id: "return-home", kind: "interview", text: "I plan to return to Algeria after my studies.", fr: "Je prévois de rentrer.", en: "I will come back.", example: "x" };
 const MISS: PhraseChecked = { nailed: false, similarity: 0.5, missing: [], target: P.text, heard: "I want to stay in France" };
@@ -24,10 +24,16 @@ describe("phrase view", () => {
   });
 
   it("tells an idiom is not for the interview, and says nothing special for the other kinds", () => {
-    expect(KIND_LABEL.idiom).toBe("Idiom");
-    expect(KIND_NOTE.idiom).toMatch(/not to use in an interview/);
+    expect(KIND_NOTE.idiom).toMatch(/not for an interview/);
     expect(KIND_NOTE.interview).toBeNull();
     expect(KIND_NOTE.everyday).toBeNull();
+  });
+
+  it("names the language of the meaning on the button that opens it, and can switch", () => {
+    expect(meaningToggle("fr")).toBe("Meaning in French");
+    expect(meaningToggle("en")).toBe("Meaning in English");
+    expect(otherLang("fr")).toBe("en");
+    expect(otherLang("en")).toBe("fr");
   });
 
   it("writes the streak in days", () => {

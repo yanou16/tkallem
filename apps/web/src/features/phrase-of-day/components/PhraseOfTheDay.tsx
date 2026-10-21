@@ -1,29 +1,32 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Flame, Mic, Square, Volume2 } from "lucide-react";
-import { Card } from "@/components/ui";
+import { useEffect, useId, useState } from "react";
+import { Check, Flame, Mic, Square, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import ExplainToggle from "@/features/ai-chat/components/ExplainToggle";
 import { useVoiceRecorder, type Recording } from "@/features/ai-chat/hooks/useVoiceRecorder";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import type { ExplainLang } from "@/features/auth/types/user";
 import { useCheckPhrase, usePhraseOfDay } from "../hooks/usePhraseOfDay";
 import { readDays, recordDay, saidToday, streak } from "../lib/days";
-import { checkView, KIND_LABEL, KIND_NOTE, meaningOf, streakText, type CheckView } from "../lib/phraseView";
+import { checkView, KIND_NOTE, meaningOf, meaningToggle, otherLang, streakText, type CheckView } from "../lib/phraseView";
 import { canSpeak, speak } from "../lib/speak";
 
 const storage = () => { try { return window.localStorage; } catch { return null; } };
 
-/** A secondary card on Home: one phrase a day, explained, to say out loud. It never gets in front of the practice cards,
- *  and it disappears quietly if the phrase cannot be loaded (nothing here is worth an error screen). */
-export default function PhraseOfTheDay({ compact = false }: { compact?: boolean }) {
+const PILL = "inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium transition active:scale-[0.97]";
+
+/** The phrase of the day, as a dark strip (the design system's emphasis surface, like the stat card): one phrase, one
+ *  action ("Say it"), and the meaning one tap away. It disappears quietly if the phrase cannot be loaded (nothing here
+ *  is worth an error screen). */
+export default function PhraseOfTheDay() {
   const { user } = useCurrentUser();
   const phrase = usePhraseOfDay();
   const check = useCheckPhrase();
   const [lang, setLang] = useState<ExplainLang | null>(null);
+  const [open, setOpen] = useState(false);
   const [days, setDays] = useState<string[]>([]);
   const [view, setView] = useState<CheckView | null>(null);
   const [listenable, setListenable] = useState(false);
+  const detailsId = useId();
   useEffect(() => { setDays(readDays(storage())); setListenable(canSpeak()); }, []);
 
   const send = (r: Recording | null) => {
@@ -39,7 +42,7 @@ export default function PhraseOfTheDay({ compact = false }: { compact?: boolean 
   };
   const rec = useVoiceRecorder({ onAutoStop: send });
 
-  if (phrase.isLoading) return <Card><div className="h-28 animate-pulse rounded-xl bg-black/[0.06]" aria-hidden /></Card>;
+  if (phrase.isLoading) return <div className="h-28 animate-pulse rounded-card bg-black/[0.06]" aria-hidden />;
   if (!phrase.data) return null;
   const p = phrase.data;
   const done = saidToday(days, p.date) || view?.nailed === true;
@@ -47,13 +50,6 @@ export default function PhraseOfTheDay({ compact = false }: { compact?: boolean 
   const note = KIND_NOTE[p.kind];
   const shownLang = lang ?? user?.explainLang ?? "fr";
   const problem = rec.error ?? check.error?.message;
-  const meaning = (
-    <>
-      <ExplainToggle value={shownLang} onChange={setLang} label="Meaning in" />
-      <p className="mt-2 text-sm text-charcoal">{meaningOf(p, shownLang)}</p>
-      <p className="mt-2 break-words text-sm text-muted">Example: {p.example}</p>
-    </>
-  );
   const toggle = async () => {
     if (rec.isRecording) return send(await rec.stop());
     rec.clearError();
@@ -64,53 +60,57 @@ export default function PhraseOfTheDay({ compact = false }: { compact?: boolean 
   };
 
   return (
-    <Card>
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Phrase of the day</h2>
-        <span className="rounded-full bg-surface px-2.5 py-1 text-xs font-semibold">{KIND_LABEL[p.kind]}</span>
-      </div>
-      <p className="mt-3 break-words text-xl font-semibold leading-snug">{p.text}</p>
-      {note && <p className="mt-1 text-sm text-muted">{note}</p>}
-      {compact ? (
-        <details className="mt-2 text-sm">
-          <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold underline underline-offset-4">Meaning and example</summary>
-          {meaning}
-        </details>
-      ) : (
-        <div className="mt-3">{meaning}</div>
-      )}
-
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        {listenable && (
-          <button type="button" onClick={() => speak(p.text)}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-hairline-strong bg-white px-4 text-sm font-semibold transition active:scale-[0.97]">
-            <Volume2 size={16} aria-hidden /> Listen
-          </button>
-        )}
+    <section aria-labelledby={`${detailsId}-title`} className="rounded-card bg-ink px-5 py-[18px] text-white">
+      <h2 id={`${detailsId}-title`} className="text-[13px] font-medium text-hairline-strong">Phrase of the day · say it out loud</h2>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <p className="min-w-0 break-words text-xl font-medium leading-tight">{p.text}</p>
         {done ? (
-          <p role="status" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-good-bg px-4 text-sm font-semibold text-good">
-            Nailed it · come back tomorrow
-          </p>
+          <p role="status" className={cn(PILL, "bg-good-bg text-good")}><Check size={16} aria-hidden /> Nailed it</p>
         ) : (
           <button type="button" onClick={toggle} disabled={check.isPending}
-            className={cn("inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition active:scale-[0.97] disabled:opacity-50",
-              rec.isRecording ? "border-ink bg-ink text-white" : "border-hairline-strong bg-white")}>
+            className={cn(PILL, "bg-white text-ink disabled:opacity-60")}>
             {rec.isRecording
               ? <><Square size={14} aria-hidden /> Stop and check ({Math.floor(rec.seconds)}s)</>
               : check.isPending ? "Checking…"
               : <><Mic size={16} aria-hidden /> {view ? "Try again" : "Say it"}</>}
           </button>
         )}
-        {streakDays > 0 && (
-          <p className="inline-flex items-center gap-1.5 text-sm font-semibold" title="Days in a row, on this device">
-            <Flame size={16} aria-hidden className="text-[color:var(--warn)]" /> {streakText(streakDays)}
-          </p>
-        )}
       </div>
-      <div role="status" className="mt-2 space-y-0.5 text-sm">
-        {view && !view.nailed && <p className="text-charcoal"><span className="font-semibold">{view.title}. </span>{view.text}</p>}
-        {problem && <p className="text-charcoal">{problem}</p>}
-      </div>
-    </Card>
+
+      {(view && !view.nailed) || problem ? (
+        <div role="status" className="mt-2 space-y-0.5 text-sm text-hairline">
+          {view && !view.nailed && <p><span className="font-semibold">{view.title}. </span>{view.text}</p>}
+          {problem && <p>{problem}</p>}
+        </div>
+      ) : null}
+
+      {done && (
+        <p className="mt-2 flex items-center gap-1.5 text-sm text-hairline">
+          {streakDays > 0 && <><Flame size={16} aria-hidden /> <span className="font-semibold text-white">{streakText(streakDays)}</span> ·</>} Come back tomorrow for a new phrase.
+        </p>
+      )}
+
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls={detailsId}
+        className="mt-1 inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4">
+        {meaningToggle(shownLang)}
+      </button>
+      {open && (
+        <div id={detailsId} className="space-y-2 pb-1 text-sm">
+          <p className="text-hairline">{meaningOf(p, shownLang)}</p>
+          <p className="break-words text-hairline-strong">Example: {p.example}</p>
+          {note && <p className="text-hairline-strong">{note}</p>}
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            {listenable && (
+              <button type="button" onClick={() => speak(p.text)} className={cn(PILL, "border border-stone text-white")}>
+                <Volume2 size={16} aria-hidden /> Listen
+              </button>
+            )}
+            <button type="button" onClick={() => setLang(otherLang(shownLang))} className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4">
+              {shownLang === "fr" ? "Show in English" : "Voir en français"}
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }

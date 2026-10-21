@@ -23,7 +23,7 @@ export default function PracticePage() {
           subtitle="Pick a situation. In Practice the coach corrects each answer. In Real interview nothing is shown until the end, like the real one."
         />
 
-        <div className="mb-6"><PhraseOfTheDay compact /></div>
+        <div className="mb-6"><PhraseOfTheDay /></div>
 
         <SectionTitle title="Situations" action={<Link href="/plan" className="inline-flex min-h-11 items-center underline underline-offset-4">Your plan</Link>} />
         <Async query={all} skeleton={<CardsSkeleton n={4} h="h-48" cols="md:grid-cols-2 2xl:grid-cols-4" />}
