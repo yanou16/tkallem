@@ -8,7 +8,7 @@ import { ScenarioCard, startHref } from "@/components/cards";
 import InstallButton from "@/components/InstallButton";
 import HeroExample from "@/features/landing/HeroExample";
 import HowItWorks from "@/features/landing/HowItWorks";
-import ScreenshotTour from "@/features/landing/ScreenshotTour";
+import ProductTour from "@/features/landing/ProductTour";
 
 const FIRST_SCENARIO = "visa-us";
 const PRIMARY = "inline-flex min-h-14 items-center justify-center gap-3 rounded-full bg-ink px-7 py-4 text-base font-semibold text-white transition-colors hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink";
@@ -42,7 +42,7 @@ export default function WelcomePage() {
       </section>
 
       <div className="mt-16 lg:mt-24"><HowItWorks ctaHref={isSignedIn ? "/practice" : startHref(FIRST_SCENARIO)} ctaLabel={isSignedIn ? "Continue practicing" : "Try a visa interview now"} /></div>
-      <div className="mt-20 lg:mt-28"><ScreenshotTour /></div>
+      <div className="mt-20 lg:mt-28"><ProductTour /></div>
 
       <section id="situations" aria-labelledby="situations-title" className="mt-20 scroll-mt-8 lg:mt-28">
         <p className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-muted">Real moments, real practice</p>
