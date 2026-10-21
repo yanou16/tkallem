@@ -144,6 +144,7 @@ account.
 | POST | `/me/claim-guest` | student | After sign-in: brings the guest's sessions and remaining credits to the account |
 | GET, PATCH | `/me` | student or guest | The learning setup: level, explanation language, first name, daily goal… |
 | GET | `/me/sessions` | student or guest | Recent sessions |
+| GET | `/me/corrections` | student or guest | "Phrases": the answers that had corrections (newest first, `limit` 1 to 100), each with its corrected sentence and the `turn` index that `POST /sessions/{id}/repeat` takes. A real interview in progress is left out until its report |
 | GET | `/phrase-of-the-day` | public | Today's phrase (date in Algiers, UTC+1): `text`, `kind` (interview, everyday or idiom), the meaning in `fr` and `en`, an `example`. Chosen by the date from `app/data/daily_phrases.json`, no database |
 | POST | `/phrase-of-the-day/check` | student or guest | `audio` (multipart): the student says today's phrase. Transcribed, then compared with TODAY's phrase by code (the client cannot name another one): `nailed`, `similarity`, `missing`, `heard`. Free, 15 tries per student per hour |
 | GET | `/me/progress` | student or guest | Metrics, top mistakes, practice time, streak |

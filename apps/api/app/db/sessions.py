@@ -169,6 +169,28 @@ def list_sessions_for_user(conn: Connection, user_id: int, limit: int) -> list[d
         (user_id, limit),
     ).fetchall()
 
+def list_corrected_answers(conn: Connection, user_id: int, limit: int) -> list[dict]:
+    """The student's answers that had corrections, newest session first, each with its corrections ("Phrases").
+    A real interview still running is left out: nothing of it is shown before its report. `position` starts at 1."""
+    return conn.execute(
+        """
+        SELECT s.id AS session_id, s.scenario_id, s.started_at, t.position, t.transcript,
+               json_agg(
+                   json_build_object('original', c.original, 'fixed', c.fixed, 'type', c.type, 'why', c.why, 'rule', c.rule)
+                   ORDER BY c.id
+               ) AS corrections
+        FROM turns t
+        JOIN practice_sessions s ON s.id = t.session_id
+        JOIN corrections c ON c.turn_id = t.id
+        WHERE s.user_id = %s AND NOT (s.ended_at IS NULL AND s.state ->> 'feedback_mode' = 'interview')
+        GROUP BY t.id, s.id
+        ORDER BY s.started_at DESC, s.id DESC, t.position
+        LIMIT %s
+        """,
+        (user_id, limit),
+    ).fetchall()
+
+
 def previous_finished(conn: Connection, user_id: int, session_id: UUID, before) -> tuple[dict | None, int]:
     """The student's last finished session before `before` (its metrics, None if there is none) and how many they
     finished before it: the report opens with the progress since then (app/progress_line.py)."""

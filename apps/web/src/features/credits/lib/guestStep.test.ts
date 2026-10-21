@@ -11,6 +11,7 @@ describe("guestStep", () => {
   });
   it("creates a guest for a visitor who opens Progress directly (it used to stay on the loading skeleton)", () => {
     expect(guestStep(false, null, "/progress")).toBe("create");
+    expect(guestStep(false, null, "/phrases")).toBe("create");
   });
   it("covers every guest route that is public, so the two lists cannot drift apart", () => {
     for (const route of GUEST_ROUTES) expect(isPublicPath(route), route).toBe(true);

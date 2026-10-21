@@ -4,6 +4,7 @@
 export const endpoints = {
   me: "/me",
   mySessions: "/me/sessions",
+  myCorrections: "/me/corrections",
   phraseOfDay: "/phrase-of-the-day",
   phraseOfDayCheck: "/phrase-of-the-day/check",
   myAchievements: "/me/achievements",
