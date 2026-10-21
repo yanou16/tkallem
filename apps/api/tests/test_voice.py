@@ -185,3 +185,79 @@ def test_accented_algerian_place_names_are_not_mistaken_for_noise():
     assert not Transcription("I live in Béjaïa.", "groq", 0.4).unclear
     assert not Transcription("I am from Sétif and I studied in Médéa.", "groq", 0.4).unclear
     assert not Transcription("I drink a café crème every morning.", "groq", 0.4).unclear
+
+
+def test_one_connection_is_kept_open_and_reused_between_replies(monkeypatch):
+    from app.voice import tts
+
+    calls = []
+    shared = client(lambda request: (calls.append(1), httpx.Response(200, content=AUDIO))[1])
+    monkeypatch.setattr(tts, "_shared", shared)
+    assert tts._shared_client() is shared  # no new client (and so no new TLS handshake) for the next reply
+    synthesize("Good. What is your plan?", provider="groq")
+    synthesize("Good. What is your plan?", provider="groq")
+    assert len(calls) == 2 and not shared.is_closed  # both replies used it, and it stays open for the next one
+
+
+def test_a_kept_alive_connection_that_the_provider_closed_is_retried_once_not_a_failure(monkeypatch):
+    from app.voice import tts
+
+    seen = []
+
+    def handler(request: httpx.Request):
+        seen.append(1)
+        if len(seen) == 1:
+            raise httpx.RemoteProtocolError("Server disconnected without sending a response.")
+        return httpx.Response(200, content=AUDIO)
+
+    monkeypatch.setattr(tts, "_shared", client(handler))
+    assert synthesize("Good. What is your plan?", provider="groq").parts == [AUDIO]
+    assert len(seen) == 2
+
+
+def test_the_same_goes_for_the_transcription_connection(monkeypatch):
+    from app.voice import stt
+
+    seen = []
+
+    def handler(request: httpx.Request):
+        seen.append(1)
+        if len(seen) == 1:
+            raise httpx.RemoteProtocolError("Server disconnected without sending a response.")
+        return httpx.Response(200, json={"text": "I want to study.", "duration": 2.0, "words": [], "segments": []})
+
+    monkeypatch.setattr(stt, "_shared", client(handler))
+    assert transcribe(b"audio-bytes", "a.webm", "audio/webm", provider="groq").text == "I want to study."
+    assert len(seen) == 2
+
+
+def test_a_voice_that_is_too_slow_gives_way_to_the_next_provider_instead_of_a_long_silence(monkeypatch):
+    from app.voice import failover, tts
+
+    failover.reset()
+    monkeypatch.setattr(settings, "tts_provider", "groq,deepinfra")
+    asked = []
+
+    def handler(request: httpx.Request):
+        asked.append(request.url.host)
+        assert request.extensions["timeout"]["read"] == settings.tts_timeout  # the budget is on every request
+        if request.url.host == "api.groq.com":
+            raise httpx.ReadTimeout("slow")
+        return httpx.Response(200, json={"audio": base64.b64encode(AUDIO).decode(), "output_format": "wav"})
+
+    monkeypatch.setattr(tts, "_shared", client(handler))
+    s = synthesize("Good. What is your plan?")
+    assert s.provider == "deepinfra" and asked == ["api.groq.com", "api.deepinfra.com"]
+    assert failover.ordered("tts", ["groq", "deepinfra"]) == ["deepinfra", "groq"]  # a slow one rests a few seconds, not minutes
+    failover.reset()
+
+
+def test_when_every_voice_is_too_slow_the_turn_gets_no_audio_so_the_app_speaks_at_once_with_the_browser(monkeypatch):
+    from app.voice import failover, tts
+
+    failover.reset()
+    monkeypatch.setattr(settings, "tts_provider", "groq,deepinfra")
+    monkeypatch.setattr(tts, "_shared", client(lambda request: (_ for _ in ()).throw(httpx.ReadTimeout("slow"))))
+    with pytest.raises(TtsError):
+        synthesize("Good. What is your plan?")
+    failover.reset()

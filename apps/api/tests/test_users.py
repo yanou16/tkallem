@@ -8,7 +8,7 @@ def test_creates_user_on_first_visit(db):
     user = get_or_create_by_clerk_id(db, "user_test_1")
 
     assert user["clerk_user_id"] == "user_test_1"
-    assert user["explain_lang"] == "fr"
+    assert user["explain_lang"] == "en"  # a new profile is explained in English: the jury may read English only
     assert user["level"] is None
     assert user["first_name"] is None
 
@@ -30,7 +30,7 @@ def test_update_profile_changes_only_given_fields(db):
     updated = update_profile(db, user["id"], {"level": "B1"})
 
     assert updated["level"] == "B1"
-    assert updated["explain_lang"] == "fr"
+    assert updated["explain_lang"] == "en"
     assert updated["id"] == user["id"]
 
 

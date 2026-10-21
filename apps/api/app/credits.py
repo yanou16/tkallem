@@ -106,7 +106,7 @@ def is_guest(user: dict) -> bool:
 
 
 def ensure_wallet(conn: Connection, user: dict, now: datetime | None = None) -> None:
-    """Create the wallet on first use and give the starting credits once (guests: 40, signed-in students: 60)."""
+    """Create the wallet on first use and give the starting credits once (guests: 100, signed-in students: 60)."""
     today = _utc(now).date()
     created = conn.execute(
         "INSERT INTO credit_wallets (user_id, balance, last_refill_on) VALUES (%s, 0, %s) ON CONFLICT (user_id) DO NOTHING RETURNING user_id",

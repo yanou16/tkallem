@@ -11,7 +11,7 @@ import { useGuestToken } from "@/features/credits/hooks/useCredits";
 
 /**
  * Keeps the visitor identity in order:
- * - signed out on a guest route and no token yet: ask the API for a guest account (40 credits);
+ * - signed out on a guest route and no token yet: ask the API for a guest account (100 credits);
  * - just signed in with a guest token still stored: bring the guest's sessions and credits to the account.
  */
 export default function GuestBootstrap() {

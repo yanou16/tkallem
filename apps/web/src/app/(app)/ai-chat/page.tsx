@@ -265,7 +265,9 @@ function Chat() {
   if (s?.report) return <Report report={s.report} title={title} sessionId={sessionId} explainDefault={explain} onRestart={() => restart()} />;
 
   const live = send.live;
-  const coachState: CoachState = rec.isRecording ? "listening" : coach.speaking ? "speaking" : send.isPending || speakLast.isPending ? "thinking" : "idle";
+  // In voice mode the reply text is shown before its voice exists (a second or two): say so instead of "Thinking…".
+  const waitingForVoice = mode === "voice" && send.isPending && !!live?.reply && !coach.speaking;
+  const coachState: CoachState = rec.isRecording ? "listening" : coach.speaking ? "speaking" : waitingForVoice ? "preparing" : send.isPending || speakLast.isPending ? "thinking" : "idle";
   const barState: CoachState = coachState === "thinking" && pending ? "idle" : coachState; // "Thinking…" already shows in the chat
 
   const answers = s?.messages.filter((m) => m.role === "user") ?? [];
@@ -449,7 +451,7 @@ function Chat() {
           ) : (
             <div className="shrink-0 border-t border-line">
               {/* The coach's state sits above the field: typing stays possible while it thinks or speaks. */}
-              {(barState === "thinking" || barState === "speaking") && (
+              {(barState === "thinking" || barState === "preparing" || barState === "speaking") && (
                 <div className="flex items-center justify-between gap-3 px-4 pt-3">
                   <VoiceState state={barState} />
                   {barState === "speaking" && (
@@ -461,7 +463,7 @@ function Chat() {
               )}
               {sessionId && s && !interview && (
                 <HelpMeStart sessionId={sessionId} question={lastCoachLine?.content} questionKey={lastCoachLine?.id ?? "start"} typing={text.trim().length > 0}
-                  recording={rec.isRecording} busy={coachState === "thinking" || coachState === "speaking" || !!pending}
+                  recording={rec.isRecording} busy={coachState === "thinking" || coachState === "preparing" || coachState === "speaking" || !!pending}
                   onUse={(t) => { setText(t); answerField.current?.focus(); }} />
               )}
               <div className="flex items-center gap-3 p-3 sm:p-4">
@@ -563,7 +565,7 @@ function Bubble({ m, icon, tint, user, onListen, sayItAgain, nailed }: {
 }
 
 /** DESIGN.md "Correction": right under the student's answer. Line 1 the sentence with each wrong part struck, line 2
- *  the corrected sentence with each fix in bold, then one short explanation per fix (in French by default). */
+ *  the corrected sentence with each fix in bold, then one short explanation per fix (in the language chosen: English first). */
 function Fix({ c }: { c: Correction }) {
   return (
     <div className="mt-1.5">

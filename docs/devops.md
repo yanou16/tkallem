@@ -163,8 +163,10 @@ with them (add columns, do not rename or drop in the same release).
 
 1 to 7 November.
 
-1. **Before 1 November:** top up OpenRouter and DeepInfra. Groq's Orpheus voice is limited to about 100 voices a day on our
-   account; after that Kokoro takes over, then the browser's voice.
+1. **Before 1 November:** top up OpenRouter and **DeepInfra** (measured on 21 October: DeepInfra answered `402 You need
+   positive balance`, so the backup voice did not work). Groq's Orpheus voice is limited on our key to **100 requests a day
+   and about 1,200 characters a minute for everybody together** (read from its `x-ratelimit-*` headers); after that Kokoro
+   takes over, then the browser's voice. A guest has 100 free answers, so the voice quota is what a jury group runs out of first.
 2. **Keep `DAILY_SPEND_CAP=5000`:** judges use a few hundred answers at most. If the 80 % alert comes and the traffic is
    real, raise it in the Azure settings and restart; lower it again on 8 November.
 3. **Set `ALERT_WEBHOOK_URL`** to a channel the whole team reads.

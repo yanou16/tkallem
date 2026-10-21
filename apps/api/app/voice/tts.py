@@ -133,6 +133,11 @@ def _decode_audio(value, client: httpx.Client) -> bytes:
         raise TtsError("the audio field is not base64") from e
 
 
+def _budget() -> httpx.Timeout:
+    """How long one reply's voice may take before another voice takes over (a text answer is already on the screen)."""
+    return httpx.Timeout(settings.tts_timeout, connect=settings.voice_connect_timeout)
+
+
 def _deepinfra(client: httpx.Client, text: str, voice: str | None):
     if not settings.deepinfra_api_key:
         raise TtsError("DEEPINFRA_API_KEY is not set")
@@ -144,6 +149,7 @@ def _deepinfra(client: httpx.Client, text: str, voice: str | None):
         "https://api.deepinfra.com/v1/inference/hexgrad/Kokoro-82M",
         headers={"Authorization": f"bearer {settings.deepinfra_api_key}"},
         json=body,
+        timeout=_budget(),
     )
     r.raise_for_status()
     data = r.json()
@@ -159,6 +165,7 @@ def _groq_one(client: httpx.Client, chunk: str, voice: str) -> tuple[bytes, floa
         "https://api.groq.com/openai/v1/audio/speech",
         headers={"Authorization": f"Bearer {settings.groq_api_key}"},
         json={"model": "canopylabs/orpheus-v1-english", "input": chunk, "voice": voice, "response_format": "wav"},
+        timeout=_budget(),
     )
     r.raise_for_status()
     return r.content, time.perf_counter() - t0
@@ -176,11 +183,25 @@ def _groq(client: httpx.Client, text: str, voice: str | None):
 PROVIDERS = {"deepinfra": _deepinfra, "groq": _groq}
 
 
+_shared: httpx.Client | None = None
+
+
+def _shared_client() -> httpx.Client:
+    """One client for the whole process: the connection to the provider stays open between two replies, so a reply does
+    not pay a new TLS handshake (a few hundred milliseconds before the voice can even start). httpx clients are thread-safe."""
+    global _shared
+    if _shared is None:
+        _shared = httpx.Client(
+            timeout=httpx.Timeout(settings.voice_timeout, connect=settings.voice_connect_timeout),
+            limits=httpx.Limits(max_keepalive_connections=8, keepalive_expiry=60),
+        )
+    return _shared
+
+
 def _synthesize_one(name: str, text: str, voice: str | None, client: httpx.Client | None) -> Speech:
     if name not in PROVIDERS:
         raise TtsError(f"unknown TTS provider {name!r}: expected one of {list(PROVIDERS)}")
-    own = client is None
-    http = client or httpx.Client(timeout=httpx.Timeout(settings.voice_timeout, connect=settings.voice_connect_timeout))
+    http = client or _shared_client()
     t0 = time.perf_counter()
     try:
         parts, mime, latencies = PROVIDERS[name](http, text, voice)
@@ -190,11 +211,8 @@ def _synthesize_one(name: str, text: str, voice: str | None, client: httpx.Clien
         raise TtsError(f"{name} answered {e.response.status_code}{provider_message(e.response)}", e.response.status_code) from e
     except (httpx.HTTPError, ValueError) as e:
         error = TtsError(f"{name} failed: {type(e).__name__}")
-        error.transient = isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout))  # never reached the provider: safe to retry
+        error.transient = isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout, httpx.RemoteProtocolError))  # never reached the provider, or a kept-alive connection the provider had closed: safe to retry
         raise error from e
-    finally:
-        if own:
-            http.close()
     return Speech(parts, mime, name, len(text), time.perf_counter() - t0, min(latencies), latencies)
 
 

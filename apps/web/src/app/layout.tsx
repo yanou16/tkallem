@@ -13,7 +13,7 @@ const font = Figtree({ // DESIGN.md: one family everywhere
 
 export const metadata: Metadata = {
   title: "Tkallem",
-  description: "Rehearse your interview in English: an AI coach that corrects every sentence and explains it in French.",
+  description: "Rehearse your interview in English: an AI coach that corrects every sentence and explains it in English or French.",
   applicationName: "Tkallem",
   appleWebApp: { capable: true, title: "Tkallem", statusBarStyle: "default" },
   icons: {

@@ -124,11 +124,25 @@ def _deepinfra(client: httpx.Client, audio: bytes, filename: str, content_type: 
 PROVIDERS = {"groq": _groq, "deepinfra": _deepinfra}
 
 
+_shared: httpx.Client | None = None
+
+
+def _shared_client() -> httpx.Client:
+    """One client for the whole process: the connection to the provider stays open between two recordings (no new TLS
+    handshake each time). httpx clients are thread-safe."""
+    global _shared
+    if _shared is None:
+        _shared = httpx.Client(
+            timeout=httpx.Timeout(settings.voice_timeout, connect=settings.voice_connect_timeout),
+            limits=httpx.Limits(max_keepalive_connections=8, keepalive_expiry=60),
+        )
+    return _shared
+
+
 def _transcribe_one(name, audio, filename, content_type, language, keep_fillers, client) -> Transcription:
     if name not in PROVIDERS:
         raise SttError(f"unknown STT provider {name!r}: expected one of {list(PROVIDERS)}")
-    own = client is None
-    http = client or httpx.Client(timeout=httpx.Timeout(settings.voice_timeout, connect=settings.voice_connect_timeout))
+    http = client or _shared_client()
     t0 = time.perf_counter()
     try:
         text, duration, words, segments = PROVIDERS[name](http, audio, filename, content_type, language, keep_fillers)
@@ -138,11 +152,8 @@ def _transcribe_one(name, audio, filename, content_type, language, keep_fillers,
         raise SttError(f"{name} answered {e.response.status_code}{provider_message(e.response)}", e.response.status_code) from e
     except (httpx.HTTPError, ValueError) as e:  # network, timeout, invalid JSON
         error = SttError(f"{name} failed: {type(e).__name__}")
-        error.transient = isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout))  # never reached the provider: safe to retry
+        error.transient = isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout, httpx.RemoteProtocolError))  # never reached the provider, or a kept-alive connection the provider had closed: safe to retry
         raise error from e
-    finally:
-        if own:
-            http.close()
     return Transcription(text.strip(), name, time.perf_counter() - t0, duration, words, segments)
 
 

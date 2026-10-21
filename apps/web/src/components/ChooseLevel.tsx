@@ -15,7 +15,7 @@ const LEVELS = [
 /** First visit of a signed-in student: the coach needs a level (sentence length, vocabulary) before any session. */
 export default function ChooseLevel() {
   const [level, setLevel] = useState<(typeof LEVELS)[number]["id"]>("B1");
-  const [lang, setLang] = useState<"fr" | "en">("fr");
+  const [lang, setLang] = useState<"fr" | "en">("en"); // English first: the jury may read English only; French is one tap away
   const update = useUpdateProfile();
 
   return (
@@ -38,7 +38,7 @@ export default function ChooseLevel() {
       <fieldset className="mt-6">
         <legend className="mb-2 font-semibold">Explain my mistakes in</legend>
         <div className="flex gap-2">
-          {([["fr", "Français"], ["en", "Simple English"]] as const).map(([id, label]) => (
+          {([["en", "Simple English"], ["fr", "Français"]] as const).map(([id, label]) => (
             <label key={id} className={cn("flex-1 cursor-pointer rounded-full border px-4 py-2 text-center text-sm font-medium", lang === id ? "border-ink bg-ink text-white" : "border-line")}>
               <input type="radio" name="explain" value={id} checked={lang === id} onChange={() => setLang(id)} className="sr-only" />
               {label}
