@@ -4,12 +4,13 @@ import { Check, Lightbulb, Lock, Mic, Zap } from "lucide-react";
 import { scenarioTint } from "@/lib/tint";
 import { cn } from "@/lib/utils";
 import { FOCUS_CHOICES, GOALS, planOrder } from "@/features/plan/lib/plan";
+import { ScenarioCard } from "@/components/cards";
 import { Browser, Pill, R } from "./TourParts";
 import { DEMO_SCENARIOS, PAGES, menuOf, planView, type DemoScenario, type PlanDemo, type PlatformPage } from "./tour";
 
 const URL: Record<PlatformPage, string> = {
   home: "tkallem.vercel.app", practice: "tkallem.vercel.app/practice", chat: "tkallem.vercel.app/ai-chat",
-  groups: "tkallem.vercel.app/groups", progress: "tkallem.vercel.app/progress", profile: "tkallem.vercel.app/profile",
+  progress: "tkallem.vercel.app/progress", profile: "tkallem.vercel.app/profile",
 };
 
 function Ring({ done, goal }: { done: number; goal: number }) {
@@ -26,20 +27,16 @@ function Ring({ done, goal }: { done: number; goal: number }) {
 const Box = ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={cn("rounded-2xl border border-hairline p-3", className)}>{children}</div>;
 const Row = ({ k, v }: { k: string; v: string }) => <div className="flex justify-between border-t border-hairline-soft py-1.5 text-xs first:border-0">{k}<b className="text-slate">{v}</b></div>;
 const Head = ({ eyebrow, title }: { eyebrow: string; title: string }) => (
-  <div className="mb-3"><span className="text-xs text-slate">{eyebrow}</span><h3 className="text-[22px] font-medium leading-tight tracking-tight">{title}</h3></div>
+  <div className="mb-3"><span className="text-xs text-slate">{eyebrow}</span><h3 className="text-[24px] font-bold leading-tight tracking-tight">{title}</h3></div>
 );
 
 function Card({ s, i, real, onOpen }: { s: DemoScenario; i?: number; real?: boolean; onOpen: () => void }) {
-  return (
-    <div className={cn("flex min-h-[92px] flex-col gap-1.5 rounded-[18px] p-3", scenarioTint(s.category), s.category === "speaking" && "border border-hairline-soft")}>
-      {i !== undefined && <span className="flex size-[22px] items-center justify-center rounded-full bg-canvas text-xs font-semibold">{i + 1}</span>}
-      <span className="text-sm font-semibold">{s.title}</span>
-      <small className="text-xs text-charcoal">{s.minutes} min · {s.level}</small>
-      <button type="button" onClick={onOpen} className="mt-auto min-h-11 self-start text-left text-xs font-semibold underline-offset-2 hover:underline">
-        {real ? <R id="real" as="span">Real interview →</R> : "Practice →"}
-      </button>
-    </div>
-  );
+  return <div className="relative">
+    {i !== undefined && <span className="absolute right-3 top-3 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/70 text-xs font-semibold">{i + 1}</span>}
+    <R id={real ? "real" : `scenario-${s.id}`}>
+      <ScenarioCard s={{ ...s, totalQuestions: s.mode === "free" ? null : 6, description: null, icon: null }} compact onStart={onOpen} />
+    </R>
+  </div>;
 }
 
 /* ---------- the pages ---------- */
@@ -51,10 +48,10 @@ function Home({ plan, open }: { plan: PlanDemo; open: () => void }) {
         <span className="text-xs text-slate">Salam Amina · {v.level}</span>
         <R id="credits" as="span"><Pill className="inline-flex items-center gap-1"><Zap size={12} aria-hidden /> 33 free answers</Pill></R>
       </div>
-      <h3 className="mb-3 text-[22px] font-medium leading-tight tracking-tight">Ready for {v.minutes} minutes of speaking?</h3>
+      <h3 className="mb-3 text-[24px] font-bold leading-tight tracking-tight">Ready for {v.minutes} minutes of speaking?</h3>
       <R id="kpi" className="mb-3 grid grid-cols-3 gap-2">
-        {[["Mistakes per 100 words", "12.4", "↓ 3.1"], ["Practice this week", "42 min", ""], ["Streak", "3 days", ""]].map(([k, val, d]) => (
-          <div key={k} className="rounded-2xl border border-hairline p-2.5"><span className="block text-xs text-slate">{k}</span><b className="text-xl font-medium">{val}</b>{d && <em className="ml-1 text-xs font-semibold not-italic text-good">{d}</em>}</div>
+        {[["Mistakes per 100 words", "12.4", "↓ 3.1"], ["Practice this week", "42 min", ""], ["Streak", "3 days", ""]].map(([k, val, d], i) => (
+          <div key={k} className={cn("rounded-2xl p-3", ["bg-ink text-white", "bg-mint", "bg-butter"][i])}><span className={cn("block text-xs", i === 0 ? "text-white/80" : "text-muted")}>{k}</span><b className="text-xl font-medium">{val}</b>{d && <em className="ml-1 text-xs font-semibold not-italic text-good">{d}</em>}</div>
         ))}
       </R>
       <div className="grid gap-3 md:grid-cols-[1fr_180px]">
@@ -129,33 +126,13 @@ function Chat() {
   );
 }
 
-function Groups() {
-  return (
-    <div className="flex min-h-[420px] flex-col gap-3">
-      <Head eyebrow="English B1 Club #2 · 5 students" title="Practice groups" />
-      <R id="theme"><Box className="bg-surface"><p className="flex items-center gap-1.5 text-xs font-semibold text-slate"><Lightbulb size={13} aria-hidden /> This week: Work and jobs</p>
-        <p className="mt-1 text-base font-medium leading-snug">Would you prefer to work from home or in an office?</p></Box></R>
-      <div className="grid gap-3 md:grid-cols-[1fr_160px]">
-        <R id="messages" className="flex flex-col gap-2">
-          {[["Yacine", "I prefer working from home because it is quiet.", false], ["You", "I like the office, I meet my colleagues.", true], ["Amina", "Same! Home is too distracting for me.", false]].map(([n, t, me]) => (
-            <div key={String(n)} className={cn("max-w-[88%] rounded-[18px] px-3 py-2", me ? "self-end bg-ink text-white" : "self-start bg-surface")}><b className="block text-xs opacity-70">{n}</b>{t}</div>
-          ))}
-        </R>
-        <R id="board"><Box><h4 className="mb-1 text-[13px] font-semibold">This week</h4><Row k="Amina" v="38 min" /><Row k="You" v="31 min" /><Row k="Yacine" v="12 min" /></Box></R>
-      </div>
-      <R id="check" className="mt-auto flex items-center gap-2"><span className="flex-1 rounded-full border border-hairline px-3.5 py-2.5 text-stone">Write to your group…</span>
-        <button type="button" className="min-h-11 md:min-h-9 rounded-full border border-hairline-strong px-3 text-xs font-semibold">Check my message</button></R>
-    </div>
-  );
-}
-
 function Progress() {
   return (
     <div className="min-h-[420px]">
       <Head eyebrow="Salam Amina" title="Track your progress" />
       <R id="metrics" className="mb-3 grid grid-cols-3 gap-2">
         {[["Mistakes per 100 words", "12.4", "↓ 3.1"], ["Words per answer", "48", "↑ 9"], ["Hesitations per minute", "5", "↓ 2"]].map(([k, v, d]) => (
-          <div key={k} className="rounded-2xl border border-hairline p-2.5"><span className="block text-xs text-slate">{k}</span><b className="text-xl font-medium">{v}</b><em className="ml-1 text-xs font-semibold not-italic text-good">{d}</em></div>
+          <div key={k} className="rounded-2xl border border-hairline p-2.5"><span className="block text-xs text-muted">{k}</span><b className="text-xl font-medium">{v}</b><em className="ml-1 text-xs font-semibold not-italic text-good">{d}</em></div>
         ))}
       </R>
       <div className="grid gap-3 md:grid-cols-2">
@@ -227,7 +204,6 @@ export default function Platform({ plan, page, onPage }: { plan: PlanDemo; page:
           {page === "home" && <Home plan={plan} open={() => onPage("chat")} />}
           {page === "practice" && <Practice plan={plan} open={() => onPage("chat")} />}
           {page === "chat" && <Chat />}
-          {page === "groups" && <Groups />}
           {page === "progress" && <Progress />}
           {page === "profile" && <Profile plan={plan} />}
         </div>
