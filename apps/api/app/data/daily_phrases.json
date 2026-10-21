@@ -1,0 +1,322 @@
+[
+ {
+  "id": "return-home",
+  "kind": "interview",
+  "text": "I plan to return to Algeria after my studies.",
+  "fr": "Je prévois de rentrer en Algérie après mes études. La phrase la plus utile pour montrer que tu reviendras.",
+  "en": "I will come back to my country when I finish studying. It shows you will not stay abroad.",
+  "example": "I plan to return to Algeria after my studies and work in a hospital."
+ },
+ {
+  "id": "family-pays",
+  "kind": "interview",
+  "text": "My family will cover the cost of my studies.",
+  "fr": "Ma famille paiera mes études. Pour répondre à la question sur le financement.",
+  "en": "My parents or relatives will pay for my university.",
+  "example": "My family will cover the cost of my studies and my housing."
+ },
+ {
+  "id": "chose-program",
+  "kind": "interview",
+  "text": "I chose this program because it matches my career goals.",
+  "fr": "J'ai choisi cette formation parce qu'elle correspond à mes objectifs de carrière. Pour expliquer ton choix d'études.",
+  "en": "I picked this course because it helps me reach the job I want.",
+  "example": "I chose this program because it matches my career goals in renewable energy."
+ },
+ {
+  "id": "raining-cats",
+  "kind": "idiom",
+  "text": "It is raining cats and dogs.",
+  "fr": "Il pleut des cordes. Une expression imagée : en anglais, on ne parle pas vraiment de chats ni de chiens ! Amusante à connaître, pas pour un entretien.",
+  "en": "It is raining very heavily.",
+  "example": "Take an umbrella: it is raining cats and dogs outside."
+ },
+ {
+  "id": "ties-country",
+  "kind": "interview",
+  "text": "I have strong family and professional ties to Algeria.",
+  "fr": "J'ai de fortes attaches familiales et professionnelles en Algérie. Les officiers de visa cherchent exactement cela.",
+  "en": "My family and my work keep me connected to my country.",
+  "example": "I have strong family and professional ties to Algeria, so I will go back."
+ },
+ {
+  "id": "repeat-question",
+  "kind": "everyday",
+  "text": "Could you repeat the question, please?",
+  "fr": "Pourriez-vous répéter la question, s'il vous plaît ? Mieux vaut demander que répondre à côté.",
+  "en": "A polite way to ask someone to say it again.",
+  "example": "Sorry, could you repeat the question, please?"
+ },
+ {
+  "id": "think-moment",
+  "kind": "interview",
+  "text": "Let me think about it for a moment.",
+  "fr": "Laisse-moi y réfléchir un instant. Pour gagner du temps sans rester muet.",
+  "en": "It gives you a few seconds to find your answer.",
+  "example": "That is a good question. Let me think about it for a moment."
+ },
+ {
+  "id": "hit-books",
+  "kind": "idiom",
+  "text": "I need to hit the books this weekend.",
+  "fr": "Je dois m'y mettre sérieusement et réviser ce week-end. « Hit the books » veut dire étudier avec application.",
+  "en": "To study hard.",
+  "example": "The exam is on Monday, so I need to hit the books this weekend."
+ },
+ {
+  "id": "scholarship",
+  "kind": "interview",
+  "text": "I have a scholarship that covers my tuition.",
+  "fr": "J'ai une bourse qui couvre mes frais de scolarité. Précise toujours qui paie.",
+  "en": "Someone else pays the university fees for you.",
+  "example": "I have a scholarship that covers my tuition for the first two years."
+ },
+ {
+  "id": "study-plan",
+  "kind": "interview",
+  "text": "I would like to explain my study plan.",
+  "fr": "J'aimerais expliquer mon projet d'études. Pour prendre la parole et structurer ta réponse.",
+  "en": "You start to present your plan clearly.",
+  "example": "I would like to explain my study plan for the next three years."
+ },
+ {
+  "id": "speak-slowly",
+  "kind": "everyday",
+  "text": "Could you speak a little more slowly, please?",
+  "fr": "Pourriez-vous parler un peu plus lentement, s'il vous plaît ? Parfaitement poli, et très utile.",
+  "en": "You ask the other person to slow down.",
+  "example": "I want to understand everything. Could you speak a little more slowly, please?"
+ },
+ {
+  "id": "break-ice",
+  "kind": "idiom",
+  "text": "A joke can help to break the ice.",
+  "fr": "Une blague peut aider à briser la glace. « Break the ice » veut dire détendre l'ambiance au début d'une rencontre.",
+  "en": "To make people feel relaxed when they meet for the first time.",
+  "example": "She asked about my hobbies to break the ice."
+ },
+ {
+  "id": "long-term-goal",
+  "kind": "interview",
+  "text": "My long-term goal is to work as an engineer in Algeria.",
+  "fr": "Mon objectif à long terme est de travailler comme ingénieur en Algérie. Remplace « engineer » par ton métier.",
+  "en": "It tells where you want to be in many years.",
+  "example": "My long-term goal is to work as an engineer in Algeria and train young people."
+ },
+ {
+  "id": "student-visa",
+  "kind": "interview",
+  "text": "I am applying for a student visa.",
+  "fr": "Je fais une demande de visa étudiant. Utile dès le début de l'entretien.",
+  "en": "You say what kind of visa you ask for.",
+  "example": "Good morning, I am applying for a student visa for France."
+ },
+ {
+  "id": "did-not-catch",
+  "kind": "everyday",
+  "text": "I am sorry, I did not catch that.",
+  "fr": "Désolé, je n'ai pas bien compris. À dire sans gêne quand on ne comprend pas.",
+  "en": "You did not hear or understand the last words.",
+  "example": "I am sorry, I did not catch that. Could you say it again?"
+ },
+ {
+  "id": "piece-of-cake",
+  "kind": "idiom",
+  "text": "The exam was a piece of cake.",
+  "fr": "L'examen était un jeu d'enfant. « A piece of cake » veut dire très facile.",
+  "en": "Something is very easy.",
+  "example": "I studied a lot, so the test was a piece of cake."
+ },
+ {
+  "id": "strong-english",
+  "kind": "interview",
+  "text": "I have been studying English for three years.",
+  "fr": "J'étudie l'anglais depuis trois ans. Attention : « have been studying » + durée.",
+  "en": "You started three years ago and you still study.",
+  "example": "I have been studying English for three years, and I practice every day."
+ },
+ {
+  "id": "university-residence",
+  "kind": "interview",
+  "text": "I will stay in the university residence.",
+  "fr": "Je logerai dans la résidence universitaire. Pour répondre à la question sur le logement.",
+  "en": "You will live in a room that the university gives to students.",
+  "example": "I will stay in the university residence during my first year."
+ },
+ {
+  "id": "pay-by-card",
+  "kind": "everyday",
+  "text": "Can I pay by card?",
+  "fr": "Puis-je payer par carte ? Une phrase simple pour un magasin ou un restaurant.",
+  "en": "You ask if the shop accepts bank cards.",
+  "example": "Excuse me, can I pay by card?"
+ },
+ {
+  "id": "midnight-oil",
+  "kind": "idiom",
+  "text": "I burn the midnight oil before every exam.",
+  "fr": "Je travaille tard dans la nuit avant chaque examen. « Burn the midnight oil » veut dire veiller pour travailler.",
+  "en": "To work until late at night.",
+  "example": "She burned the midnight oil to finish her project."
+ },
+ {
+  "id": "bank-statements",
+  "kind": "interview",
+  "text": "I can show you my bank statements.",
+  "fr": "Je peux vous montrer mes relevés bancaires. Montre que tu es prêt à prouver ce que tu dis.",
+  "en": "You offer to give proof of your money.",
+  "example": "My father pays, and I can show you my bank statements."
+ },
+ {
+  "id": "nervous",
+  "kind": "everyday",
+  "text": "To be honest, I am a little nervous.",
+  "fr": "Pour être honnête, je suis un peu stressé. Dire la vérité calme souvent l'échange.",
+  "en": "You say that you feel stress, in a calm way.",
+  "example": "To be honest, I am a little nervous, but I am ready."
+ },
+ {
+  "id": "passionate",
+  "kind": "interview",
+  "text": "I am passionate about computer science.",
+  "fr": "Je suis passionné d'informatique. Remplace par ton domaine : « about » est la bonne préposition.",
+  "en": "You love this subject very much.",
+  "example": "I am passionate about computer science and artificial intelligence."
+ },
+ {
+  "id": "under-weather",
+  "kind": "idiom",
+  "text": "I am feeling under the weather today.",
+  "fr": "Je ne suis pas dans mon assiette aujourd'hui. « Under the weather » veut dire un peu malade ou fatigué.",
+  "en": "A little sick or tired.",
+  "example": "I stayed at home because I was under the weather."
+ },
+ {
+  "id": "if-understand",
+  "kind": "interview",
+  "text": "If I understand correctly, you are asking about my funding.",
+  "fr": "Si je comprends bien, vous me demandez comment je finance mes études. Pour vérifier avant de répondre.",
+  "en": "You check the question before you answer.",
+  "example": "If I understand correctly, you are asking about my funding."
+ },
+ {
+  "id": "nearest-pharmacy",
+  "kind": "everyday",
+  "text": "Excuse me, where is the nearest pharmacy?",
+  "fr": "Excusez-moi, où est la pharmacie la plus proche ? « Nearest » = la plus proche.",
+  "en": "You ask for directions.",
+  "example": "Excuse me, where is the nearest pharmacy?"
+ },
+ {
+  "id": "blue-moon",
+  "kind": "idiom",
+  "text": "We meet once in a blue moon.",
+  "fr": "On se voit très rarement. « Once in a blue moon » veut dire presque jamais.",
+  "en": "Very rarely.",
+  "example": "I eat fast food once in a blue moon."
+ },
+ {
+  "id": "team-pressure",
+  "kind": "interview",
+  "text": "I work well in a team and under pressure.",
+  "fr": "Je travaille bien en équipe et sous pression. Une phrase utile pour un entretien d'embauche.",
+  "en": "You say two strong points for a job.",
+  "example": "I work well in a team and under pressure, as you can see from my internship."
+ },
+ {
+  "id": "experience-service",
+  "kind": "interview",
+  "text": "I have two years of experience in customer service.",
+  "fr": "J'ai deux ans d'expérience dans le service client. Garde « of experience in » + domaine.",
+  "en": "You worked two years in this field.",
+  "example": "I have two years of experience in customer service at a call center."
+ },
+ {
+  "id": "ball-court",
+  "kind": "idiom",
+  "text": "Now the ball is in your court.",
+  "fr": "C'est à vous de jouer maintenant. « The ball is in your court » veut dire que la décision est à l'autre personne.",
+  "en": "It is the other person's turn to decide.",
+  "example": "I sent my application. Now the ball is in their court."
+ },
+ {
+  "id": "next-steps",
+  "kind": "interview",
+  "text": "What are the next steps in the process?",
+  "fr": "Quelles sont les prochaines étapes du processus ? À poser à la fin d'un entretien.",
+  "en": "You ask what happens after the interview.",
+  "example": "Thank you. What are the next steps in the process?"
+ },
+ {
+  "id": "my-opinion",
+  "kind": "interview",
+  "text": "In my opinion, technology makes life easier.",
+  "fr": "À mon avis, la technologie facilite la vie. « In my opinion » ouvre une réponse d'IELTS.",
+  "en": "You give your point of view.",
+  "example": "In my opinion, technology makes life easier, but we depend on it too much."
+ },
+ {
+  "id": "better-late",
+  "kind": "idiom",
+  "text": "Better late than never.",
+  "fr": "Mieux vaut tard que jamais. On le dit quand quelqu'un arrive en retard ou fait quelque chose enfin.",
+  "en": "It is good to do something late, not to skip it.",
+  "example": "You finally started to practice? Better late than never."
+ },
+ {
+  "id": "give-example",
+  "kind": "interview",
+  "text": "Let me give you an example.",
+  "fr": "Laisse-moi te donner un exemple. Les examinateurs aiment les exemples concrets.",
+  "en": "You support your idea with a real case.",
+  "example": "I enjoy teamwork. Let me give you an example from my last project."
+ },
+ {
+  "id": "table-two",
+  "kind": "everyday",
+  "text": "I would like a table for two, please.",
+  "fr": "Je voudrais une table pour deux, s'il vous plaît. « I would like » est plus poli que « I want ».",
+  "en": "You ask for a place in a restaurant.",
+  "example": "Good evening, I would like a table for two, please."
+ },
+ {
+  "id": "arm-leg",
+  "kind": "idiom",
+  "text": "This phone costs an arm and a leg.",
+  "fr": "Ce téléphone coûte les yeux de la tête. « An arm and a leg » veut dire très cher.",
+  "en": "Very expensive.",
+  "example": "Studying abroad can cost an arm and a leg."
+ },
+ {
+  "id": "pleasure-meet",
+  "kind": "interview",
+  "text": "Thank you for your time. It was a pleasure to meet you.",
+  "fr": "Merci pour votre temps. Ce fut un plaisir de vous rencontrer. Pour finir poliment.",
+  "en": "A polite ending for any interview.",
+  "example": "Thank you for your time. It was a pleasure to meet you."
+ },
+ {
+  "id": "hang-in",
+  "kind": "idiom",
+  "text": "Hang in there, it will get better.",
+  "fr": "Tiens bon, ça va aller mieux. « Hang in there » encourage quelqu'un dans une période difficile.",
+  "en": "Do not give up.",
+  "example": "The first month is hard, but hang in there."
+ },
+ {
+  "id": "ask-price",
+  "kind": "everyday",
+  "text": "Could you tell me how much this costs?",
+  "fr": "Pourriez-vous me dire combien ça coûte ? Plus poli que « How much? » tout seul.",
+  "en": "A polite way to ask for a price.",
+  "example": "Excuse me, could you tell me how much this costs?"
+ },
+ {
+  "id": "comfort-zone",
+  "kind": "idiom",
+  "text": "Step out of your comfort zone.",
+  "fr": "Sors de ta zone de confort. Idéal pour parler anglais en public, même si tu as peur de te tromper.",
+  "en": "Try something new even if it feels hard.",
+  "example": "To improve your English, you must step out of your comfort zone."
+ }
+]
