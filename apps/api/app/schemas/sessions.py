@@ -148,6 +148,19 @@ class SessionReport(BaseModel):
     verdict: Verdict | None = None  # real interview with at least 3 answers, computed by code (app/verdict.py)
 
 
+class Phrase(BaseModel):
+    """One answer of the student that had corrections: what they said, the corrected sentence, and each fix.
+    `turn` is the index "Say it again" takes (0 = first answer of the session)."""
+    session_id: str
+    scenario_id: str
+    title: str
+    started_at: datetime
+    turn: int
+    original: str
+    corrected: str
+    corrections: list[Correction]
+
+
 class SessionSummary(BaseModel):
     session_id: str
     scenario_id: str

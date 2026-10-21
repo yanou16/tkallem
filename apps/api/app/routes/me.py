@@ -1,17 +1,18 @@
 from fastapi import APIRouter, Depends, Query
 from psycopg import Connection
 from tkallem_agent import ScenarioNotFound
+from tkallem_agent.repeat import corrected_sentence, normalize
 from tkallem_agent.scenarios import load_scenario
 
 from app import guests
 from app.db.achievements import get_achievement_facts
 from app.db.connection import get_conn
-from app.db.sessions import list_sessions_for_user
+from app.db.sessions import list_corrected_answers, list_sessions_for_user
 from app.db.users import update_profile
 from app.dependencies import get_current_user
 from app.schemas.achievements import Achievement
 from app.schemas.me import Me, MeUpdate
-from app.schemas.sessions import SessionSummary
+from app.schemas.sessions import Phrase, SessionSummary
 from app.db.progress import get_activity, get_metrics, get_top_mistakes
 from app.schemas.progress import Progress
 
@@ -82,6 +83,28 @@ def _mistakes_change(current: dict, baseline: dict | None) -> float | None:
     if now is None or before is None:
         return None
     return now - before
+
+
+@router.get("/corrections", response_model=list[Phrase])
+def read_my_corrections(
+    limit: int = Query(50, ge=1, le=100),
+    user: dict = Depends(get_current_user),
+    conn: Connection = Depends(get_conn),
+) -> list[dict]:
+    """"Phrases": the student's corrected answers from all their sessions, newest first. Read-only, nothing is spent.
+    An answer whose fixes cannot be applied to its text is left out: there would be no corrected sentence to say."""
+    phrases = []
+    for row in list_corrected_answers(conn, user["id"], limit):
+        corrected = corrected_sentence(row["transcript"], row["corrections"])
+        if normalize(corrected) == normalize(row["transcript"]):
+            continue
+        summary = _summary({**row, "id": row["session_id"], "ended_at": None, "answered": 0})
+        phrases.append({
+            "session_id": row["session_id"].hex, "scenario_id": row["scenario_id"], "title": summary["title"],
+            "started_at": row["started_at"], "turn": row["position"] - 1,
+            "original": row["transcript"], "corrected": corrected, "corrections": row["corrections"],
+        })
+    return phrases
 
 
 @router.get("/progress", response_model=Progress)

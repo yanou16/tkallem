@@ -144,6 +144,7 @@ account.
 | POST | `/me/claim-guest` | student | After sign-in: brings the guest's sessions and remaining credits to the account |
 | GET, PATCH | `/me` | student or guest | The learning setup: level, explanation language, first name, daily goal… |
 | GET | `/me/sessions` | student or guest | Recent sessions |
+| GET | `/me/corrections` | student or guest | "Phrases": the answers that had corrections (newest first, `limit` 1 to 100), each with its corrected sentence and the `turn` index that `POST /sessions/{id}/repeat` takes. A real interview in progress is left out until its report |
 | GET | `/me/progress` | student or guest | Metrics, top mistakes, practice time, streak |
 | GET | `/me/achievements` | student or guest | Badges |
 | POST | `/sessions` | student or guest | Starts a session (scenario, text or voice, practice or real interview); 409 without a level |

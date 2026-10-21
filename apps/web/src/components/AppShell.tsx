@@ -3,7 +3,7 @@ import { useClerk, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { Bell, ChevronDown, House, Mic, Users, ChartNoAxesColumn, UserRound, LogOut } from "lucide-react";
+import { Bell, BookMarked, ChevronDown, House, Mic, Users, ChartNoAxesColumn, UserRound, LogOut } from "lucide-react";
 import { Avatar, ErrorState, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/lib/config";
@@ -19,6 +19,7 @@ import { GUEST_PATHS } from "@/lib/publicRoutes";
 const NAV: { href: string; label: string; icon: typeof House; also?: string[] }[] = [
   { href: "/", label: "Home", icon: House },
   { href: "/practice", label: "Practice", icon: Mic, also: ["/ai-chat"] }, // DESIGN.md: no sparkle icons
+  { href: "/phrases", label: "Phrases", icon: BookMarked },
   ...(FEATURES.groups ? [{ href: "/groups", label: "Groups", icon: Users }] : []),
   { href: "/progress", label: "Progress", icon: ChartNoAxesColumn },
   { href: "/profile", label: "Profile", icon: UserRound },
