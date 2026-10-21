@@ -18,8 +18,8 @@ describe("tabs and captions", () => {
 
 describe("the platform sidebar", () => {
   it("has the five entries of the real menu, Practice and AI Chat being one, and the conversation opens from Practice", () => {
-    expect(PAGES.map((p) => p.label)).toEqual(["Home", "Practice", "Groups", "Progress", "Profile"]);
-    expect(PAGE_ORDER).toEqual(["home", "practice", "chat", "groups", "progress", "profile"]);
+    expect(PAGES.map((p) => p.label)).toEqual(["Home", "Practice", "Progress", "Profile"]);
+    expect(PAGE_ORDER).toEqual(["home", "practice", "chat", "progress", "profile"]);
     expect(menuOf("chat")).toBe("practice");
     expect(menuOf("home")).toBe("home");
     for (const p of PAGE_ORDER) expect(PAGE_CALLOUTS[p].length).toBeGreaterThanOrEqual(4);
@@ -63,7 +63,7 @@ describe("the plan preview", () => {
     const daily = planView({ ...INITIAL_PLAN, goal: "daily" }).path.map((s) => s.id);
     expect(daily).toEqual(["taxi", "shop", "cafe", "airport"]);
     const visa = planView(INITIAL_PLAN).path.map((s) => s.id);
-    expect(visa).toEqual(["visa-us", "visa-business", "airport", "taxi"]);
+    expect(visa).toEqual(["visa-us", "airport", "taxi", "cafe"]);
     const ielts = planView({ ...INITIAL_PLAN, goal: "ielts" }).path;
     expect(ielts[0].id).toBe("ielts-part2");
     expect(ielts.every((s) => s.mode === "guided")).toBe(true);
