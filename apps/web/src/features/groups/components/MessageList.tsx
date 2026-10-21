@@ -21,7 +21,7 @@ const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-d
  * The chat, oldest first. A new message keeps the list at the bottom when she was already there (or wrote it); an older
  * page loaded above keeps the same message in view.
  */
-export default function MessageList({ groupId, log, myId, fill = false }: { groupId: number; log: MessageLog; myId?: number; fill?: boolean }) {
+export default function MessageList({ groupId, log, myId, colors = new Map<number, string>(), fill = false }: { groupId: number; log: MessageLog; myId?: number; colors?: ReadonlyMap<number, string>; fill?: boolean }) {
   const { messages } = log;
   const older = useLoadOlder(groupId);
   const [reporting, setReporting] = useState<GroupMessage | null>(null);
@@ -86,20 +86,20 @@ export default function MessageList({ groupId, log, myId, fill = false }: { grou
                     <span>{clock(g.startedAt)}</span>
                   </p>
                   {g.messages.map((m) => (
-                    <p key={m.id} className={cn(BUBBLE, "rounded-br-input bg-tint-visa", m.id > initialLastId && "tk-in")}>{m.body}</p>
+                    <p key={m.id} className={cn(BUBBLE, "rounded-br-input", colors.get(g.author.id) ?? "bg-mint", m.id > initialLastId && "tk-in")}>{m.body}</p>
                   ))}
                 </li>
               ) : (
                 <li key={g.messages[0].id} className="flex items-start gap-2.5 sm:gap-3">
                   {/* A former member: "?" on light grey (Avatar's own background), like a member without a first name. */}
-                  <Avatar first={g.authorLeft ? undefined : g.author.firstName ?? undefined} size={32} className="shrink-0 mt-0.5" />
+                  <Avatar first={g.authorLeft ? undefined : g.author.firstName ?? undefined} size={32} className={cn("shrink-0 mt-0.5", !g.authorLeft && colors.get(g.author.id))} />
                   <div className="min-w-0 flex-1 space-y-1">
                     <p className="px-1 text-xs sm:text-sm text-muted">
                       {g.authorLeft ? "Former member" : <span className="font-medium text-ink">{memberName(g.author)}</span>} · {clock(g.startedAt)}
                     </p>
                     {g.messages.map((m) => (
                       <div key={m.id} className={cn("group flex items-start gap-1", m.id > initialLastId && "tk-in")}>
-                        <p className={cn(BUBBLE, "rounded-bl-input border border-line/70 bg-white")}>{m.body}</p>
+                        <p className={cn(BUBBLE, "rounded-bl-input", g.authorLeft ? "bg-surface" : colors.get(g.author.id) ?? "bg-surface")}>{m.body}</p>
                         <button
                           onClick={() => setReporting(m)}
                           aria-label={`Report the message of ${memberName(m.author)}`}
