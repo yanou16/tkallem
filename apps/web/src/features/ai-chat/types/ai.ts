@@ -44,6 +44,7 @@ export type SessionDetailDto = {
   metrics: ProgressMetricsDto | null;
   progress?: string | null;
   freeze?: FreezeDto | null;
+  verdict?: VerdictDto | null;
 };
 
 export type StartSessionDto = {
@@ -95,6 +96,12 @@ export type ReportLineDto = {
   corrections: Correction[];
 };
 
+export type VerdictMetric = "mistakes_per_100" | "words_per_answer" | "hesitations_per_min";
+export type VerdictDto = {
+  status: "ready" | "almost" | "not_yet";
+  reasons: { metric: VerdictMetric; level: SentenceStatus; value: number }[];
+};
+
 export type SessionReportDto = {
   lines: ReportLineDto[];
   note: string;
@@ -103,6 +110,8 @@ export type SessionReportDto = {
   feedback_mode?: FeedbackMode;
   confidence?: ConfidenceDto | null;
   freeze?: FreezeDto | null;
+  /** Real interview with at least 3 answers: ready / almost / not yet, computed by the API. */
+  verdict?: VerdictDto | null;
   metrics: ProgressMetricsDto;
   levels: {
     mistakes_per_100: SentenceStatus | null;
@@ -148,6 +157,8 @@ export type SessionReport = {
   confidence: ConfidenceDto;
   /** Time before starting to answer, with the previous session's when comparable. */
   freeze: FreezeDto | null;
+  /** Null in practice, with fewer than 3 answers, or before the end. */
+  verdict: VerdictDto | null;
   metrics: ProgressMetrics;
   /** Traffic light per metric, null when the metric is not available (hesitations in text mode). */
   levels: {

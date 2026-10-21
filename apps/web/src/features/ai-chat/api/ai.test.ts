@@ -165,10 +165,24 @@ describe("mapSessionDetail", () => {
       confidence: { before: 2, after: null },
       progress: "First interview done: this is your starting point.",
       freeze: { seconds: 3.4, answers: 4, kind: "voice", previous: 9 },
+      verdict: null,
       metrics: { mistakesPer100: 14.3, wordsPerAnswer: 7, hesitationsPerMin: null, speakingSeconds: null },
       levels: { mistakesPer100: null, wordsPerAnswer: null, hesitationsPerMin: null },
       redoIndex: null,
     });
+  });
+
+  it("keeps the verdict the API derived, for a report opened again", () => {
+    const verdict = { status: "almost" as const, reasons: [{ metric: "words_per_answer" as const, level: "orange" as const, value: 9 }] };
+    const session = mapSessionDetail({
+      ...OPEN_SESSION,
+      ended_at: "2026-10-10T10:08:00Z",
+      note: "Note.",
+      feedback_mode: "interview",
+      verdict,
+      metrics: { mistakes_per_100: 3, words_per_answer: 9, hesitations_per_min: null, speaking_seconds: null },
+    });
+    expect(session.report?.verdict).toEqual(verdict);
   });
 
   it("starts with the first answer when the scenario no longer exists", () => {
