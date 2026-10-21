@@ -12,7 +12,7 @@ export type Callout = { id: string; label: string; detail: string; side: "left" 
 export const TABS: { id: TourTab; label: string; title: string; text: string }[] = [
   { id: "platform", label: "The platform", title: "Everything in one place", text: "What a student sees after signing up: the plan, the situations, the progress." },
   { id: "plan", label: "Your plan", title: "Five questions, then your order", text: "Answer them in the preview: the order of the situations changes with your goal." },
-  { id: "voice", label: "Voice", title: "Say it out loud, hear the coach answer", text: "Tap the microphone and answer. The coach replies in a natural voice." },
+  { id: "voice", label: "Voice", title: "Say it out loud, hear the coach answer", text: "Start a call, then speak naturally. This miniature is a demonstration without microphone access." },
 ];
 
 export const CALLOUTS: Record<Exclude<TourTab, "platform">, Callout[]> = {
@@ -25,10 +25,10 @@ export const CALLOUTS: Record<Exclude<TourTab, "platform">, Callout[]> = {
     { id: "order", label: "The order of your situations", detail: "The situations are the same for everyone: your answers decide which come first.", side: "right", region: "order" },
   ],
   voice: [
-    { id: "mic", label: "Tap to speak", detail: "One tap to record, one tap to send.", side: "left", region: "mic" },
+    { id: "mic", label: "Start a voice call", detail: "Start the call, then speak naturally. This preview never accesses your microphone.", side: "left", region: "mic" },
     { id: "state", label: "You always know what is happening", detail: "Listening, Thinking, Speaking: one label at a time.", side: "left", region: "state" },
-    { id: "transcript", label: "Your words, written", detail: "Your speech is transcribed and corrected like a typed answer.", side: "right", region: "transcript" },
-    { id: "backup", label: "A voice that never fails", detail: "If a provider is down, another takes over, then your browser's voice.", side: "right", region: "backup" },
+    { id: "transcript", label: "Live corrections", detail: "Review the original phrase, the corrected version and an explanation.", side: "right", region: "transcript" },
+    { id: "backup", label: "A safe preview", detail: "Try the demonstration without recording or spending credits.", side: "right", region: "backup" },
   ],
 };
 
@@ -39,26 +39,26 @@ export const REGIONS: Record<Exclude<TourTab, "platform">, string[]> = {
 };
 
 /* ---------- the platform tab: a sidebar that works, one set of captions per page ---------- */
-export type PlatformPage = "home" | "practice" | "chat" | "groups" | "progress" | "profile";
+export type PlatformPage = "home" | "practice" | "chat" | "progress" | "profile";
 /** The sidebar. The conversation ("chat") is not an entry: like the real app, it opens from Practice. */
 export const PAGES: { id: Exclude<PlatformPage, "chat">; label: string }[] = [
   { id: "home", label: "Home" }, { id: "practice", label: "Practice" },
-  { id: "groups", label: "Groups" }, { id: "progress", label: "Progress" }, { id: "profile", label: "Profile" },
+  { id: "progress", label: "Progress" }, { id: "profile", label: "Profile" },
 ];
 /** The order the automatic tour visits the pages in. */
-export const PAGE_ORDER: PlatformPage[] = ["home", "practice", "chat", "groups", "progress", "profile"];
+export const PAGE_ORDER: PlatformPage[] = ["home", "practice", "chat", "progress", "profile"];
 /** The sidebar entry lit for a page. */
 export const menuOf = (p: PlatformPage): Exclude<PlatformPage, "chat"> => (p === "chat" ? "practice" : p);
 const c = (id: string, label: string, detail: string, side: "left" | "right", region = id): Callout => ({ id, label, detail, side, region });
 export const PAGE_CALLOUTS: Record<PlatformPage, Callout[]> = {
   home: [
-    c("nav", "Click the menu", "Every page of the app is live in this preview: try Practice, Groups, Progress, Profile.", "left"),
+    c("nav", "Click the menu", "Every page of the app is live in this preview: try Practice, Progress, Profile.", "left"),
     c("kpi", "Progress that is measured", "Mistakes per 100 words, practice time and streak, from your own sessions.", "left"),
     c("plan", "Your plan, in order", "The situations that match your goal come first.", "left"),
-    c("situations", "Real situations", "Visa, Campus France, job, IELTS and everyday scenes like the taxi or the cafe.", "left"),
+    c("situations", "Real situations", "Visa, university admission, job, IELTS and everyday scenes like the taxi or renting a room.", "left"),
     c("credits", "Free to try", "Guests get 40 free answers. No account needed.", "right"),
     c("goal", "Today's goal", "Your daily minutes of speaking, as a ring.", "right"),
-    c("real", "Real interview mode", "Nothing is corrected until the end, like the real one.", "right"),
+    c("real", "Start a situation", "Choose a scenario to open the conversation in this demonstration.", "right"),
     c("mistakes", "Your top mistakes", "What to work on next, from your last sessions.", "right"),
     c("recent", "Recent sessions", "Continue where you stopped, or do it again.", "right"),
   ],
@@ -75,12 +75,6 @@ export const PAGE_CALLOUTS: Record<PlatformPage, Callout[]> = {
     c("feedback", "One good thing, one fix", "A true compliment first, then the correction that matters most.", "right"),
     c("again", "Say it again", "Repeat the corrected sentence. The code checks it, not the AI.", "right"),
     c("answer", "Type or speak", "Answer the way you prefer. Two free hints per question.", "right"),
-  ],
-  groups: [
-    c("theme", "A theme a week, a question a day", "The same for every group: you answer it in the chat.", "left"),
-    c("messages", "Up to 8 students of your level", "Write in English together, every day.", "left"),
-    c("check", "Check before you send", "The corrector runs on your draft. Only you see it.", "right"),
-    c("board", "A friendly leaderboard", "Minutes spoken this week, by members of your group.", "right"),
   ],
   progress: [
     c("metrics", "Numbers, not feelings", "Mistakes, words per answer and hesitations, session after session.", "left"),
@@ -99,7 +93,6 @@ export const PAGE_REGIONS: Record<PlatformPage, string[]> = {
   home: ["nav", "kpi", "plan", "situations", "credits", "goal", "real", "mistakes", "recent"],
   practice: ["planlink", "grid", "real", "recent"],
   chat: ["mode", "question", "help", "feedback", "again", "answer"],
-  groups: ["theme", "messages", "check", "board"],
   progress: ["metrics", "freeze", "confidence", "top"],
   profile: ["setup", "lang", "focus", "badges"],
 };
@@ -119,13 +112,13 @@ export function visibleCallouts(tab: TourTab, page: PlatformPage, planDone: bool
 export const DEMO_SCENARIOS = [
   { id: "airport", title: "At the airport", category: "speaking", mode: "guided" as const, minutes: 6, level: "B1" },
   { id: "cafe", title: "Ordering at a cafe", category: "speaking", mode: "guided" as const, minutes: 5, level: "A2" },
-  { id: "campus-france", title: "Campus France interview", category: "study", mode: "guided" as const, minutes: 8, level: "B2" },
+  { id: "university-admission", title: "University admission interview", category: "study", mode: "guided" as const, minutes: 8, level: "B2" },
   { id: "free-talk", title: "Free talk", category: "speaking", mode: "free" as const, minutes: 10, level: "B1" },
   { id: "ielts-part2", title: "IELTS Speaking, part 2", category: "exams", mode: "guided" as const, minutes: 6, level: "B2" },
   { id: "job-remote", title: "Remote job interview", category: "work", mode: "guided" as const, minutes: 10, level: "B2" },
   { id: "shop", title: "In a clothes shop", category: "speaking", mode: "guided" as const, minutes: 5, level: "A2" },
   { id: "taxi", title: "Taking a taxi", category: "speaking", mode: "guided" as const, minutes: 5, level: "A2" },
-  { id: "visa-business", title: "Business or tourist visa", category: "travel", mode: "guided" as const, minutes: 8, level: "B1" },
+  { id: "renting-a-room", title: "Renting a room", category: "speaking", mode: "guided" as const, minutes: 6, level: "B1" },
   { id: "visa-us", title: "Visa interview", category: "travel", mode: "guided" as const, minutes: 8, level: "B1" },
 ];
 export type DemoScenario = (typeof DEMO_SCENARIOS)[number];
