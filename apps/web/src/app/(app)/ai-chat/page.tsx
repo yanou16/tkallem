@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowDown, ChartNoAxesColumn, ChevronDown, ChevronRight, CircleAlert, Lightbulb, MessageCircle, Mic, MicOff, PhoneCall, PhoneOff, Send, Square, Volume2 } from "lucide-react";
+import { ArrowDown, ChartNoAxesColumn, ChevronDown, ChevronRight, CircleAlert, FileText, Lightbulb, MessageCircle, Mic, MicOff, PhoneCall, PhoneOff, Send, Square, Volume2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
@@ -13,6 +13,7 @@ import { MAX_RECORDING_S, useVoiceRecorder, type Recording } from "@/features/ai
 import { useCoachVoice } from "@/features/ai-chat/hooks/useCoachVoice";
 import { useRealtimeVoice } from "@/features/ai-chat/hooks/useRealtimeVoice";
 import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOfCredits";
+import { correctionHistory } from "@/features/ai-chat/lib/correctionHistory";
 import { applyVoiceCorrection } from "@/features/ai-chat/lib/voiceCorrection";
 import { markSentence } from "@/features/ai-chat/lib/marks";
 import type { AiSession, ChatMessage, Correction, SentenceStatus, SessionReport } from "@/features/ai-chat/types/ai";
@@ -138,6 +139,7 @@ function Chat() {
   const started = useRef<string | null>(null);
   const lastRecording = useRef<Recording | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
+  const transcriptBox = useRef<HTMLDivElement>(null);
   const rec = useVoiceRecorder({ onAutoStop: (r) => r && sendRecording(r) });
 
   const rtVoice = useRealtimeVoice({
@@ -183,7 +185,7 @@ function Chat() {
           if (!prev) return prev;
           return applyVoiceCorrection(prev, data);
         });
-        session.refetch();
+        // The server saves before emitting this event. Refetching here can overwrite a newer transcript.
       }
     },
     onError: (err) => {
@@ -215,8 +217,12 @@ function Chat() {
   }, [urlScenarioId, sessionId]);
 
   useEffect(() => {
-    bottom.current?.scrollIntoView({ behavior: "smooth" });
-  }, [s?.messages.length, pending, send.live?.reply, rtLive?.transcript, rtLive?.reply]);
+    if (mode === "voice" && transcriptBox.current) {
+      transcriptBox.current.scrollTo({ top: transcriptBox.current.scrollHeight, behavior: "smooth" });
+    } else {
+      bottom.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [mode, s?.messages.length, pending, send.live?.reply, rtLive?.transcript, rtLive?.reply]);
 
   /** A new session for this scenario, or for another one. */
   const restart = (id = scenarioId) => {
@@ -292,7 +298,8 @@ function Chat() {
   const barState: CoachState = coachState === "thinking" && pending ? "idle" : coachState; // "Thinking…" already shows in the chat
 
   const answers = s?.messages.filter((m) => m.role === "user") ?? [];
-  const last = answers[answers.length - 1];
+  const history = correctionHistory(s?.messages ?? []);
+  const correctionCount = history.reduce((n, entry) => n + entry.corrections.length, 0);
   const creditProblem = send.error && isCreditError(send.error) ? (send.error as ApiError) : null;
   const problem = send.error && !creditProblem ? answerHelp(send.error) : end.error ? endHelp(end.error) : null;
 
@@ -306,9 +313,7 @@ function Chat() {
   } else if (!s) {
     body = <div className="space-y-4"><Skeleton className="h-20 w-2/3" /><Skeleton className="ml-auto h-20 w-2/3" /></div>;
   } else {
-    body = mode === "voice"
-      ? null
-      : s.messages.map((m) => (
+    body = s.messages.map((m) => (
         <Bubble key={m.id} m={m} icon={icon} user={user} onListen={m.role === "assistant" ? () => coach.play(m.audioUrl, m.content) : undefined} />
       ));
   }
@@ -348,75 +353,43 @@ function Chat() {
           </div>
         </div>
 
+        <div className="flex flex-1 flex-col overflow-hidden rounded-card border border-line bg-white">
         {mode === "voice" && (
-          <div className="mb-4">
-            <div className="mb-2 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => (rtVoice.isConnected || rtVoice.isConnecting) ? rtVoice.stop() : startCall()}
-                  disabled={!sessionId}
-                  className={cn(
-                    "flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold transition-all",
-                    rtVoice.isConnected || rtVoice.isConnecting
-                      ? "border border-rose-deep bg-rose text-ink"
-                      : "border border-mint-deep bg-mint text-ink hover:bg-mint-deep/60",
-                    rtVoice.isConnecting && "cursor-wait opacity-70"
-                  )}
-                >
-                  {rtVoice.isConnecting ? (
-                    "Connecting…"
-                  ) : rtVoice.isConnected ? (
-                    <>
-                      <PhoneOff size={14} /> End call
-                    </>
-                  ) : (
-                    <>
-                      <PhoneCall size={14} /> Start Voice Call
-                    </>
-                  )}
+          <section aria-label="Voice practice" className="p-5 sm:p-8">
+            <div className="mb-5 flex flex-wrap items-center justify-end gap-3">
+              {answers.length > 0 && s && !s.finished && <Button dark={false} onClick={finish} disabled={end.isPending} className="!px-4 !py-2 text-xs">{end.isPending ? "Preparing your report…" : "End session"}</Button>}
+              <button type="button" onClick={toggleAvatar} className="min-h-9 rounded-full border border-line px-3 py-1 text-xs font-semibold">{avatarOn ? "Hide 3D coach" : "Show 3D coach"}</button>
+            </div>
+            <div className="mx-auto flex max-w-lg flex-col items-center text-center">
+              {avatarOn ? <div className="w-full max-w-xs overflow-hidden rounded-3xl bg-mint/30"><CoachAvatar {...coach.avatarProps} /></div> : <span className="flex h-40 w-40 items-center justify-center rounded-3xl bg-mint/50 sm:h-52 sm:w-52"><Icon name={icon ?? "speaking"} size={64} className="text-ink/50" /></span>}
+              <h2 className="mt-5 text-xl font-bold">Your AI tutor</h2>
+              <p role="status" className="mt-2 text-sm text-muted">
+                {rtVoice.isConnecting ? "Requesting microphone and connecting…" : rtVoice.isConnected ? rtVoice.isMuted ? "Microphone muted" : "Connected — speak naturally" : "Start a call, then speak naturally."}
+              </p>
+              {rtVoice.isConnected && <div className="mt-3 flex min-h-9 items-center gap-3">
+                <VoiceState state={rtVoice.state} /><span className="text-xs text-muted">{formatTime(rtVoice.duration)}</span>
+                {!rtVoice.isMuted && <div className="flex h-8 items-center gap-1" aria-label="Microphone activity">
+                  {Array.from({ length: 16 }).map((_, i) => <span key={i} className="w-1 rounded-full bg-mint-deep transition-[height] duration-100" style={{ height: `${Math.max(4, rtVoice.audioLevel * (0.55 + (i % 5) / 5) * 30)}px` }} />)}
+                </div>}
+              </div>}
+              <div className="mt-6 flex w-full items-center justify-center gap-3">
+                <button type="button" onClick={() => (rtVoice.isConnected || rtVoice.isConnecting) ? rtVoice.stop() : startCall()} disabled={!sessionId || !s || s.finished}
+                  className={cn("inline-flex min-h-14 w-full max-w-xs items-center justify-center gap-3 rounded-full px-7 py-4 text-base font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink disabled:opacity-40", rtVoice.isConnected || rtVoice.isConnecting ? "bg-rose text-ink hover:bg-rose-deep" : "bg-ink text-white hover:bg-black/80")}>
+                  {rtVoice.isConnected || rtVoice.isConnecting ? <PhoneOff size={22} aria-hidden="true" /> : <PhoneCall size={22} aria-hidden="true" />}
+                  {rtVoice.isConnecting ? "Cancel connection" : rtVoice.isConnected ? "End call" : "Start voice call"}
                 </button>
-                {rtVoice.isConnected && (
-                  <span className="flex items-center gap-1.5 rounded-full bg-mint-deep/20 px-2.5 py-1 text-[11px] font-medium text-ink">
-                    <span className="h-2 w-2 rounded-full animate-pulse bg-success" />
-                    Connected · {formatTime(rtVoice.duration)}
-                  </span>
-                )}
+                {rtVoice.isConnected && <button type="button" onClick={rtVoice.toggleMute} aria-label={rtVoice.isMuted ? "Unmute microphone" : "Mute microphone"} className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-line hover:bg-black/5">
+                  {rtVoice.isMuted ? <MicOff size={21} /> : <Mic size={21} />}
+                </button>}
               </div>
-              <button onClick={toggleAvatar} className="rounded-full border border-line px-3 py-1 text-xs font-semibold">{avatarOn ? "Hide 3D coach" : "Show 3D coach"}</button>
+              <p className="mb-3 mt-3 text-xs text-muted">Your microphone is used during the call.</p>
+              {voiceError && <p role="alert" className="mt-3 w-full rounded-xl bg-rose/60 px-4 py-3 text-sm">{voiceError}</p>}
             </div>
-            <div className="rounded-card border border-line bg-white p-4">
-              <div className="flex items-center gap-4">
-                {avatarOn ? <CoachAvatar {...coach.avatarProps} /> : <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-mint"><Icon name={icon ?? "briefcase"} /></span>}
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold">Your AI tutor</p>
-                  <p className="text-sm text-muted">
-                    {rtVoice.isConnecting
-                      ? "Requesting microphone and connecting…"
-                      : rtVoice.isConnected
-                      ? "Connected — speak naturally"
-                      : "Start a call to practice hands-free"}
-                  </p>
-                  <div className="mt-3 flex h-8 items-center gap-1" aria-label="Microphone activity">
-                    {Array.from({ length: 24 }).map((_, i) => {
-                      const wave = rtVoice.isConnected ? Math.max(0.15, rtVoice.audioLevel * (0.55 + ((i % 5) / 5))) : 0.12;
-                      return <span key={i} className={cn("w-1 rounded-full transition-[height] duration-100", rtVoice.isConnected ? "bg-brand" : "bg-line")} style={{ height: `${Math.max(4, wave * 30)}px` }} />;
-                    })}
-                  </div>
-                </div>
-                {rtVoice.isConnected && (
-                  <button type="button" onClick={rtVoice.toggleMute} aria-label={rtVoice.isMuted ? "Unmute microphone" : "Mute microphone"} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line">
-                    {rtVoice.isMuted ? <MicOff size={18} /> : <Mic size={18} />}
-                  </button>
-                )}
-              </div>
-              {rtVoice.isConnected && <VoiceState state={rtVoice.state} className="mt-3" />}
-              {voiceError && <p role="alert" className="mt-3 rounded-xl bg-rose/60 px-3 py-2 text-sm">{voiceError}</p>}
-            </div>
-          </div>
+          </section>
         )}
 
-        <div className="flex flex-1 flex-col overflow-hidden rounded-card border border-line bg-white">
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {mode !== "voice" && <>
           {s && (
             <div className="flex items-center justify-between gap-3 border-b border-line px-6 py-3 text-sm">
               <span className="text-muted">{plural(answers.length, "answer")}</span>
@@ -428,7 +401,7 @@ function Chat() {
             </div>
           )}
 
-          <div className="flex-1 space-y-5 overflow-y-auto p-6">
+          <div ref={transcriptBox} className="flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
             {body}
             {pending && (
               <>
@@ -445,7 +418,7 @@ function Chat() {
                 )}
               </>
             )}
-            {mode !== "voice" && rtLive && (
+            {rtLive && (
   <>
     {rtLive.transcript && (
       <Bubble
@@ -485,6 +458,7 @@ function Chat() {
 )}
             <div ref={bottom} />
           </div>
+          </>}
 
           {(problem || creditProblem || rec.error || coach.blocked) && (
             <div className="space-y-2 px-6 pb-2">
@@ -507,22 +481,7 @@ function Chat() {
               <p className="text-muted">You answered every question.</p>
               <Button onClick={finish} disabled={end.isPending}>{end.isPending ? "Preparing your report…" : "See my report"}</Button>
             </div>
-          ) : rtVoice.isConnected || rtVoice.isConnecting ? (
-            <div className="flex items-center justify-between gap-4 border-t border-line p-4">
-              <div className="flex items-center gap-3 text-sm text-muted">
-                <span className={cn("h-3 w-3 rounded-full", rtVoice.isConnected ? "bg-success animate-pulse" : "bg-butter-deep animate-pulse")} />
-                {rtVoice.isConnecting ? "Connecting to your tutor…" : rtVoice.isMuted ? "Microphone muted" : "Call in progress — no button needed"}
-              </div>
-              {rtVoice.isConnected && <button type="button" onClick={rtVoice.toggleMute} className="rounded-full border border-line px-4 py-2 text-sm font-semibold">{rtVoice.isMuted ? "Unmute" : "Mute"}</button>}
-            </div>
-          ) : mode === "voice" ? (
-            <div className="flex items-center justify-between gap-4 border-t border-line p-4">
-              <p className="text-sm text-muted">Voice call is ready. Start the call above and speak naturally.</p>
-              <button type="button" onClick={startCall} disabled={!s || !sessionId} className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
-                Start call
-              </button>
-            </div>
-          ) : (
+          ) : mode === "voice" ? null : (
             <div className="border-t border-line">
               {(barState === "thinking" || barState === "speaking") && (
                 <div className="flex items-center justify-between gap-3 px-4 pt-3">
@@ -558,20 +517,29 @@ function Chat() {
             </div>
           )}
         </div>
+        </div>
       </div>
 
-      <aside className="space-y-4" aria-label="Live corrections">
-        <Card className="space-y-3">
-          <div className="flex items-center justify-between"><h2 className="text-xl font-bold">Live corrections</h2>
-            {s && !s.finished && <span className="flex items-center gap-2 text-sm"><span className="h-2.5 w-2.5 rounded-full bg-success" /> Active</span>}</div>
-          {!last ? (
-            <EmptyState title="No corrections yet" text="Send an answer and your tutor will suggest improvements here." />
-          ) : last.status !== "green" && last.corrections?.length ? (
-            last.corrections.map((c, i) => <CorrectionCard key={i} c={c} />)
+      <aside className="min-w-0" aria-label="Live corrections">
+        <Card className="space-y-4 xl:sticky xl:top-6">
+          <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-xl font-bold">Live corrections</h2>
+            {s && !s.finished && <span className="flex items-center gap-2 text-xs"><span className="h-2 w-2 rounded-full bg-success" /> Enabled</span>}</div>
+          <p className="text-xs text-muted">Corrections stay here throughout this session.</p>
+          {history.length === 0 ? (
+            <div className="rounded-2xl bg-lilac/20 px-5 py-8 text-center">
+              <FileText size={34} strokeWidth={1.3} aria-hidden="true" className="mx-auto mb-4 text-[#9280CB]/40" />
+              <p className="font-semibold">No corrections yet</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted">{mode === "voice" ? "Speak during a call to see suggestions here." : "Send an answer to see suggestions here."}</p>
+            </div>
           ) : (
-            <EmptyState title="Clean answer" text="No correction on your last answer." />
+            <ol className="max-h-[65dvh] space-y-5 overflow-y-auto pr-1" aria-label="Session corrections" aria-live="polite" aria-relevant="additions">
+              {history.map((entry) => <li key={entry.messageId}>
+                <h3 className="mb-2 text-xs font-medium text-muted">Answer {entry.answerNumber}</h3>
+                <div className="space-y-3">{entry.corrections.map((c, i) => <CorrectionCard key={i} c={c} />)}</div>
+              </li>)}
+            </ol>
           )}
-          {last && <SummaryRow icon={<CircleAlert size={18} />} tone="bg-rose" title="Corrections this turn" sub={plural(last.corrections?.length ?? 0, "suggestion")} />}
+          {correctionCount > 0 && <SummaryRow icon={<CircleAlert size={18} />} tone="bg-rose" title="Corrections this session" sub={plural(correctionCount, "suggestion")} />}
         </Card>
       </aside>
     </div>
