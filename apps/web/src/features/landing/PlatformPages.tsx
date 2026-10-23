@@ -4,7 +4,6 @@ import { Check, Lightbulb, Lock, Mic, Zap } from "lucide-react";
 import { scenarioTint } from "@/lib/tint";
 import { cn } from "@/lib/utils";
 import { FOCUS_CHOICES, GOALS, planOrder } from "@/features/plan/lib/plan";
-import { ScenarioCard } from "@/components/cards";
 import { Browser, Pill, R } from "./TourParts";
 import { DEMO_SCENARIOS, PAGES, menuOf, planView, type DemoScenario, type PlanDemo, type PlatformPage } from "./tour";
 
@@ -27,16 +26,20 @@ function Ring({ done, goal }: { done: number; goal: number }) {
 const Box = ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={cn("rounded-2xl border border-hairline p-3", className)}>{children}</div>;
 const Row = ({ k, v }: { k: string; v: string }) => <div className="flex justify-between border-t border-hairline-soft py-1.5 text-xs first:border-0">{k}<b className="text-slate">{v}</b></div>;
 const Head = ({ eyebrow, title }: { eyebrow: string; title: string }) => (
-  <div className="mb-3"><span className="text-xs text-slate">{eyebrow}</span><h3 className="text-[24px] font-semibold leading-tight tracking-tight">{title}</h3></div>
+  <div className="mb-3"><span className="text-xs text-slate">{eyebrow}</span><h3 className="text-[22px] font-medium leading-tight tracking-tight">{title}</h3></div>
 );
 
 function Card({ s, i, real, onOpen }: { s: DemoScenario; i?: number; real?: boolean; onOpen: () => void }) {
-  return <div className="relative">
-    {i !== undefined && <span className="absolute right-3 top-3 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-white/70 text-xs font-semibold">{i + 1}</span>}
-    <R id={real ? "real" : `scenario-${s.id}`}>
-      <ScenarioCard s={{ ...s, totalQuestions: s.mode === "free" ? null : 6, description: null, icon: null }} compact onStart={onOpen} />
-    </R>
-  </div>;
+  return (
+    <div className={cn("flex min-h-[92px] flex-col gap-1.5 rounded-[18px] p-3", scenarioTint(s.category), s.category === "speaking" && "border border-hairline-soft")}>
+      {i !== undefined && <span className="flex size-[22px] items-center justify-center rounded-full bg-canvas text-xs font-semibold">{i + 1}</span>}
+      <span className="text-sm font-semibold">{s.title}</span>
+      <small className="text-xs text-charcoal">{s.minutes} min · {s.level}</small>
+      <button type="button" onClick={onOpen} className="mt-auto min-h-11 self-start text-left text-xs font-semibold underline-offset-2 hover:underline">
+        {real ? <R id="real" as="span">Real interview →</R> : "Practice →"}
+      </button>
+    </div>
+  );
 }
 
 /* ---------- the pages ---------- */
@@ -44,20 +47,20 @@ function Home({ plan, open }: { plan: PlanDemo; open: () => void }) {
   const v = planView(plan);
   return (
     <>
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+      <div className="mb-2 flex items-center justify-between gap-2">
         <span className="text-xs text-slate">Salam Amina · {v.level}</span>
         <R id="credits" as="span"><Pill className="inline-flex items-center gap-1"><Zap size={12} aria-hidden /> 33 free answers</Pill></R>
       </div>
-      <h3 className="mb-3 text-[24px] font-semibold leading-tight tracking-tight">Ready for {v.minutes} minutes of speaking?</h3>
-      <R id="kpi" className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-        {[["Mistakes per 100 words", "12.4", "↓ 3.1"], ["Practice this week", "42 min", ""], ["Streak", "3 days", ""]].map(([k, val, d], i) => (
-          <div key={k} className={cn("rounded-2xl p-3", ["bg-ink text-white", "bg-mint", "bg-butter"][i])}><span className={cn("block text-xs", i === 0 ? "text-white/80" : "text-muted")}>{k}</span><b className="text-xl font-medium">{val}</b>{d && <em className="ml-1 text-xs font-semibold not-italic text-good">{d}</em>}</div>
+      <h3 className="mb-3 text-[22px] font-medium leading-tight tracking-tight">Ready for {v.minutes} minutes of speaking?</h3>
+      <R id="kpi" className="mb-3 grid grid-cols-3 gap-2">
+        {[["Mistakes per 100 words", "12.4", "↓ 3.1"], ["Practice this week", "42 min", ""], ["Streak", "3 days", ""]].map(([k, val, d]) => (
+          <div key={k} className="rounded-2xl border border-hairline p-2.5"><span className="block text-xs text-slate">{k}</span><b className="text-xl font-medium">{val}</b>{d && <em className="ml-1 text-xs font-semibold not-italic text-good">{d}</em>}</div>
         ))}
       </R>
       <div className="grid gap-3 md:grid-cols-[1fr_180px]">
         <div>
           <R id="plan" className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate">Your plan, in order</R>
-          <R id="situations" className="grid grid-cols-1 gap-2 sm:grid-cols-2">{v.path.map((s, i) => <Card key={s.id} s={s} i={i} real={i === 1} onOpen={open} />)}</R>
+          <R id="situations" className="grid grid-cols-2 gap-2">{v.path.map((s, i) => <Card key={s.id} s={s} i={i} real={i === 1} onOpen={open} />)}</R>
         </div>
         <div className="space-y-2.5">
           <R id="goal"><Box><h4 className="mb-2 text-[13px] font-semibold">Today&apos;s goal</h4>
@@ -80,7 +83,7 @@ function Practice({ plan, open }: { plan: PlanDemo; open: () => void }) {
         <R id="planlink" as="span" className="mt-1 whitespace-nowrap text-xs font-semibold underline">Your plan</R>
       </div>
       <div className="grid gap-3 md:grid-cols-[1fr_170px]">
-        <R id="grid" className="grid grid-cols-1 gap-2 sm:grid-cols-2">{all.map((s, i) => <Card key={s.id} s={s} real={i === 0 ? true : undefined} onOpen={open} />)}</R>
+        <R id="grid" className="grid grid-cols-2 gap-2">{all.map((s, i) => <Card key={s.id} s={s} real={i === 0 ? true : undefined} onOpen={open} />)}</R>
         <R id="recent"><Box><h4 className="mb-1 text-[13px] font-semibold">Recent sessions</h4><Row k="Visa interview" v="2 h ago" /><Row k="At the airport" v="Mon" /><Row k="Taking a taxi" v="Sun" /></Box></R>
       </div>
     </>
@@ -117,9 +120,9 @@ function Chat() {
       {!real && <R id="again" className="self-end"><button type="button" className="min-h-11 md:min-h-9 rounded-full bg-ink px-4 text-xs font-semibold text-white">Say it again</button></R>}
       {real && <R id="again" className="self-end text-xs text-slate">Say it again opens in the report</R>}
       {helped && <p className="rounded-xl bg-surface px-3 py-2 text-xs">You can start with: <b>The main purpose of my trip is to…</b></p>}
-      <div className="mt-auto flex flex-wrap items-center gap-2">
+      <div className="mt-auto flex items-center gap-2">
         <R id="help"><button type="button" onClick={() => setHelped((h) => !h)} className="inline-flex min-h-11 md:min-h-9 items-center gap-1.5 rounded-full border border-hairline-strong px-3 text-xs font-semibold"><Lightbulb size={13} aria-hidden /> Help me start</button></R>
-        <R id="answer" className="flex min-w-0 flex-1 items-center gap-2"><span className="flex-1 rounded-full border border-hairline px-3.5 py-2.5 text-stone">Type or speak your answer…</span>
+        <R id="answer" className="flex flex-1 items-center gap-2"><span className="flex-1 rounded-full border border-hairline px-3.5 py-2.5 text-stone">Type or speak your answer…</span>
           <span className="flex size-11 items-center justify-center rounded-full bg-ink text-white"><Mic size={18} aria-hidden /></span></R>
       </div>
     </div>
@@ -130,9 +133,9 @@ function Progress() {
   return (
     <div className="min-h-[420px]">
       <Head eyebrow="Salam Amina" title="Track your progress" />
-      <R id="metrics" className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <R id="metrics" className="mb-3 grid grid-cols-3 gap-2">
         {[["Mistakes per 100 words", "12.4", "↓ 3.1"], ["Words per answer", "48", "↑ 9"], ["Hesitations per minute", "5", "↓ 2"]].map(([k, v, d]) => (
-          <div key={k} className="rounded-2xl border border-hairline p-2.5"><span className="block text-xs text-muted">{k}</span><b className="text-xl font-medium">{v}</b><em className="ml-1 text-xs font-semibold not-italic text-good">{d}</em></div>
+          <div key={k} className="rounded-2xl border border-hairline p-2.5"><span className="block text-xs text-slate">{k}</span><b className="text-xl font-medium">{v}</b><em className="ml-1 text-xs font-semibold not-italic text-good">{d}</em></div>
         ))}
       </R>
       <div className="grid gap-3 md:grid-cols-2">

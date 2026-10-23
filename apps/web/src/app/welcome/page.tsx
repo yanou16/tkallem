@@ -34,7 +34,7 @@ export default function WelcomePage() {
       <section className="grid items-center gap-10 pb-6 pt-8 lg:grid-cols-2 lg:gap-12 lg:pb-12 lg:pt-14 2xl:gap-20">
         <div className="max-w-3xl">
           <p className="inline-flex rounded-full bg-butter/60 px-4 py-2 text-xs font-medium sm:text-sm">For Algerian students · Visa, admission, jobs, IELTS</p>
-          <h1 className="mt-6 text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl xl:text-6xl 2xl:text-7xl">You know English.<br />Now speak with confidence.</h1>
+          <h1 className="mt-6 text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl xl:text-6xl 2xl:text-7xl"><span className="text-steel">You know English.</span><br />Stop freezing when you have to speak it.</h1>
           <p className="mt-6 max-w-2xl text-base leading-relaxed text-muted sm:text-lg xl:text-xl">Rehearse the real interview out loud with an AI coach that corrects you kindly and explains every mistake in English or French, your choice.</p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap"><Link href={primaryHref} className={PRIMARY}>{primaryLabel} <ArrowRight size={19} aria-hidden="true" /></Link>{!isSignedIn && <Link href={startHref(FIRST_SCENARIO)} className="inline-flex min-h-14 items-center justify-center rounded-full border border-ink px-6 py-4 text-base font-semibold transition-colors hover:bg-black/5">Try a visa interview</Link>}</div>
           <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted">{["No account needed", `${GUEST_FREE_ANSWERS} free answers`, "Works on your phone"].map((note) => <li key={note} className="flex items-center gap-1.5"><Check size={15} aria-hidden="true" className="text-success" />{note}</li>)}</ul>
