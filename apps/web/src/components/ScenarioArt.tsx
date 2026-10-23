@@ -73,12 +73,12 @@ const icons = {
 } as const;
 
 export const CONTEXTS = [
-  { id: "work", title: "Career & interviews", surface: "bg-peach", ink: "text-[#9b573b]" },
-  { id: "study", title: "Study & applications", surface: "bg-mint", ink: "text-[#34796d]" },
-  { id: "travel", title: "Travel & visa", surface: "bg-rose", ink: "text-[#a24e5b]" },
-  { id: "exams", title: "Exams & speaking tests", surface: "bg-lilac", ink: "text-[#706090]" },
-  { id: "daily_life", title: "Everyday situations", surface: "bg-butter", ink: "text-[#927027]" },
-  { id: "free", title: "Free conversation", surface: "border border-line bg-white", ink: "text-[#737780]" },
+  { id: "work", title: "Career & interviews", surface: "bg-tint-job", ink: "text-charcoal" },
+  { id: "study", title: "Study & applications", surface: "bg-tint-campus", ink: "text-charcoal" },
+  { id: "travel", title: "Travel & visa", surface: "bg-tint-visa", ink: "text-charcoal" },
+  { id: "exams", title: "Exams & speaking tests", surface: "bg-tint-ielts", ink: "text-charcoal" },
+  { id: "daily_life", title: "Everyday situations", surface: "bg-surface", ink: "text-charcoal" },
+  { id: "free", title: "Free conversation", surface: "border border-line bg-white", ink: "text-steel" },
 ] as const;
 
 export function scenarioContext(s: Pick<Scenario, "id" | "mode" | "category">) {
@@ -86,7 +86,7 @@ export function scenarioContext(s: Pick<Scenario, "id" | "mode" | "category">) {
   return CONTEXTS.find((c) => c.id === category) ?? CONTEXTS[4];
 }
 
-export function ScenarioArt({ scenario }: { scenario: Pick<Scenario, "id" | "mode" | "category"> }) {
+export function ScenarioArt({ scenario, corner = "top" }: { scenario: Pick<Scenario, "id" | "mode" | "category">; corner?: "top" | "bottom" }) {
   const context = scenarioContext(scenario);
   const name: keyof typeof icons = scenario.mode === "free" ? "message"
     : scenario.id === "cafe" ? "coffee" : scenario.id === "taxi" ? "car"
@@ -94,8 +94,8 @@ export function ScenarioArt({ scenario }: { scenario: Pick<Scenario, "id" | "mod
     : context.id === "work" ? "case" : "document";
   const secondary: keyof typeof icons = context.id === "travel" ? "case" : context.id === "work" ? "tablet" : name;
   const draw = (key: keyof typeof icons, className: string) => <svg viewBox={icons[key].viewBox} fill="currentColor" className={className} focusable="false">{icons[key].paths.map((d, i) => <path key={i} d={d} />)}</svg>;
-  return <div aria-hidden="true" className={`pointer-events-none absolute bottom-3 right-1 h-32 w-36 select-none overflow-hidden opacity-[0.38] ${context.ink}`}>
-    {draw(name, "absolute bottom-0 right-0 h-24 w-28 -rotate-12")}
-    {secondary !== name && draw(secondary, "absolute right-20 top-0 h-14 w-14 rotate-12 opacity-70")}
+  return <div aria-hidden="true" className={`pointer-events-none absolute right-3 h-24 w-24 select-none overflow-hidden opacity-30 ${corner === "top" ? "top-2" : "bottom-2"} ${context.ink}`}>
+    {draw(name, "absolute bottom-0 right-0 h-[4.5rem] w-20 -rotate-12")}
+    {secondary !== name && draw(secondary, "absolute right-14 top-0 h-10 w-10 rotate-12 opacity-70")}
   </div>;
 }

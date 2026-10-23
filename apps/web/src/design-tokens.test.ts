@@ -17,8 +17,8 @@ const offenders = (re: RegExp, allow: RegExp = /$^/) =>
   SOURCES.filter((f) => !allow.test(f.path)).flatMap((f) => (f.text.match(re) ?? []).map((m) => `${f.path}: ${m}`));
 
 describe("design tokens (docs/DESIGN.md)", () => {
-  it("has no violet outside the sign-in illustration (the soft pastels mint, butter, peach, rose and lilac are tokens of the new front)", () => {
-    expect(offenders(/#6d4ee3|#e7e0fb|#e8e2fb|#d0c6f5/gi, /^components\/auth\/AuthShell\.tsx$/)).toEqual([]);
+  it("has no violet (the soft pastels mint, butter, peach, rose and lilac are tokens of the new front)", () => {
+    expect(offenders(/#6d4ee3|#e7e0fb|#e8e2fb|#d0c6f5/gi)).toEqual([]);
   });
   it("keeps the brand yellow to the logo mark, the microphone ring and the PWA theme", () => {
     const uses = offenders(/bg-brand\b|#ffd02f/gi, /^(app\/(globals\.css|layout\.tsx|manifest\.ts)|features\/landing\/ProductTour\.tsx)$/i);

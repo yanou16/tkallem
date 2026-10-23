@@ -27,7 +27,7 @@ function Ring({ done, goal }: { done: number; goal: number }) {
 const Box = ({ children, className }: { children: React.ReactNode; className?: string }) => <div className={cn("rounded-2xl border border-hairline p-3", className)}>{children}</div>;
 const Row = ({ k, v }: { k: string; v: string }) => <div className="flex justify-between border-t border-hairline-soft py-1.5 text-xs first:border-0">{k}<b className="text-slate">{v}</b></div>;
 const Head = ({ eyebrow, title }: { eyebrow: string; title: string }) => (
-  <div className="mb-3"><span className="text-xs text-slate">{eyebrow}</span><h3 className="text-[24px] font-bold leading-tight tracking-tight">{title}</h3></div>
+  <div className="mb-3"><span className="text-xs text-slate">{eyebrow}</span><h3 className="text-[24px] font-semibold leading-tight tracking-tight">{title}</h3></div>
 );
 
 function Card({ s, i, real, onOpen }: { s: DemoScenario; i?: number; real?: boolean; onOpen: () => void }) {
@@ -48,7 +48,7 @@ function Home({ plan, open }: { plan: PlanDemo; open: () => void }) {
         <span className="text-xs text-slate">Salam Amina · {v.level}</span>
         <R id="credits" as="span"><Pill className="inline-flex items-center gap-1"><Zap size={12} aria-hidden /> 33 free answers</Pill></R>
       </div>
-      <h3 className="mb-3 text-[24px] font-bold leading-tight tracking-tight">Ready for {v.minutes} minutes of speaking?</h3>
+      <h3 className="mb-3 text-[24px] font-semibold leading-tight tracking-tight">Ready for {v.minutes} minutes of speaking?</h3>
       <R id="kpi" className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
         {[["Mistakes per 100 words", "12.4", "↓ 3.1"], ["Practice this week", "42 min", ""], ["Streak", "3 days", ""]].map(([k, val, d], i) => (
           <div key={k} className={cn("rounded-2xl p-3", ["bg-ink text-white", "bg-mint", "bg-butter"][i])}><span className={cn("block text-xs", i === 0 ? "text-white/80" : "text-muted")}>{k}</span><b className="text-xl font-medium">{val}</b>{d && <em className="ml-1 text-xs font-semibold not-italic text-good">{d}</em>}</div>

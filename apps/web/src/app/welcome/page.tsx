@@ -20,9 +20,9 @@ export default function WelcomePage() {
   const primaryHref = isSignedIn ? "/practice" : "/plan";
   const primaryLabel = isSignedIn ? "Continue practicing" : "Build my speaking plan";
   const list = [...(scenarios.data ?? [])].sort((a, b) => Number(b.id === FIRST_SCENARIO) - Number(a.id === FIRST_SCENARIO) || CONTEXTS.indexOf(scenarioContext(a)) - CONTEXTS.indexOf(scenarioContext(b)));
-  return <div className="min-h-screen bg-white text-ink">
+  return <div className="min-h-dvh bg-white text-ink">
     <header className="flex w-full items-center justify-between gap-4 px-5 py-6 sm:px-8 lg:px-12 2xl:px-16">
-      <Link href="/welcome" className="flex min-h-11 shrink-0 items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-lg font-extrabold">T</span><span className="text-xl font-bold tracking-tight">Tkallem</span></Link>
+      <Link href="/welcome" className="flex min-h-11 shrink-0 items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-lg font-extrabold">T</span><span className="text-xl font-semibold tracking-tight">Tkallem</span></Link>
       <nav aria-label="Page" className="flex flex-wrap items-center justify-end gap-1 sm:gap-3">
         <a href="#how" className="hidden min-h-11 items-center rounded-full px-3 text-sm font-medium text-muted hover:bg-black/5 sm:inline-flex">How it works</a>
         <a href="#tour" className="hidden min-h-11 items-center rounded-full px-3 text-sm font-medium text-muted hover:bg-black/5 md:inline-flex">Look inside</a>
@@ -46,8 +46,7 @@ export default function WelcomePage() {
       <div id="tour" className="mt-20 scroll-mt-6 lg:mt-28"><ProductTour /></div>
 
       <section id="situations" aria-labelledby="situations-title" className="mt-20 scroll-mt-8 lg:mt-28">
-        <p className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-muted">Real moments, real practice</p>
-        <h2 id="situations-title" className="text-3xl font-bold tracking-tight sm:text-4xl">Pick a real situation.</h2>
+        <h2 id="situations-title" className="text-3xl font-semibold tracking-tight sm:text-4xl">Pick a real situation.</h2>
         <p className="mt-3 text-base text-muted sm:text-lg">Five to ten minutes each, with a report on your answers at the end.</p>
         <ul className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {scenarios.isLoading && [0, 1, 2, 3].map((i) => <li key={i} aria-hidden="true" className="h-60 animate-pulse rounded-card bg-black/[0.04]" />)}
@@ -57,7 +56,7 @@ export default function WelcomePage() {
       </section>
 
       <section className="mt-20 flex flex-col items-start justify-between gap-8 rounded-[28px] bg-ink p-7 text-white sm:p-10 lg:mt-28 lg:flex-row lg:items-center lg:p-14">
-        <div><h2 className="max-w-3xl text-3xl font-bold leading-tight tracking-tight sm:text-4xl">Your real interview is coming.<br />Rehearse it first.</h2><p className="mt-4 text-base text-white/70 sm:text-lg">Five minutes, your voice, nobody watching.</p></div>
+        <div><h2 className="max-w-3xl text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">Your real interview is coming.<br />Rehearse it first.</h2><p className="mt-4 text-base text-white/70 sm:text-lg">Five minutes, your voice, nobody watching.</p></div>
         <div className="flex shrink-0 flex-col items-start gap-4"><Link href={primaryHref} className="inline-flex min-h-14 items-center justify-center gap-3 rounded-full bg-white px-7 py-4 text-base font-semibold text-ink hover:bg-white/90">{primaryLabel} <ArrowRight size={19} aria-hidden="true" /></Link><InstallButton className="[&_*]:!text-white" /></div>
       </section>
       <footer className="mt-8 flex flex-col gap-4 border-t border-line pt-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between"><span className="font-semibold text-ink">Tkallem</span><p>Free to try: {GUEST_FREE_ANSWERS} answers without an account. Sign in for 60 more, then 15 new answers every day.</p></footer>

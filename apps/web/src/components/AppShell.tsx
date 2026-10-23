@@ -48,7 +48,7 @@ function Sidebar() {
   const path = usePathname();
   const nav = useNav();
   return (
-    <aside className="sticky top-0 hidden h-screen w-[260px] shrink-0 flex-col gap-8 border-r border-line bg-white/60 p-5 md:flex">
+    <aside className="sticky top-0 hidden h-dvh w-[260px] shrink-0 flex-col gap-8 border-r border-line bg-white/60 p-5 md:flex">
       <Logo />
       <nav className="flex flex-col gap-1.5" aria-label="Main">
         {nav.map(({ href, label, icon: I, also }) => {
@@ -74,7 +74,7 @@ function MobileNav() {
       {nav.map(({ href, label, icon: I, also }) => {
         const active = isActive(path, href, also);
         return (
-          <Link key={href} href={href} className={cn("flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] transition-transform active:scale-95 sm:text-[11px]", active ? "font-semibold text-ink" : "text-muted")}>
+          <Link key={href} href={href} className={cn("flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 text-xs transition-transform active:scale-95", active ? "font-semibold text-ink" : "text-muted")}>
             <I size={20} /> {label}
           </Link>
         );
@@ -146,7 +146,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const fatal = error && !(error instanceof ApiError && error.status === 401);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-dvh">
       <Sidebar />
       <div className="min-w-0 flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
         <HeaderBar />

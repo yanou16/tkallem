@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { AlertCircle, X } from "lucide-react";
+import { AlertCircle, Target, X } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { cn, initials } from "@/lib/utils";
 import { ApiError } from "@/lib/api/client";
@@ -10,7 +10,6 @@ export const TONES = ["mint", "butter", "peach", "rose", "lilac"] as const;
 export type Tone = (typeof TONES)[number];
 export const toneAt = (i: number): Tone => TONES[i % TONES.length];
 export const toneBg: Record<Tone, string> = { mint: "bg-mint", butter: "bg-butter", peach: "bg-peach", rose: "bg-rose", lilac: "bg-lilac" };
-export const toneDeep: Record<Tone, string> = { mint: "bg-mint-deep", butter: "bg-butter-deep", peach: "bg-peach-deep", rose: "bg-rose-deep", lilac: "bg-lilac-deep" };
 
 /* ---------- primitives ---------- */
 export function Skeleton({ className }: { className?: string }) {
@@ -92,7 +91,7 @@ export function EmptyState({ title, text, action, className }: { title: string; 
 export function ErrorState({ error, onRetry, className }: { error?: unknown; onRetry?: () => void; className?: string }) {
   const msg = error instanceof ApiError ? error.message : "Something went wrong while loading this section.";
   return (
-    <div role="alert" className={cn("flex items-start gap-3 rounded-2xl border border-rose-deep bg-rose/50 p-4", className)}>
+    <div role="alert" className={cn("flex items-start gap-3 rounded-2xl border border-bad bg-bad-bg p-4", className)}>
       <AlertCircle className="mt-0.5 shrink-0" size={18} />
       <div className="flex-1 text-sm">
         <p className="font-semibold">Couldn't load this</p>
@@ -173,7 +172,7 @@ export function GoalHint({ goal, done }: { goal: number; done: number }) {
   const left = Math.max(0, goal - done);
   return (
     <div className="flex items-center gap-3 rounded-2xl bg-success/10 p-3 text-sm text-charcoal">
-      <span aria-hidden className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-success/15 text-success">✿</span>
+      <span aria-hidden className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-success/15 text-success"><Target size={18} /></span>
       {left > 0 ? <p>You're {left} minute{left === 1 ? "" : "s"} away from your daily goal!</p> : <p>Daily goal reached. Nice work!</p>}
     </div>
   );

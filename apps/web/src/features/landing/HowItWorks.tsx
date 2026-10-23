@@ -10,7 +10,7 @@ import { HOW_STEPS, PRIVACY_LINE } from "./howSteps";
 export default function HowItWorks({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
   return (
     <section id="how" aria-labelledby="how-title" className="scroll-mt-6">
-      <h2 id="how-title" className="text-3xl font-bold tracking-tight sm:text-4xl">How it works</h2>
+      <h2 id="how-title" className="text-3xl font-semibold tracking-tight sm:text-4xl">How it works</h2>
       <p className="mt-2 max-w-xl text-lg text-charcoal">Four steps, about ten minutes. See what each one looks like.</p>
 
       <ol className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4 xl:gap-6">

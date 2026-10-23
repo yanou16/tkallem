@@ -8,16 +8,16 @@ export default function PlanChoice({ title, text, selected, onClick, multi, cent
 }) {
   return (
     <button type="button" onClick={onClick} disabled={disabled} aria-pressed={multi ? selected : undefined}
-      className={cn("group relative flex w-full items-start gap-4 overflow-hidden rounded-[24px] border-2 border-transparent p-6 text-left text-ink transition duration-200 hover:-translate-y-0.5 hover:shadow-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink disabled:opacity-40 disabled:hover:translate-y-0 motion-reduce:transform-none motion-reduce:transition-none sm:p-7", tone,
-        compact ? "min-h-[64px] !p-4" : "min-h-[142px]",
-        centered && !compact && "min-h-[164px] flex-col",
+      className={cn("group relative flex w-full items-start gap-4 overflow-hidden rounded-[24px] border-2 border-transparent p-6 text-left text-ink transition-[transform,box-shadow,border-color] duration-200 hover:-translate-y-0.5 hover:shadow-soft active:translate-y-0 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink disabled:opacity-40 disabled:hover:translate-y-0 motion-reduce:transform-none motion-reduce:transition-none sm:p-7", tone,
+        compact ? "min-h-[64px] !p-4" : "min-h-[88px] !p-5",
+        centered && !compact && "min-h-[120px] flex-col",
         selected && "border-ink")}>
-      {badge && <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/60 text-sm font-bold">{badge}</span>}
+      {badge && <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/60 text-sm font-semibold">{badge}</span>}
       {icon && <PlanArt name={icon} tone={tone} minutes={icon === "clock" ? Number.parseInt(title) : undefined} />}
-      {art && <span className="pointer-events-none absolute inset-0 opacity-30"><ScenarioArt scenario={{ id: art, mode: "guided", category: art === "job-remote" ? "work" : art === "campus-france" ? "study" : art === "ielts-part2" ? "exams" : "daily_life" }} /></span>}
+      {art && <span className="pointer-events-none absolute inset-0 opacity-30"><ScenarioArt corner="bottom" scenario={{ id: art, mode: "guided", category: art === "job-remote" ? "work" : art === "university-admission" ? "study" : art === "ielts-part2" ? "exams" : "daily_life" }} /></span>}
       <span className={cn("relative z-10 min-w-0 flex-1", (art || (icon && icon !== "clock")) && "pr-16")}>
         <span className="block text-base font-semibold sm:text-lg">{title}</span>
-        {text && <span className="mt-2 block text-sm leading-relaxed text-muted">{text}</span>}
+        {text && <span className="mt-2 block text-sm leading-relaxed text-slate">{text}</span>}
       </span>
       {selected && <span className="absolute right-4 top-4 flex h-6 w-6 items-center justify-center rounded-full bg-ink text-white"><Check size={14} aria-hidden /></span>}
     </button>
@@ -26,7 +26,7 @@ export default function PlanChoice({ title, text, selected, onClick, multi, cent
 
 /** Object-only line drawings, matching the quiet artwork on scenario cards. */
 function PlanArt({ name, tone, minutes }: { name: string; tone: string; minutes?: number }) {
-  const ink = ({ "bg-rose": "text-[#a24e5b]", "bg-mint": "text-[#34796d]", "bg-peach": "text-[#9b573b]", "bg-lilac": "text-[#706090]", "bg-butter": "text-[#927027]" } as Record<string, string>)[tone];
+  const ink = "text-charcoal";
   return <svg aria-hidden="true" viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
     className={cn("pointer-events-none absolute bottom-3 right-4 h-24 w-24 select-none opacity-[0.16]", ink)}>
     {name === "clock" && <><circle cx="51" cy="53" r="31" /><path d="M44 12h14M51 12v9M75 23l7 7M29 24l-7 7" /><path d="M51 33v20l15 9" /><circle cx="51" cy="53" r="2" />{minutes && <path d="M51 22a31 31 0 0 1 30 23" strokeWidth={minutes >= 20 ? 4 : 2} />}</>}

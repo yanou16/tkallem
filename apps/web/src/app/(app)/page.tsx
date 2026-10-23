@@ -87,15 +87,15 @@ function StatCards({ p }: { p: Progress }) {
           {mistakes === null ? "Finish a session to see this number" : change === null ? "No comparison yet" : "Since your first sessions"}
         </p>
       </div>
-      <div className="rounded-card bg-mint p-4 md:p-5">
-        <p className="text-sm text-muted">Practice this week</p>
+      <div className="rounded-card bg-tint-visa p-4 md:p-5">
+        <p className="text-sm text-slate">Practice this week</p>
         <div className="mt-2 flex items-end justify-between">
           <span className="text-3xl font-extrabold md:text-4xl">{formatMinutes(p.weekSpeakingSeconds / 60)}</span>
           <ChartNoAxesColumn className="text-success" size={32} aria-hidden />
         </div>
       </div>
-      <div className="rounded-card bg-butter p-4 md:p-5">
-        <p className="text-sm text-muted">Streak</p>
+      <div className="rounded-card bg-tint-campus p-4 md:p-5">
+        <p className="text-sm text-slate">Streak</p>
         <div className="mt-2 flex items-end justify-between">
           <span className="text-3xl font-extrabold md:text-4xl">{plural(p.streakDays, "day")}</span>
           <Flame className="text-orange-500" size={32} aria-hidden />
@@ -121,7 +121,7 @@ function DailyGoalCard() {
                   <Icon name="target" size={24} />
                 </ProgressRing>
                 <div>
-                  <p className="text-2xl font-bold">{done} / {goal} min</p>
+                  <p className="text-2xl font-semibold">{done} / {goal} min</p>
                   <p className="text-muted">Practice today</p>
                 </div>
               </div>

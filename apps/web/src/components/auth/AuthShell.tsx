@@ -146,7 +146,7 @@ function SignUpVisual() {
   return (
     <div className="relative mt-8 flex flex-col gap-3">
       {/* blobs derrière les cartes */}
-      <div className="absolute -top-2 left-[250px] h-24 w-24 rounded-full bg-[#e7e0fb]" />
+      <div className="absolute -top-2 left-[250px] h-24 w-24 rounded-full bg-lilac" />
       <div className="absolute top-[78px] left-[300px] h-24 w-24 rounded-full bg-[#fbd9dc]" />
       <div className="absolute top-[150px] left-[330px] h-24 w-24 rounded-full bg-[#c9f2e6]" />
 
@@ -167,7 +167,7 @@ function SignUpVisual() {
       />
       <FeatureCard
         icon={
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#6d4ee3]">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-ink">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff" aria-hidden>
               <rect x="4" y="13" width="3.5" height="7" rx="1" />
               <rect x="10.2" y="9" width="3.5" height="11" rx="1" />
@@ -235,13 +235,13 @@ export function AuthShell({ mode, children }: { mode: "sign-in" | "sign-up"; chi
   const isSignUp = mode === "sign-up";
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f1f1ef] p-3 sm:p-6">
+    <main className="flex min-h-dvh items-center justify-center bg-[#f1f1ef] p-3 sm:p-6">
       <div className="relative w-full max-w-[1180px] overflow-hidden rounded-[28px] border border-black/10 bg-[#fafaf8] shadow-[0_1px_0_rgba(255,255,255,0.8)_inset]">
         <div className="relative grid min-h-[680px] grid-cols-1 gap-10 px-6 py-8 sm:px-10 lg:grid-cols-2 lg:gap-6 lg:px-12 lg:py-10">
           {/* Colonne gauche */}
           <section className="flex flex-col">
             <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand text-[18px] font-bold text-ink">T</span>
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand text-[18px] font-semibold text-ink">T</span>
               <Link href="/welcome" className="inline-flex min-h-11 items-center text-[18px] font-semibold text-ink">Tkallem</Link>
             </div>
 

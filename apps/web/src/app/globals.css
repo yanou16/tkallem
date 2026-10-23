@@ -22,10 +22,10 @@
   --brand-yellow: #ffd02f;
 
   /* Scenario tints */
-  --tint-visa: #c3faf5;
-  --tint-campus: #fff4c4;
-  --tint-job: #ffe6cd;
-  --tint-ielts: #ffc6c6;
+  --tint-visa: #d3f6f0;
+  --tint-campus: #fff0bf;
+  --tint-job: #ffe5cf;
+  --tint-ielts: #ffd9dd;
 
   /* Feedback */
   --good: #0a7a4b;
@@ -55,7 +55,7 @@ html, body { background: var(--canvas); color: var(--ink); }
 body { -webkit-font-smoothing: antialiased; }
 /* On a phone: no grey flash over a tapped control (every control has its own :active), no double-tap delay, and a
    long press on a button label does not select it. Text that is content stays selectable. */
-html { -webkit-tap-highlight-color: transparent; }
+html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; overscroll-behavior-y: none; }
 a, button, [role="button"], [role="switch"], summary, label { touch-action: manipulation; }
 button, [role="button"], [role="switch"] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }

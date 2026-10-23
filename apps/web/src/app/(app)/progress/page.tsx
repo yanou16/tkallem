@@ -67,9 +67,8 @@ export default function ProgressPage() {
   return (
     <div className="w-full pb-10 pt-3 lg:pt-5">
       <header className="mb-9 sm:mb-12">
-        <p className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-muted">{!isGuest && user?.firstName ? `Salam ${user.firstName}` : "Your learning snapshot"}</p>
         <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl xl:text-5xl">Small steps. Real progress.</h1>
-        <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">Your speaking metrics and what to work on next.</p>
+        <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">{!isGuest && user?.firstName ? `Salam ${user.firstName}. ` : ""}Your speaking metrics and what to work on next.</p>
       </header>
       {q.isLoading ? <Skeleton className="h-56" /> : q.error ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : !p ? (
         <EmptyState title="No progress yet" text="Finish a practice session and your numbers will appear here."
@@ -88,12 +87,12 @@ export default function ProgressPage() {
                 <section key={metric.key} aria-label={metric.label} className={`relative overflow-hidden rounded-card p-7 sm:p-8 lg:min-h-[250px] lg:p-10 ${index === 0 ? "bg-mint/70" : "bg-butter/70"}`}>
                   <div className="relative z-10 max-w-[68%]">
                     <h2 className="text-sm font-medium text-ink/70 sm:text-base">{metric.label}</h2>
-                    <p className="mt-6 text-5xl font-bold tracking-tight sm:text-6xl xl:text-7xl">{show(metric, value)}</p>
-                    {value === null && <p className="mt-2 text-sm text-muted">{metric.missing}</p>}
+                    <p className="mt-6 text-5xl font-extrabold tracking-tight sm:text-6xl xl:text-7xl">{show(metric, value)}</p>
+                    {value === null && <p className="mt-2 text-sm text-slate">{metric.missing}</p>}
                     {metric.key === "mistakesPer100" && p.mistakesChange !== null && (
                       <p className="mt-3 text-sm font-medium">{changeText(p.mistakesChange)}</p>
                     )}
-                    <p className="mt-3 text-sm text-muted">{metric.better} · {comparison(metric)}</p>
+                    <p className="mt-3 text-sm text-slate">{metric.better} · {comparison(metric)}</p>
                   </div>
                   <ProgressArt kind={index === 0 ? "mistakes" : "words"} className={`absolute right-3 top-1/2 h-24 w-28 -translate-y-1/2 sm:right-5 lg:right-8 lg:h-36 lg:w-44 ${index === 0 ? "text-[#70A794]" : "text-[#C89B31]"}`} />
                 </section>
