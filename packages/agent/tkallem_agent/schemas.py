@@ -1,5 +1,6 @@
 """Agent turn schema. Mirrors packages/contracts/agent_turn.schema.json."""
 import re
+from difflib import SequenceMatcher
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -105,10 +106,35 @@ def _apply(text: str, c: dict) -> str | None:
     return text[: span[0]] + fixed + text[span[1]:]
 
 
+def _combine_independent_edits(text: str, first: dict, second: dict) -> str | None:
+    """Combine changes against shared context, refusing conflicting edits rather than guessing."""
+    edits: list[tuple[int, int, str]] = []
+    for correction in (first, second):
+        result = _apply(text, correction)
+        if result is None:
+            return None
+        for tag, start, end, new_start, new_end in SequenceMatcher(None, text, result, autojunk=False).get_opcodes():
+            if tag == "equal":
+                continue
+            edit = (start, end, result[new_start:new_end])
+            if edit in edits:
+                continue
+            for old_start, old_end, _ in edits:
+                if (start == end and old_start <= start <= old_end
+                        or old_start == old_end and start <= old_start <= end
+                        or max(start, old_start) < min(end, old_end)):
+                    return None
+            edits.append(edit)
+    result = text
+    for start, end, replacement in sorted(edits, reverse=True):
+        result = result[:start] + replacement + result[end:]
+    return result
+
+
 def _merge_overlaps(items: list[tuple[frozenset[int], dict]], text: str) -> list[tuple[frozenset[int], dict]]:
     """Corrections that share words become one, so the corrected sentence the student reads is right as a whole.
     "go to US for study" -> "go to the US to study" and "study my master" -> "study for my master's" give one fix of
-    "go to US for study my master". When neither order applies both, the first alone is kept.
+    "go to US for study my master". Independent edits to shared context are combined; conflicting edits keep the first.
     Each item carries the model's positions it comes from (a merged one has both), so priority_index can follow it.
     Corrections come back in the order of the sentence."""
     placed, unplaced = [], []
@@ -129,6 +155,8 @@ def _merge_overlaps(items: list[tuple[frozenset[int], dict]], text: str) -> list
             fixed = step and _apply(step, second)
             if fixed:
                 break
+        if not fixed:
+            fixed = _combine_independent_edits(union, prev, c)
         if not fixed or len(fixed.split()) > len(union.split()) + 3 or fixed.lower() == union.lower():
             continue
         merged = {**prev, "original": union, "fixed": fixed, "why": f"{prev['why'].strip()} {c['why'].strip()}"}
