@@ -325,3 +325,23 @@ def test_an_invented_praise_never_reaches_the_student():
     s = CoachSession("visa-us", "B1", llm=llm)
     assert s.turn("I want to study computer science.").praise is None
     assert s.turns[0].praise is None
+
+
+def test_multiple_mistakes_survive_stream_and_saved_session():
+    fixes = [
+        {"original": "dai", "fixed": "day", "type": "vocabulary", "why": "The spelling is day.", "rule": "other"},
+        {"original": "were", "fixed": "was", "type": "grammar", "why": "Day is singular: use was.", "rule": "subject_verb_agreement"},
+    ]
+    llm = FakeChat(found=[{"corrections": fixes, "priority_index": 1}], replies=[reply("What did you do?")])
+    session = CoachSession("free-talk", "A2", "en", llm=llm)
+    events = list(session.turn_events("my dai were good"))
+    streamed = next(e for e in events if e["type"] == "corrections")
+    assert streamed["corrections"] == fixes
+    assert streamed["priority_index"] == 1
+    assert [c.model_dump() for c in events[-1]["turn"].corrections] == fixes
+    restored = CoachSession.from_state(json.loads(json.dumps(session.to_state())), llm=FakeChat())
+    assert restored.turns[0].corrections == fixes
+    corrected = "my dai were good"
+    for c in restored.turns[0].corrections:
+        corrected = corrected.replace(c["original"], c["fixed"])
+    assert corrected == "my day was good"
