@@ -323,14 +323,14 @@ function Chat() {
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <div className="flex min-h-[calc(100vh-110px)] flex-col">
+      <div className="flex min-w-0 min-h-[calc(100dvh-160px-env(safe-area-inset-bottom))] md:min-h-[calc(100dvh-110px)] flex-col">
         <PageHeader title="AI Chat" subtitle="Have a realistic conversation with your AI tutor. Get instant feedback and improve naturally." />
 
-        <div className="mb-4 grid gap-3 md:grid-cols-[1.3fr_0.8fr_1fr]">
-          <div className="relative">
+        <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-[1.3fr_0.8fr_1fr]">
+          <div className="relative col-span-2 md:col-span-1">
             <button onClick={() => setMenu((m) => !m)} className="flex w-full items-center gap-3 rounded-2xl bg-peach p-3 text-left">
               <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-peach-deep"><Icon name={icon ?? "briefcase"} /></span>
-              <span className="flex-1"><span className="block text-xs text-muted">Scenario</span><span className="font-semibold">{title ?? "Choose a scenario"}</span></span>
+              <span className="min-w-0 flex-1"><span className="block text-xs text-muted">Scenario</span><span className="font-semibold">{title ?? "Choose a scenario"}</span></span>
               <ChevronDown size={18} />
             </button>
             {scenario?.description && <p className="mt-2 px-1 text-xs text-muted">{scenario.description}</p>}
@@ -397,7 +397,7 @@ function Chat() {
             </div>
           )}
 
-          <div ref={transcriptBox} className="flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
+          <div ref={transcriptBox} className="max-h-[55dvh] min-h-48 flex-1 space-y-5 overflow-y-auto overscroll-contain p-3 sm:p-6 md:max-h-none">
             {body}
             {pending && (
               <>
@@ -489,18 +489,18 @@ function Chat() {
                   )}
                 </div>
               )}
-              <div className="flex items-center gap-4 p-4">
+              <div className="flex items-start gap-2 p-3 sm:gap-4 sm:p-4">
                 <div className="flex flex-col items-center">
                   <button onClick={toggleMic} disabled={!s || send.isPending} aria-label={rec.isRecording ? "Stop and send" : "Answer by voice"}
-                    className={cn("flex h-14 w-14 items-center justify-center rounded-full bg-ink text-white disabled:opacity-50", rec.isRecording && "ring-[6px] ring-brand")}>
+                    className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink sm:h-14 sm:w-14 text-white disabled:opacity-50", rec.isRecording && "ring-[6px] ring-brand")}>
                     {rec.isRecording ? <Square size={18} /> : <Mic size={22} />}
                   </button>
-                  <span className="mt-1 text-[11px] text-muted">{rec.isRecording ? `Tap to send · max ${MAX_RECORDING_S}s` : "Tap to speak"}</span>
+                  <span className="mt-1 max-w-16 text-center text-[10px] text-muted sm:max-w-none sm:text-[11px]">{rec.isRecording ? `Tap to send · max ${MAX_RECORDING_S}s` : "Tap to speak"}</span>
                 </div>
                 {rec.isRecording ? (
                   <VoiceState state="listening" seconds={rec.seconds} className="flex-1" />
                 ) : (
-                  <div className="flex-1">
+                  <div className="min-w-0 flex-1">
                     <input value={text} maxLength={MAX} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()}
                       disabled={!s} placeholder="Type your response here…"
                       className="w-full rounded-full border border-line px-5 py-3.5 outline-none focus:border-ink disabled:bg-black/[0.03]" />
@@ -508,7 +508,7 @@ function Chat() {
                   </div>
                 )}
                 <button onClick={submit} disabled={!text.trim() || !s || send.isPending || rec.isRecording} aria-label="Send"
-                  className="flex h-14 w-14 items-center justify-center rounded-full bg-ink text-white disabled:opacity-40"><Send size={20} /></button>
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-ink sm:h-14 sm:w-14 text-white disabled:opacity-40"><Send size={20} /></button>
               </div>
             </div>
           )}
@@ -547,7 +547,7 @@ function Problem({ help, onRetry, onRestart }: { help: Help; onRetry?: () => voi
   return (
     <div role="alert" className="flex flex-wrap items-center gap-3 rounded-2xl border border-rose-deep bg-rose/50 p-4 text-sm">
       <CircleAlert className="shrink-0" size={18} />
-      <p className="flex-1">{help.text}</p>
+      <p className="min-w-0 flex-1">{help.text}</p>
       {help.chooseLevel && <Link href="/profile" className="font-semibold underline">Choose my level</Link>}
       {help.retry && onRetry && <Button dark={false} onClick={onRetry} className={small}>Try again</Button>}
       {help.restart && onRestart && <Button dark={false} onClick={onRestart} className={small}>Start a new session</Button>}
@@ -612,7 +612,7 @@ function SummaryRow({ icon, tone, title, sub }: { icon: React.ReactNode; tone: s
   return (
     <div className="flex items-center gap-3 rounded-2xl border border-line p-3">
       <span className={cn("flex h-10 w-10 items-center justify-center rounded-xl", tone)}>{icon}</span>
-      <div className="flex-1"><p className="font-semibold">{title}</p><p className="text-sm text-muted">{sub}</p></div>
+      <div className="min-w-0 flex-1"><p className="font-semibold">{title}</p><p className="text-sm text-muted">{sub}</p></div>
       <ChevronRight size={16} />
     </div>
   );
