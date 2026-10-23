@@ -152,3 +152,12 @@ def test_english_errors_keep_the_correction_and_explanation(text, original, fixe
     proposed = {"original": original, "fixed": fixed, "type": "grammar", "why": explanation, "rule": rule}
     result = check_text(text, "B1", llm=FakeChat(found=[{"input_issue": None, "corrections": [proposed]}]))
     assert result == [Correction(**proposed)]
+
+
+def test_draft_keeps_independent_spelling_and_grammar_errors():
+    fixes = [
+        {"original": "dai", "fixed": "day", "type": "vocabulary", "why": "Spelling: day.", "rule": "other"},
+        {"original": "were", "fixed": "was", "type": "grammar", "why": "Day is singular.", "rule": "subject_verb_agreement"},
+    ]
+    result = check_text("my dai were good", "A2", "en", llm=FakeChat(found=[{"input_issue": None, "corrections": fixes}]))
+    assert [c.model_dump() for c in result] == fixes
