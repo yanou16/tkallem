@@ -11,6 +11,7 @@ import base64
 import io
 import re
 import struct
+import threading
 import time
 import wave
 from concurrent.futures import ThreadPoolExecutor
@@ -184,18 +185,20 @@ PROVIDERS = {"deepinfra": _deepinfra, "groq": _groq}
 
 
 _shared: httpx.Client | None = None
+_shared_lock = threading.Lock()
 
 
 def _shared_client() -> httpx.Client:
     """One client for the whole process: the connection to the provider stays open between two replies, so a reply does
     not pay a new TLS handshake (a few hundred milliseconds before the voice can even start). httpx clients are thread-safe."""
     global _shared
-    if _shared is None:
-        _shared = httpx.Client(
-            timeout=httpx.Timeout(settings.voice_timeout, connect=settings.voice_connect_timeout),
-            limits=httpx.Limits(max_keepalive_connections=8, keepalive_expiry=60),
-        )
-    return _shared
+    with _shared_lock:  # two voice turns arriving together at the first use must not each build a client
+        if _shared is None:
+            _shared = httpx.Client(
+                timeout=httpx.Timeout(settings.voice_timeout, connect=settings.voice_connect_timeout),
+                limits=httpx.Limits(max_keepalive_connections=8, keepalive_expiry=60),
+            )
+        return _shared
 
 
 def _synthesize_one(name: str, text: str, voice: str | None, client: httpx.Client | None) -> Speech:

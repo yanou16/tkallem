@@ -261,3 +261,15 @@ def test_when_every_voice_is_too_slow_the_turn_gets_no_audio_so_the_app_speaks_a
     with pytest.raises(TtsError):
         synthesize("Good. What is your plan?")
     failover.reset()
+
+
+def test_two_turns_arriving_together_at_the_first_use_share_one_client(monkeypatch):
+    import concurrent.futures as cf
+    from app.voice import stt, tts
+
+    for module in (tts, stt):
+        monkeypatch.setattr(module, "_shared", None)
+        with cf.ThreadPoolExecutor(16) as pool:
+            clients = list(pool.map(lambda _: module._shared_client(), range(64)))
+        assert len({id(c) for c in clients}) == 1, module.__name__
+        clients[0].close()
