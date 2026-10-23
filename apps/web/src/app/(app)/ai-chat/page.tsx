@@ -129,7 +129,7 @@ function Chat() {
   const interview = feedbackMode === "interview";
 
   // "Explain in English / French": starts from the profile, applies from the next answer, and is kept for the next sessions.
-  const [explain, setExplain] = useState<ExplainLang>("fr");
+  const [explain, setExplain] = useState<ExplainLang>("en"); // English first (the default profile); the profile's own language replaces it once loaded
   const explainTouched = useRef(false);
   const saveProfile = useUpdateProfile();
   useEffect(() => { if (user && !explainTouched.current) setExplain(user.explainLang); }, [user]);
@@ -262,7 +262,7 @@ function Chat() {
     if (!coachBusy && questionDone.current.at === null && lastLineId && !s?.finished) questionDone.current.at = Date.now();
   }, [lastLineId, coachBusy, s?.finished]);
 
-  if (s?.report) return <Report report={s.report} title={title} sessionId={sessionId} explainDefault={explain} onRestart={() => restart()} />;
+  if (s?.report) return <Report key={explain} report={s.report} title={title} sessionId={sessionId} explainDefault={explain} onRestart={() => restart()} />;
 
   const live = send.live;
   // In voice mode the reply text is shown before its voice exists (a second or two): say so instead of "Thinking…".

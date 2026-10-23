@@ -93,3 +93,9 @@ def test_a_fix_that_cannot_be_applied_is_left_out(client):
     ghost = {"original": "completely other words", "fixed": "something else", "type": "grammar", "why": "x"}
     answer(client, "practice", ["I go to the US."], [{"corrections": [ghost], "praise": None}])
     assert client.get("/me/corrections").json() == []
+
+
+def test_an_unfinished_practice_session_from_before_feedback_mode_was_stored_still_shows_its_phrases(client, db):
+    sid = answer(client, "practice", ["I go to the US for study."], [{"corrections": [FIX], "praise": None}])
+    db.execute("UPDATE practice_sessions SET state = state - 'feedback_mode' WHERE id = %s", (sid,))  # an old session: no such key
+    assert [p["session_id"] for p in client.get("/me/corrections").json()] == [sid]

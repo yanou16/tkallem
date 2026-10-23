@@ -5,6 +5,7 @@
 
 The audio is sent as received (webm from Chrome, mp4 from Safari: both accepted) and never written to disk.
 """
+import threading
 import time
 from dataclasses import dataclass, field
 
@@ -125,18 +126,20 @@ PROVIDERS = {"groq": _groq, "deepinfra": _deepinfra}
 
 
 _shared: httpx.Client | None = None
+_shared_lock = threading.Lock()
 
 
 def _shared_client() -> httpx.Client:
     """One client for the whole process: the connection to the provider stays open between two recordings (no new TLS
     handshake each time). httpx clients are thread-safe."""
     global _shared
-    if _shared is None:
-        _shared = httpx.Client(
-            timeout=httpx.Timeout(settings.voice_timeout, connect=settings.voice_connect_timeout),
-            limits=httpx.Limits(max_keepalive_connections=8, keepalive_expiry=60),
-        )
-    return _shared
+    with _shared_lock:  # two voice turns arriving together at the first use must not each build a client
+        if _shared is None:
+            _shared = httpx.Client(
+                timeout=httpx.Timeout(settings.voice_timeout, connect=settings.voice_connect_timeout),
+                limits=httpx.Limits(max_keepalive_connections=8, keepalive_expiry=60),
+            )
+        return _shared
 
 
 def _transcribe_one(name, audio, filename, content_type, language, keep_fillers, client) -> Transcription:

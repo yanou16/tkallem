@@ -81,6 +81,8 @@ jobs:
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
       - run: npm ci
+      # A critical advisory in what ships to production (Next.js had remote code execution ones) fails the build.
+      - run: npm audit --omit=dev --audit-level=critical
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
