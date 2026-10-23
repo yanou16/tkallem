@@ -502,5 +502,39 @@
       "I finished my study two years ago.",
       "I finished my studies two years ago."
     ]
+  },
+  {
+    "id": "spelling_agreement_day",
+    "sentence": "my dai were good",
+    "level": "A2",
+    "errors": [
+      {
+        "wrong": "dai were",
+        "fixed": "day was",
+        "type": "grammar",
+        "rule": "subject_verb_agreement"
+      }
+    ],
+    "accepted": [
+      "my day was good",
+      "My day was good."
+    ]
+  },
+  {
+    "id": "agreement_day",
+    "sentence": "my day were good",
+    "level": "A2",
+    "errors": [
+      {
+        "wrong": "day were",
+        "fixed": "day was",
+        "type": "grammar",
+        "rule": "subject_verb_agreement"
+      }
+    ],
+    "accepted": [
+      "my day was good",
+      "My day was good."
+    ]
   }
 ]
