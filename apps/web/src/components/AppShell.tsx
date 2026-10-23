@@ -29,9 +29,9 @@ const NAV = [
 
 function Logo() {
   return (
-    <Link href="/" className="flex items-center gap-3 px-2">
+    <Link href="/" className="flex items-center gap-2 sm:gap-3 sm:px-2">
       <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-lg font-extrabold">T</span>
-      <span className="text-2xl font-bold tracking-tight">Tkallem</span>
+      <span className="text-lg font-bold tracking-tight sm:text-2xl">Tkallem</span>
     </Link>
   );
 }
@@ -68,11 +68,11 @@ function MobileNav() {
   const path = usePathname();
   const nav = useNav();
   return (
-    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-line bg-white/95 py-2 md:hidden">
+    <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-line bg-white/95 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:hidden">
       {nav.map(({ href, label, icon: I }) => {
         const active = isActive(path, href);
         return (
-          <Link key={href} href={href} className={cn("flex flex-col items-center gap-0.5 px-2 text-[11px]", active ? "font-semibold text-ink" : "text-muted")}>
+          <Link key={href} href={href} aria-current={active ? "page" : undefined} className={cn("flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] sm:text-[11px]", active ? "font-semibold text-ink" : "text-muted")}>
             <I size={20} /> {label}
           </Link>
         );
@@ -93,9 +93,9 @@ function HeaderBar({ isGroups }: { isGroups?: boolean }) {
 
   return (
     <div className={cn("flex shrink-0 items-center justify-between",
-      isGroups ? "border-b border-line/60 px-4 py-2.5 sm:px-6 md:justify-end md:px-8" : "px-6 pt-5 md:justify-end md:px-10")}>
+      isGroups ? "border-b border-line/60 px-4 py-2.5 sm:px-6 md:justify-end md:px-8" : "px-4 py-3 sm:px-6 md:justify-end md:px-10 md:pb-0 md:pt-5")}>
       <div className="md:hidden"><Logo /></div>
-      <div className="flex items-center gap-5">
+      <div className="flex min-w-0 items-center gap-1.5 sm:gap-5">
         <CreditsPill />
         {FEATURES.notifications && (
           <button aria-label="Notifications" className="relative rounded-full p-2 hover:bg-black/5">
@@ -105,13 +105,13 @@ function HeaderBar({ isGroups }: { isGroups?: boolean }) {
         {isGuest ? (
           <Link href={ROUTES.signIn} className="rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-white">Sign in</Link>
         ) : !isLoaded || !user ? (
-          <div className="flex items-center gap-3"><Skeleton className="h-10 w-10 !rounded-full" /><Skeleton className="h-4 w-16" /></div>
+          <div className="flex items-center gap-3"><Skeleton className="h-10 w-10 !rounded-full" /><Skeleton className="hidden h-4 w-16 sm:block" /></div>
         ) : (
           <div className="relative">
-            <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-3 rounded-full p-1 pr-2 hover:bg-black/5" aria-haspopup="menu" aria-expanded={open}>
+            <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-3 rounded-full p-1 pr-2 hover:bg-black/5" aria-label="Account menu" aria-haspopup="menu" aria-expanded={open}>
               <Avatar src={avatarSrc} first={appUser?.firstName ?? user.firstName ?? undefined} last={appUser?.lastName ?? user.lastName ?? undefined} size={40} />
-              <span className="font-medium">{displayName}</span>
-              <ChevronDown size={16} />
+              <span className="hidden max-w-40 truncate font-medium sm:block">{displayName}</span>
+              <ChevronDown size={16} className="hidden sm:block" />
             </button>
             {open && (
               <div role="menu" className="absolute right-0 z-50 mt-2 w-48 rounded-2xl border border-line bg-white p-1.5 shadow-soft">
@@ -149,9 +149,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <div className={cn("min-w-0 flex-1 flex flex-col", isGroups ? "h-dvh overflow-hidden pb-[57px] md:pb-0" : "min-h-screen pb-20 md:pb-0")}>
+      <div className={cn("min-w-0 flex-1 flex flex-col", isGroups ? "h-dvh overflow-hidden pb-[calc(61px+env(safe-area-inset-bottom))] md:pb-0" : "min-h-screen pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0")}>
         <HeaderBar isGroups={isGroups} />
-        <main className={cn("flex-1 min-h-0 flex flex-col", isGroups ? "p-0" : "px-6 pb-10 pt-2 md:px-10")}>
+        <main className={cn("flex-1 min-h-0 flex flex-col", isGroups ? "p-0" : "px-4 pb-6 pt-2 sm:px-6 md:px-10 md:pb-10")}>
           {fatal ? <ErrorState error={error} onRetry={() => refetch()} className={cn(isGroups ? "m-6" : "mt-8")} />
             : !user && !error && guestFailed ? <div className={cn(isGroups && "p-6")}><GuestUnavailable /></div>
             : !user && !error ? <div className={cn(isGroups && "p-6")}><PageSkeleton /></div>
