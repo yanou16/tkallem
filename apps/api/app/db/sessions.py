@@ -182,7 +182,8 @@ def list_corrected_answers(conn: Connection, user_id: int, limit: int) -> list[d
         FROM turns t
         JOIN practice_sessions s ON s.id = t.session_id
         JOIN corrections c ON c.turn_id = t.id
-        WHERE s.user_id = %s AND NOT (s.ended_at IS NULL AND s.state ->> 'feedback_mode' = 'interview')
+        WHERE s.user_id = %s
+          AND NOT (s.ended_at IS NULL AND s.state ->> 'feedback_mode' IS NOT DISTINCT FROM 'interview')
         GROUP BY t.id, s.id
         ORDER BY s.started_at DESC, s.id DESC, t.position
         LIMIT %s
