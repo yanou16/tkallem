@@ -15,6 +15,13 @@ const config: Config = {
         muted: "var(--steel)",
         line: "var(--hairline)",
         brand: "#FFD02F", // logo mark only (and the mic ring, the PWA theme)
+        // Soft pastels of the new front: cards, illustrations, stat tiles.
+        mint: { DEFAULT: "#D3F6F0", deep: "#A8EADF" },
+        butter: { DEFAULT: "#FFF0BF", deep: "#FFE08A" },
+        peach: { DEFAULT: "#FFE5CF", deep: "#FFCDA3" },
+        rose: { DEFAULT: "#FFD9DD", deep: "#FFB8C0" },
+        lilac: { DEFAULT: "#E8E2FB", deep: "#D0C6F5" },
+        success: "#1DB87E",
       },
       borderRadius: { card: "var(--radius-card)" },
       // The only shadow of the design system, for menus and dialogs.

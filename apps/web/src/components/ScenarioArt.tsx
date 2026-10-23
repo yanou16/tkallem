@@ -73,16 +73,16 @@ const icons = {
 } as const;
 
 export const CONTEXTS = [
-  { id: "work", title: "Career & interviews", surface: "bg-tint-job", ink: "text-charcoal" },
-  { id: "study", title: "Study & applications", surface: "bg-tint-campus", ink: "text-charcoal" },
-  { id: "travel", title: "Travel & visa", surface: "bg-tint-visa", ink: "text-charcoal" },
-  { id: "exams", title: "Exams & speaking tests", surface: "bg-tint-ielts", ink: "text-charcoal" },
-  { id: "daily_life", title: "Everyday situations", surface: "bg-surface", ink: "text-charcoal" },
-  { id: "free", title: "Free conversation", surface: "border border-line bg-white", ink: "text-steel" },
+  { id: "work", title: "Career & interviews", surface: "bg-peach", ink: "text-[#9b573b]" },
+  { id: "study", title: "Study & applications", surface: "bg-mint", ink: "text-[#34796d]" },
+  { id: "travel", title: "Travel & visa", surface: "bg-rose", ink: "text-[#a24e5b]" },
+  { id: "exams", title: "Exams & speaking tests", surface: "bg-lilac", ink: "text-[#706090]" },
+  { id: "daily_life", title: "Everyday situations", surface: "bg-butter", ink: "text-[#927027]" },
+  { id: "free", title: "Free conversation", surface: "border border-line bg-white", ink: "text-[#737780]" },
 ] as const;
 
 export function scenarioContext(s: Pick<Scenario, "id" | "mode" | "category">) {
-  const category = s.mode === "free" ? "free" : ["airport", "taxi", "visa-us", "visa-business"].includes(s.id) ? "travel" : s.category;
+  const category = s.mode === "free" ? "free" : ["airport", "taxi", "visa-us"].includes(s.id) ? "travel" : s.category;
   return CONTEXTS.find((c) => c.id === category) ?? CONTEXTS[4];
 }
 

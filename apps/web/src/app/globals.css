@@ -22,10 +22,10 @@
   --brand-yellow: #ffd02f;
 
   /* Scenario tints */
-  --tint-visa: #ddf4f1;
-  --tint-campus: #f7f0d4;
-  --tint-job: #fae8d8;
-  --tint-ielts: #f6dcdc;
+  --tint-visa: #c3faf5;
+  --tint-campus: #fff4c4;
+  --tint-job: #ffe6cd;
+  --tint-ielts: #ffc6c6;
 
   /* Feedback */
   --good: #0a7a4b;
@@ -87,3 +87,8 @@ button, [role="button"], [role="switch"] { -webkit-user-select: none; user-selec
 }
 
 @keyframes tour-wave { 0%, 100% { transform: scaleY(0.25); } 50% { transform: scaleY(1); } }
+
+/* On a phone, a field under 16 px makes iOS zoom the page when it gets focus. */
+@media (max-width: 767px) {
+  input, textarea, select { font-size: max(1rem, 1em); }
+}

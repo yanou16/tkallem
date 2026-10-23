@@ -2,13 +2,22 @@
 import Link from "next/link";
 import { ScenarioArt, scenarioContext } from "./ScenarioArt";
 import { ArrowRight, Clock } from "lucide-react";
-import { Pill, Skeleton } from "@/components/ui";
+import { Icon } from "@/lib/icons";
+import { Pill, Skeleton, toneBg, toneDeep, type Tone } from "@/components/ui";
 import { cn, plural, timeAgo } from "@/lib/utils";
 import type { Scenario, SessionSummary } from "@/features/practice/types/practice";
 
 /** Practice by default; `mode: "interview"` opens the same scenario as a real interview (no feedback until the report). */
 export const startHref = (scenarioId: string, mode: "practice" | "interview" = "practice") =>
   `/ai-chat?scenarioId=${encodeURIComponent(scenarioId)}${mode === "interview" ? "&mode=interview" : ""}`;
+
+export function IconBadge({ name, tone, size = 44 }: { name?: string; tone: Tone; size?: number }) {
+  return (
+    <span style={{ width: size, height: size }} className={cn("flex shrink-0 items-center justify-center rounded-2xl", toneDeep[tone])}>
+      <Icon name={name} size={size * 0.5} />
+    </span>
+  );
+}
 
 export function StartButton({ href, label = "Start", aria }: { href: string; label?: string; aria?: string }) {
   return (
@@ -18,7 +27,7 @@ export function StartButton({ href, label = "Start", aria }: { href: string; lab
   );
 }
 
-export function ScenarioCard({ s, compact = false, onStart }: { s: Scenario; compact?: boolean; onStart?: () => void }) {
+export function ScenarioCard({ s, compact = false, onStart }: { s: Scenario; tone?: Tone; compact?: boolean; onStart?: () => void }) {
   const context = scenarioContext(s);
   return (
     <article className={cn("relative isolate flex flex-col justify-between overflow-hidden rounded-card", compact ? "min-h-[160px] gap-3 p-4 text-sm" : "min-h-[240px] gap-4 p-5", context.surface)}>
@@ -34,13 +43,13 @@ export function ScenarioCard({ s, compact = false, onStart }: { s: Scenario; com
           {s.minutes !== null && <><Clock size={14} /> {s.minutes} min</>}
           {s.level && <Pill>{s.level}</Pill>}
         </span>
-        {onStart ? <button type="button" onClick={onStart} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-ink px-3 py-2 text-xs font-semibold text-white">Start <ArrowRight size={14} /></button> : <StartButton href={startHref(s.id)} label="Practice" aria={`Practice: ${s.title}`} />}
+        {onStart
+          ? <button type="button" onClick={onStart} className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white">Start <ArrowRight size={14} /></button>
+          : <StartButton href={startHref(s.id)} label="Practice" aria={`Practice: ${s.title}`} />}
       </div>
-      {!onStart && (
-        <Link href={startHref(s.id, "interview")} aria-label={`Real interview: ${s.title}`} className="relative z-10 -mb-2 inline-flex min-h-11 items-center self-start text-sm font-medium text-ink underline underline-offset-2">
-          Real interview
-        </Link>
-      )}
+      {!onStart && <Link href={startHref(s.id, "interview")} aria-label={`Real interview: ${s.title}`} className="relative z-10 -mb-2 inline-flex min-h-11 items-center self-start text-sm font-medium text-ink underline underline-offset-2">
+        Real interview
+      </Link>}
     </article>
   );
 }
