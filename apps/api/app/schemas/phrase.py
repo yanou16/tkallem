@@ -5,10 +5,10 @@ from pydantic import BaseModel
 
 
 class PhraseOfTheDay(BaseModel):
-    """Today's phrase (date in Algiers). `fr` and `en` explain it; `example` shows it in a sentence."""
+    """Today's idiom (date in Algiers). `fr` and `en` explain it; `example` shows it in a sentence."""
     date: date
     id: str
-    kind: Literal["interview", "everyday", "idiom"]
+    kind: Literal["idiom"]
     text: str
     fr: str
     en: str

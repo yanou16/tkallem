@@ -7,14 +7,14 @@ import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import type { ExplainLang } from "@/features/auth/types/user";
 import { useCheckPhrase, usePhraseOfDay } from "../hooks/usePhraseOfDay";
 import { readDays, recordDay, saidToday, streak } from "../lib/days";
-import { checkView, KIND_NOTE, meaningOf, meaningToggle, otherLang, streakText, type CheckView } from "../lib/phraseView";
+import { checkView, meaningOf, meaningToggle, otherLang, streakText, type CheckView } from "../lib/phraseView";
 import { canSpeak, speak } from "../lib/speak";
 
 const storage = () => { try { return window.localStorage; } catch { return null; } };
 
 const PILL = "inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium transition active:scale-[0.97]";
 
-/** The phrase of the day, as a dark strip (the design system's emphasis surface, like the stat card): one phrase, one
+/** The idiom of the day, as a dark strip (the design system's emphasis surface, like the stat card): one phrase, one
  *  action ("Say it"), and the meaning one tap away. It disappears quietly if the phrase cannot be loaded (nothing here
  *  is worth an error screen). */
 export default function PhraseOfTheDay() {
@@ -47,7 +47,6 @@ export default function PhraseOfTheDay() {
   const p = phrase.data;
   const done = saidToday(days, p.date) || view?.nailed === true;
   const streakDays = streak(days, p.date);
-  const note = KIND_NOTE[p.kind];
   const shownLang = lang ?? user?.explainLang ?? "fr";
   const problem = rec.error ?? check.error?.message;
   const toggle = async () => {
@@ -61,7 +60,7 @@ export default function PhraseOfTheDay() {
 
   return (
     <section aria-labelledby={`${detailsId}-title`} className="rounded-card bg-ink px-5 py-[18px] text-white">
-      <h2 id={`${detailsId}-title`} className="text-[13px] font-medium text-hairline-strong">Phrase of the day · say it out loud</h2>
+      <h2 id={`${detailsId}-title`} className="text-[13px] font-medium text-hairline-strong">Idiom of the day · say it out loud</h2>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
         <p className="min-w-0 break-words text-xl font-medium leading-tight">{p.text}</p>
         {done ? (
@@ -98,7 +97,6 @@ export default function PhraseOfTheDay() {
         <div id={detailsId} className="space-y-2 pb-1 text-sm">
           <p className="text-hairline">{meaningOf(p, shownLang)}</p>
           <p className="break-words text-hairline-strong">Example: {p.example}</p>
-          {note && <p className="text-hairline-strong">{note}</p>}
           <div className="flex flex-wrap items-center gap-3 pt-1">
             {listenable && (
               <button type="button" onClick={() => speak(p.text)} className={cn(PILL, "border border-stone text-white")}>

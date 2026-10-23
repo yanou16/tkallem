@@ -133,12 +133,14 @@ def _decode_audio(value, client: httpx.Client) -> bytes:
         raise TtsError("the audio field is not base64") from e
 
 
-def _budget() -> httpx.Timeout:
-    """How long one reply's voice may take before another voice takes over (a text answer is already on the screen)."""
-    return httpx.Timeout(settings.tts_timeout, connect=settings.voice_connect_timeout)
+def _budget(factor: float = 1.0) -> httpx.Timeout:
+    """How long one reply's voice may take before another voice takes over (a text answer is already on the screen).
+    `factor` is per provider (BUDGET_FACTOR): DeepInfra is the slower one (measured on 23 October: Groq 1 to 2 s when idle,
+    DeepInfra 3 to 5 s) and the last one before the browser's own voice, so it gets twice the time."""
+    return httpx.Timeout(settings.tts_timeout * factor, connect=settings.voice_connect_timeout)
 
 
-def _deepinfra(client: httpx.Client, text: str, voice: str | None):
+def _deepinfra(client: httpx.Client, text: str, voice: str | None, factor: float = 1.0):
     if not settings.deepinfra_api_key:
         raise TtsError("DEEPINFRA_API_KEY is not set")
     body: dict = {"text": text}
@@ -149,7 +151,7 @@ def _deepinfra(client: httpx.Client, text: str, voice: str | None):
         "https://api.deepinfra.com/v1/inference/hexgrad/Kokoro-82M",
         headers={"Authorization": f"bearer {settings.deepinfra_api_key}"},
         json=body,
-        timeout=_budget(),
+        timeout=_budget(factor),
     )
     r.raise_for_status()
     data = r.json()
@@ -159,28 +161,29 @@ def _deepinfra(client: httpx.Client, text: str, voice: str | None):
     return [audio], mime, [time.perf_counter() - t0]
 
 
-def _groq_one(client: httpx.Client, chunk: str, voice: str) -> tuple[bytes, float]:
+def _groq_one(client: httpx.Client, chunk: str, voice: str, factor: float = 1.0) -> tuple[bytes, float]:
     t0 = time.perf_counter()
     r = client.post(
         "https://api.groq.com/openai/v1/audio/speech",
         headers={"Authorization": f"Bearer {settings.groq_api_key}"},
         json={"model": "canopylabs/orpheus-v1-english", "input": chunk, "voice": voice, "response_format": "wav"},
-        timeout=_budget(),
+        timeout=_budget(factor),
     )
     r.raise_for_status()
     return r.content, time.perf_counter() - t0
 
 
-def _groq(client: httpx.Client, text: str, voice: str | None):
+def _groq(client: httpx.Client, text: str, voice: str | None, factor: float = 1.0):
     if not settings.groq_api_key:
         raise TtsError("GROQ_API_KEY is not set")
     chunks = split_text(text)
     with ThreadPoolExecutor(max_workers=min(4, max(1, len(chunks)))) as pool:  # parts are made in parallel
-        results = list(pool.map(lambda c: _groq_one(client, c, voice or GROQ_VOICE), chunks))
+        results = list(pool.map(lambda c: _groq_one(client, c, voice or GROQ_VOICE, factor), chunks))
     return [audio for audio, _ in results], "audio/wav", [lat for _, lat in results]
 
 
 PROVIDERS = {"deepinfra": _deepinfra, "groq": _groq}
+BUDGET_FACTOR = {"groq": 1.0, "deepinfra": 2.0}  # times settings.tts_timeout
 
 
 _shared: httpx.Client | None = None
@@ -204,7 +207,7 @@ def _synthesize_one(name: str, text: str, voice: str | None, client: httpx.Clien
     http = client or _shared_client()
     t0 = time.perf_counter()
     try:
-        parts, mime, latencies = PROVIDERS[name](http, text, voice)
+        parts, mime, latencies = PROVIDERS[name](http, text, voice, BUDGET_FACTOR.get(name, 1.0))
     except TtsError:
         raise
     except httpx.HTTPStatusError as e:

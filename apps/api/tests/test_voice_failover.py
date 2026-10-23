@@ -17,7 +17,7 @@ def clean(monkeypatch):
 
 def fake_tts(calls, outcomes):
     def make(name):
-        def run(client, text, voice):
+        def run(client, text, voice, factor=1.0):
             calls.append(name)
             out = outcomes[name]
             if isinstance(out, Exception):
@@ -105,7 +105,7 @@ def test_unreadable_audio_is_reported_as_the_students_problem_only_if_all_agree(
 def test_a_connection_failure_is_retried_once_on_the_same_provider(monkeypatch):
     calls = []
 
-    def flaky(client, text, voice):
+    def flaky(client, text, voice, factor=1.0):
         calls.append("groq")
         if len(calls) == 1:
             raise httpx.ConnectTimeout("no route")
