@@ -1,4 +1,4 @@
-export type PhraseKind = "interview" | "everyday" | "idiom";
+export type PhraseKind = "idiom";
 
 /** GET /phrase-of-the-day: today's phrase (date in Algiers). */
 export type PhraseOfDay = { date: string; id: string; kind: PhraseKind; text: string; fr: string; en: string; example: string };

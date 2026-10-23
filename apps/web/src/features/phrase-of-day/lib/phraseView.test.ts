@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { PhraseChecked, PhraseOfDay } from "../types/phraseOfDay";
-import { checkView, KIND_NOTE, meaningOf, meaningToggle, otherLang, streakText } from "./phraseView";
+import { checkView, meaningOf, meaningToggle, otherLang, streakText } from "./phraseView";
 
-const P: PhraseOfDay = { date: "2026-10-29", id: "return-home", kind: "interview", text: "I plan to return to Algeria after my studies.", fr: "Je prévois de rentrer.", en: "I will come back.", example: "x" };
+const P: PhraseOfDay = { date: "2026-10-29", id: "return-home", kind: "idiom", text: "I plan to return to Algeria after my studies.", fr: "Je prévois de rentrer.", en: "I will come back.", example: "x" };
 const MISS: PhraseChecked = { nailed: false, similarity: 0.5, missing: [], target: P.text, heard: "I want to stay in France" };
 
 describe("phrase view", () => {
@@ -21,12 +21,6 @@ describe("phrase view", () => {
     expect(v.title).toBe("Almost");
     expect(v.text).toBe("I heard: “I want to stay in France”. Say the whole phrase, a little slower.");
     expect(checkView({ ...MISS, heard: "  " }).text).toBe("Say the whole phrase, a little slower.");
-  });
-
-  it("tells an idiom is not for the interview, and says nothing special for the other kinds", () => {
-    expect(KIND_NOTE.idiom).toMatch(/not for an interview/);
-    expect(KIND_NOTE.interview).toBeNull();
-    expect(KIND_NOTE.everyday).toBeNull();
   });
 
   it("names the language of the meaning on the button that opens it, and can switch", () => {

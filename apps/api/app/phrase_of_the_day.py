@@ -1,8 +1,8 @@
-"""Phrase of the day: one English phrase a day, explained in French, that the student says out loud.
+"""Idiom of the day: one English idiom a day, explained in French or English, that the student says out loud.
 
 No database and no cron: today's phrase is picked from a fixed list by the date in Algiers (UTC+1, no daylight saving
 since 1981), so every student sees the same phrase and a restart changes nothing. The list is original text written for
-Tkallem (app/data/daily_phrases.json): mostly phrases that help in an interview, an idiom now and then, never twice in a row.
+Tkallem (app/data/daily_phrases.json): 45 common idioms, each in a short sentence, with its meaning and an example.
 
 The check is done by code, like "Say it again": the server transcribes the recording, then compares it with TODAY's phrase
 (the client never says which phrase it speaks, so it cannot ask for another one).

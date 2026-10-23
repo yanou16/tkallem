@@ -15,7 +15,7 @@ from app.routes import phrase_of_the_day as routes
 from app.security import ClerkClaims, get_clerk_claims
 from app.voice.stt import SttError, Transcription
 
-TODAY = PHRASES[0]  # return-home: "I plan to return to Algeria after my studies."
+TODAY = PHRASES[0]  # raining-cats: "It is raining cats and dogs."
 
 
 @pytest.fixture
@@ -47,16 +47,16 @@ def test_everyone_can_read_todays_phrase_without_an_account():
 
 
 def test_the_phrase_said_right_is_nailed_even_with_a_contraction_or_a_filler(client, monkeypatch):
-    hear(monkeypatch, "Um, I plan to return to Algeria after my studies.")
+    hear(monkeypatch, "Um, it's raining cats and dogs.")  # a filler and a contraction
     body = say(client).json()
     assert body["nailed"] is True and body["missing"] == [] and body["target"] == TODAY["text"]
     assert body["heard"].startswith("Um")
 
 
 def test_a_wrong_phrase_is_not_nailed_and_says_what_was_heard(client, monkeypatch):
-    hear(monkeypatch, "I want to stay in France after my studies.")
+    hear(monkeypatch, "It is raining a lot today.")
     body = say(client).json()
-    assert body["nailed"] is False and body["similarity"] < 0.85 and body["heard"] == "I want to stay in France after my studies."
+    assert body["nailed"] is False and body["similarity"] < 0.85 and body["heard"] == "It is raining a lot today."
 
 
 def test_the_client_cannot_choose_which_phrase_it_speaks(client, monkeypatch):
@@ -86,13 +86,13 @@ def test_a_provider_outage_is_a_502_and_unreadable_audio_a_422(client, monkeypat
 
 
 def test_too_many_tries_in_an_hour_are_refused(client, monkeypatch):
-    hear(monkeypatch, "I plan to return to Algeria after my studies.")
+    hear(monkeypatch, TODAY["text"])
     assert all(say(client).status_code == 200 for _ in range(rate_limit.phrase_checks.limit))
     assert say(client).status_code == 429
 
 
 def test_a_huge_recording_is_refused(client, monkeypatch):
-    hear(monkeypatch, "I plan to return to Algeria after my studies.")
+    hear(monkeypatch, TODAY["text"])
     monkeypatch.setattr(settings, "max_audio_bytes", 5)
     assert say(client).status_code == 413
 
