@@ -1,11 +1,15 @@
 "use client";
 import Image from "next/image";
-import { AlertCircle, X } from "lucide-react";
+import { AlertCircle, Target, X } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { cn, initials } from "@/lib/utils";
 import { ApiError } from "@/lib/api/client";
 
 /* ---------- pastel tones (visual only; assigned by position, never from data) ---------- */
+export const TONES = ["mint", "butter", "peach", "rose", "lilac"] as const;
+export type Tone = (typeof TONES)[number];
+export const toneAt = (i: number): Tone => TONES[i % TONES.length];
+export const toneBg: Record<Tone, string> = { mint: "bg-mint", butter: "bg-butter", peach: "bg-peach", rose: "bg-rose", lilac: "bg-lilac" };
 
 /* ---------- primitives ---------- */
 export function Skeleton({ className }: { className?: string }) {
@@ -34,7 +38,7 @@ export function AvatarStack({ people, size = 34, max = 3 }: { people: { id: stri
 }
 
 export function Pill({ children, className }: { children: ReactNode; className?: string }) {
-  return <span className={cn("inline-flex items-center rounded-full bg-white/70 px-2.5 py-1 text-[13px] font-medium text-ink", className)}>{children}</span>;
+  return <span className={cn("inline-flex items-center rounded-full bg-white/70 px-2.5 py-1 text-xs font-medium text-ink", className)}>{children}</span>;
 }
 
 export function Button({ dark = true, className, ...p }: React.ButtonHTMLAttributes<HTMLButtonElement> & { dark?: boolean }) {
@@ -51,7 +55,7 @@ export function Button({ dark = true, className, ...p }: React.ButtonHTMLAttribu
 }
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <section className={cn("rounded-card border border-line bg-white p-5", className)}>{children}</section>;
+  return <section className={cn("rounded-card border border-line bg-white p-5 shadow-soft", className)}>{children}</section>;
 }
 
 export function SectionTitle({ title, action }: { title: string; action?: ReactNode }) {
@@ -67,7 +71,7 @@ export function PageHeader({ eyebrow, title, subtitle }: { eyebrow?: ReactNode; 
   return (
     <header className="mb-6">
       {eyebrow && <p className="mb-1 text-sm text-muted">{eyebrow}</p>}
-      <h1 className="text-[28px] font-medium leading-tight tracking-tight md:text-5xl">{title}</h1>
+      <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl md:text-5xl">{title}</h1>
       {subtitle && <p className="mt-2 text-base text-muted md:text-lg">{subtitle}</p>}
     </header>
   );
@@ -157,7 +161,7 @@ export function ProgressRing({ value, max, size = 120, stroke = 12, children }: 
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
         <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--hairline-soft)" strokeWidth={stroke} fill="none" />
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--ink)" strokeWidth={stroke} fill="none" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} className="transition-[stroke-dashoffset] duration-500 ease-out" />
+        <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--good-fill)" strokeWidth={stroke} fill="none" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct)} className="transition-[stroke-dashoffset] duration-500 ease-out" />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">{children}</div>
     </div>
@@ -167,7 +171,8 @@ export function ProgressRing({ value, max, size = 120, stroke = 12, children }: 
 export function GoalHint({ goal, done }: { goal: number; done: number }) {
   const left = Math.max(0, goal - done);
   return (
-    <div className={cn("rounded-2xl p-3 text-sm font-medium", left > 0 ? "bg-surface text-charcoal" : "bg-good-bg text-good")}>
+    <div className="flex items-center gap-3 rounded-2xl bg-success/10 p-3 text-sm text-charcoal">
+      <span aria-hidden className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-success/15 text-success"><Target size={18} /></span>
       {left > 0 ? <p>You're {left} minute{left === 1 ? "" : "s"} away from your daily goal!</p> : <p>Daily goal reached. Nice work!</p>}
     </div>
   );

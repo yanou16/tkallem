@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
+import { ScenarioArt, scenarioContext } from "./ScenarioArt";
 import { ArrowRight, Clock } from "lucide-react";
-import { scenarioTint } from "@/lib/tint";
-import { Pill, Skeleton } from "@/components/ui";
+import { Icon } from "@/lib/icons";
+import { Pill, Skeleton, type Tone } from "@/components/ui";
 import { cn, plural, timeAgo } from "@/lib/utils";
 import type { Scenario, SessionSummary } from "@/features/practice/types/practice";
 
@@ -18,25 +19,25 @@ export function StartButton({ href, label = "Start", aria }: { href: string; lab
   );
 }
 
-/** DESIGN.md "Scenario card": background = the scenario's tint (one meaning per pastel), text in charcoal. */
-export function ScenarioCard({ s }: { s: Scenario }) {
+export function ScenarioCard({ s, compact = false }: { s: Scenario; tone?: Tone; compact?: boolean }) {
+  const context = scenarioContext(s);
   return (
-    <article className={cn("flex flex-col justify-between gap-4 rounded-card p-5", scenarioTint(s.category))}>
-      <div className="min-w-0">
-        <h3 className="font-semibold leading-tight">{s.title}</h3>
-        <p className="text-sm text-charcoal">
-          {s.mode === "free" ? "Free conversation" : s.totalQuestions ? plural(s.totalQuestions, "question") : "Guided questions"}
-        </p>
+    <article className={cn("relative isolate flex flex-col overflow-hidden rounded-card", compact ? "min-h-[160px] gap-3 p-4 text-sm" : "min-h-[240px] gap-4 p-5", context.surface)}>
+      <span aria-hidden="true" className={compact ? "pointer-events-none absolute inset-0 opacity-40" : "pointer-events-none absolute inset-0"}><ScenarioArt scenario={s} /></span>
+      <div className={cn("relative z-10 min-w-0", !compact && "pr-24")}>
+        <p className="mb-2 text-xs font-medium text-charcoal">{context.title}</p>
+        <h3 className="font-semibold leading-tight [overflow-wrap:anywhere]">{s.title}</h3>
+        <p className="mt-1 text-xs text-charcoal">{s.mode === "free" ? "Free conversation" : s.totalQuestions ? plural(s.totalQuestions, "question") : "Guided questions"}</p>
+        {!compact && s.description && <p className="mt-2 text-sm text-charcoal">{s.description}</p>}
       </div>
-      {s.description && <p className="text-sm text-charcoal">{s.description}</p>}
-      <div className="flex items-center justify-between">
+      <div className="relative z-10 mt-auto flex flex-wrap items-center gap-3 pt-1">
         <span className="flex items-center gap-2 text-sm text-charcoal">
           {s.minutes !== null && <><Clock size={14} /> {s.minutes} min</>}
           {s.level && <Pill>{s.level}</Pill>}
         </span>
         <StartButton href={startHref(s.id)} label="Practice" aria={`Practice: ${s.title}`} />
       </div>
-      <Link href={startHref(s.id, "interview")} aria-label={`Real interview: ${s.title}`} className="-mb-2 inline-flex min-h-11 items-center self-start text-sm font-medium text-ink underline underline-offset-2">
+      <Link href={startHref(s.id, "interview")} aria-label={`Real interview: ${s.title}`} className="relative z-10 -mb-2 inline-flex min-h-11 items-center self-start text-sm font-medium text-ink underline underline-offset-2">
         Real interview
       </Link>
     </article>
@@ -56,9 +57,9 @@ export function SessionList({ sessions, actions }: { sessions: SessionSummary[];
   return (
     <ul className="divide-y divide-line">
       {sessions.map((s) => (
-        <li key={s.id} className="flex items-center gap-3 py-3">
-          <div className="min-w-0 flex-1">
-            <Link href={sessionHref(s)} title={s.title} className="flex min-h-11 items-center font-medium hover:underline"><span className="truncate">{s.title}</span></Link>
+        <li key={s.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-3">
+          <div className="min-w-[11rem] flex-1">
+            <Link href={sessionHref(s)} title={s.title} className="flex min-h-11 items-center font-medium hover:underline"><span className="line-clamp-2 [overflow-wrap:anywhere]">{s.title}</span></Link>
             <p className="text-sm text-muted">
               {answered(s)} · {s.endedAt ? "Finished" : "Not finished"} · {timeAgo(s.startedAt)}
             </p>

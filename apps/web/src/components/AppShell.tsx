@@ -48,7 +48,7 @@ function Sidebar() {
   const path = usePathname();
   const nav = useNav();
   return (
-    <aside className="sticky top-0 hidden h-screen w-[260px] shrink-0 flex-col gap-8 border-r border-line bg-white/60 p-5 md:flex">
+    <aside className="sticky top-0 hidden h-dvh w-[260px] shrink-0 flex-col gap-8 border-r border-line bg-white/60 p-5 md:flex">
       <Logo />
       <nav className="flex flex-col gap-1.5" aria-label="Main">
         {nav.map(({ href, label, icon: I, also }) => {
@@ -74,7 +74,7 @@ function MobileNav() {
       {nav.map(({ href, label, icon: I, also }) => {
         const active = isActive(path, href, also);
         return (
-          <Link key={href} href={href} className={cn("flex min-h-11 flex-col items-center justify-center gap-0.5 px-2 text-xs transition-transform active:scale-95", active ? "font-semibold text-ink" : "text-muted")}>
+          <Link key={href} href={href} className={cn("flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 text-xs transition-transform active:scale-95", active ? "font-semibold text-ink" : "text-muted")}>
             <I size={20} /> {label}
           </Link>
         );
@@ -94,9 +94,9 @@ function HeaderBar() {
   const displayName = appUser?.firstName || user?.firstName || user?.primaryEmailAddress?.emailAddress;
 
   return (
-    <div className="sticky top-0 z-30 flex items-center justify-between gap-3 bg-[color:var(--canvas)] px-5 pt-5 md:justify-end md:px-10">
+    <div className="sticky top-0 z-30 flex items-center justify-between gap-3 bg-[color:var(--canvas)] px-4 py-3 sm:px-6 md:justify-end md:px-10 md:pb-0 md:pt-5">
       <div className="md:hidden"><Logo /></div>
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-1.5 sm:gap-5">
         <CreditsPill />
         {FEATURES.notifications && (
           <button aria-label="Notifications" className="relative rounded-full p-2 hover:bg-black/5">
@@ -109,10 +109,10 @@ function HeaderBar() {
           <div className="flex items-center gap-3"><Skeleton className="h-10 w-10 !rounded-full" /><Skeleton className="h-4 w-16" /></div>
         ) : (
           <div className="relative">
-            <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-3 rounded-full p-1 pr-2 hover:bg-black/5" aria-haspopup="menu" aria-expanded={open}>
+            <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-3 rounded-full p-1 pr-2 hover:bg-black/5" aria-label="Account menu" aria-haspopup="menu" aria-expanded={open}>
               <Avatar src={avatarSrc} first={appUser?.firstName ?? user.firstName ?? undefined} last={appUser?.lastName ?? user.lastName ?? undefined} size={40} />
-              <span className="font-medium">{displayName}</span>
-              <ChevronDown size={16} />
+              <span className="hidden max-w-40 truncate font-medium sm:block">{displayName}</span>
+              <ChevronDown size={16} className="hidden sm:block" />
             </button>
             {open && (
               <div role="menu" className="absolute right-0 z-50 mt-2 w-48 rounded-2xl border border-line bg-white p-1.5 shadow-soft">
@@ -146,11 +146,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const fatal = error && !(error instanceof ApiError && error.status === 401);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-dvh">
       <Sidebar />
       <div className="min-w-0 flex-1 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
         <HeaderBar />
-        <main className="px-6 pb-10 pt-2 md:px-10">
+        <main className="px-4 pb-10 pt-2 sm:px-6 md:px-10">
           {fatal ? <ErrorState error={error} onRetry={() => refetch()} className="mt-8" />
             : !user && !error && guestFailed ? <GuestUnavailable />
             : !user && !error ? <PageSkeleton />

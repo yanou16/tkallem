@@ -24,7 +24,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#FFD02F",
+  themeColor: "#ffffff", // the colour at the very top of the page (the header is white), not the brand yellow
+  interactiveWidget: "resizes-content", // the keyboard shrinks the layout on Android Chrome, as it does on iOS
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover", // the app draws under the iPhone notch: safe areas are handled in CSS

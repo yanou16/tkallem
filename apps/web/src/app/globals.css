@@ -22,10 +22,10 @@
   --brand-yellow: #ffd02f;
 
   /* Scenario tints */
-  --tint-visa: #ddf4f1;
-  --tint-campus: #f7f0d4;
-  --tint-job: #fae8d8;
-  --tint-ielts: #f6dcdc;
+  --tint-visa: #d3f6f0;
+  --tint-campus: #fff0bf;
+  --tint-job: #ffe5cf;
+  --tint-ielts: #ffd9dd;
 
   /* Feedback */
   --good: #0a7a4b;
@@ -55,7 +55,7 @@ html, body { background: var(--canvas); color: var(--ink); }
 body { -webkit-font-smoothing: antialiased; }
 /* On a phone: no grey flash over a tapped control (every control has its own :active), no double-tap delay, and a
    long press on a button label does not select it. Text that is content stays selectable. */
-html { -webkit-tap-highlight-color: transparent; }
+html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; overscroll-behavior-y: none; }
 a, button, [role="button"], [role="switch"], summary, label { touch-action: manipulation; }
 button, [role="button"], [role="switch"] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
@@ -87,3 +87,8 @@ button, [role="button"], [role="switch"] { -webkit-user-select: none; user-selec
 }
 
 @keyframes tour-wave { 0%, 100% { transform: scaleY(0.25); } 50% { transform: scaleY(1); } }
+
+/* On a phone, a field under 16 px makes iOS zoom the page when it gets focus. */
+@media (max-width: 767px) {
+  input, textarea, select { font-size: max(1rem, 1em); }
+}
