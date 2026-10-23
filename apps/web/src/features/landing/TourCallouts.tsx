@@ -43,12 +43,20 @@ export default function TourCallouts({ callouts, active, onShow, onEngage, stage
     {active === item.region && <span className="mt-2 block text-sm font-normal text-muted">{item.detail}</span>}
   </button>;
   return <div ref={stageRef} onPointerDown={onEngage} className="relative mt-8 grid gap-5 lg:grid-cols-[minmax(140px,1fr)_minmax(0,4fr)_minmax(140px,1fr)] lg:gap-7">
+    <div className="order-first lg:hidden">
+      <label htmlFor="tour-feature" className="mb-2 block text-sm font-semibold">Explore a feature</label>
+      <select id="tour-feature" value={active ?? ""} onChange={(event) => { onEngage(); onShow(event.target.value || null); }} className="min-h-12 w-full rounded-2xl border border-line bg-white px-3 text-base">
+        <option value="">Choose what to explore</option>
+        {callouts.map((item) => <option key={item.id} value={item.region}>{item.label}</option>)}
+      </select>
+      <p aria-live="polite" className="mt-2 min-h-10 text-sm leading-relaxed text-muted">{callouts.find((item) => item.region === active)?.detail ?? "Pick a label to highlight that part of the preview below."}</p>
+    </div>
     <svg aria-hidden="true" className="pointer-events-none absolute inset-0 hidden h-full w-full overflow-visible lg:block">{lines.map((line) => <g key={line.id}>
       <line x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} stroke={active === line.region ? "#111111" : "#c9cad4"} strokeWidth={active === line.region ? 1.5 : 1} />
       <circle cx={line.x2} cy={line.y2} r={3} fill={active === line.region ? "#111111" : "#c9cad4"} />
     </g>)}</svg>
-    <div className="order-2 grid grid-cols-2 gap-2 lg:order-none lg:flex lg:flex-col lg:justify-around">{callouts.filter((item) => item.side === "left").map(label)}</div>
+    <div className="order-2 hidden gap-2 lg:order-none lg:flex lg:flex-col lg:justify-around">{callouts.filter((item) => item.side === "left").map(label)}</div>
     <div className="order-1 min-w-0 lg:order-none">{children}</div>
-    <div className="order-3 grid grid-cols-2 gap-2 lg:order-none lg:flex lg:flex-col lg:justify-around">{callouts.filter((item) => item.side === "right").map(label)}</div>
+    <div className="order-3 hidden gap-2 lg:order-none lg:flex lg:flex-col lg:justify-around">{callouts.filter((item) => item.side === "right").map(label)}</div>
   </div>;
 }
