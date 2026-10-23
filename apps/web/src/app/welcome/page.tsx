@@ -10,12 +10,13 @@ import HowItWorks from "@/features/landing/HowItWorks";
 import ProductTour from "@/features/landing/ProductTour";
 import { scenarioTint } from "@/lib/tint";
 import { cn } from "@/lib/utils";
+import { GUEST_FREE_ANSWERS } from "@/lib/config";
 
 const FIRST_SCENARIO = "visa-us";
 
 /**
  * Public entry page: what a judge or a student sees first when signed out. One message (you understand English, you freeze
- * when you have to speak it), one picture, one action: try a real interview without an account (guest mode, 40 free
+ * when you have to speak it), one picture, one action: try a real interview without an account (guest mode, 100 free
  * answers). Then the guided tour, the situations, and a last call to action. Air between the parts, nothing said twice.
  */
 export default function WelcomePage() {
@@ -55,7 +56,7 @@ export default function WelcomePage() {
               Stop freezing when you have to speak it.
             </h1>
             <p className="mt-5 max-w-lg text-lg leading-relaxed text-charcoal sm:mt-6 sm:text-xl">
-              Rehearse the real interview out loud with an AI coach that corrects you kindly and explains every mistake in French.
+              Rehearse the real interview out loud with an AI coach that corrects you kindly and explains every mistake in English or French, your choice.
             </p>
             <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center">
               <Link href={primaryHref} className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full bg-ink px-6 py-4 text-base font-semibold text-white hover:bg-black/80 sm:text-lg">
@@ -69,7 +70,7 @@ export default function WelcomePage() {
             </div>
             {!isSignedIn && (
               <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-charcoal">
-                {["No account needed", "40 free answers", "Works on your phone"].map((t) => (
+                {["No account needed", `${GUEST_FREE_ANSWERS} free answers`, "Works on your phone"].map((t) => (
                   <li key={t} className="flex items-center gap-1.5"><Check size={16} className="text-good" aria-hidden /> {t}</li>
                 ))}
               </ul>
@@ -120,7 +121,7 @@ export default function WelcomePage() {
         </section>
 
         <p className="mt-10 text-center text-sm text-muted">
-          Free to try: 40 answers without an account. Sign in for 60 more, then 15 new answers every day.
+          Free to try: {GUEST_FREE_ANSWERS} answers without an account. Sign in for 60 more, then 15 new answers every day.
         </p>
       </main>
     </div>

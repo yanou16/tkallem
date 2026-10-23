@@ -56,7 +56,7 @@ export const PAGE_CALLOUTS: Record<PlatformPage, Callout[]> = {
     c("kpi", "Progress that is measured", "Mistakes per 100 words, practice time and streak, from your own sessions.", "left"),
     c("plan", "Your plan, in order", "The situations that match your goal come first.", "left"),
     c("situations", "Real situations", "Visa, university admission, job, IELTS and everyday scenes like the taxi or renting a room.", "left"),
-    c("credits", "Free to try", "Guests get 40 free answers. No account needed.", "right"),
+    c("credits", "Free to try", "Guests get 100 free answers. No account needed.", "right"),
     c("goal", "Today's goal", "Your daily minutes of speaking, as a ring.", "right"),
     c("real", "Real interview mode", "Nothing is corrected until the end, like the real one.", "right"),
     c("mistakes", "Your top mistakes", "What to work on next, from your last sessions.", "right"),
@@ -84,7 +84,7 @@ export const PAGE_CALLOUTS: Record<PlatformPage, Callout[]> = {
   ],
   profile: [
     c("setup", "Your learning setup", "Level, goal, daily minutes and focus, filled by your plan.", "left"),
-    c("lang", "Explained in French", "Corrections come in French or simple English, as you prefer.", "left"),
+    c("lang", "Explained your way", "Corrections come in English or French, as you prefer.", "left"),
     c("focus", "What the coach keeps in mind", "The two things you said are hardest.", "right"),
     c("badges", "Badges to unlock", "First session, a streak, a spoken session.", "right"),
   ],

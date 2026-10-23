@@ -28,7 +28,7 @@ def test_get_me_creates_profile_on_first_visit(client):
     assert response.json() == {
         "first_name": None,
         "level": None,
-        "explain_lang": "fr",
+        "explain_lang": "en",
         "daily_goal_minutes": 10,
         "learning_goal": None,
         "practice_mode": None,

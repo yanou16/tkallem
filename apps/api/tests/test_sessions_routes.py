@@ -43,7 +43,7 @@ def test_start_session_returns_first_question_and_saves_it(client, db, user_b1):
     saved = get_session_for_user(db, UUID(body["session_id"]), user_b1["id"])
     assert saved["scenario_id"] == "visa-us"
     assert saved["mode"] == "text"
-    assert saved["explain_lang"] == "fr"
+    assert saved["explain_lang"] == "en"  # the profile default: explained in English first
     assert saved["state"]["level"] == "B1"
     assert saved["state"]["turns"] == []
 

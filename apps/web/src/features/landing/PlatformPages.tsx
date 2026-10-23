@@ -166,7 +166,7 @@ function Profile({ plan }: { plan: PlanDemo }) {
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate">My learning setup</p>
           <R id="setup" className="space-y-2">{rows.map(([k, t]) => <Box key={k} className="py-2.5"><b className="block text-[13px]">{k}</b><span className="text-xs text-slate">{t}</span></Box>)}</R>
-          <R id="lang"><Box className="py-2.5"><b className="block text-[13px]">Explanation language</b><span className="text-xs text-slate">French (Français)</span></Box></R>
+          <R id="lang"><Box className="py-2.5"><b className="block text-[13px]">Explanation language</b><span className="text-xs text-slate">English</span></Box></R>
           <R id="focus"><Box className="py-2.5"><b className="block text-[13px]">Focus areas</b><span className="text-xs text-slate">{FOCUS_CHOICES.filter((f) => v.focus.includes(f.id)).map((f) => f.label).join(", ")}</span></Box></R>
         </div>
         <div>

@@ -40,10 +40,10 @@ def ledger(db, user):
 
 def test_guest_starts_with_40_credits_and_never_refills(db):
     user, token = credits.create_guest(db, "10.0.0.1", T0)
-    assert credits.is_guest(user) and balance(db, user) == 40
-    assert credits.status(db, user, T0 + 5 * DAY).balance == 40  # no daily credits for guests
+    assert credits.is_guest(user) and balance(db, user) == settings.guest_credits
+    assert credits.status(db, user, T0 + 5 * DAY).balance == settings.guest_credits  # no daily credits for guests
     assert credits.status(db, user, T0).next_refill_at is None
-    assert ledger(db, user) == [("guest_grant", 40, 40)]
+    assert ledger(db, user) == [("guest_grant", settings.guest_credits, settings.guest_credits)]
 
 
 def test_signed_in_student_gets_60_once(db):
@@ -96,7 +96,7 @@ def test_spend_never_goes_below_zero_and_reports_when_to_come_back(db):
 
 def test_guest_without_credits_has_no_return_date(db):
     guest, _ = credits.create_guest(db, "10.0.0.2", T0)
-    for _ in range(40):
+    for _ in range(settings.guest_credits):
         credits.spend(db, guest, now=T0)
     with pytest.raises(credits.NoCredits) as e:
         credits.spend(db, guest, now=T0)
@@ -182,24 +182,25 @@ def test_total_guests_per_day_are_capped(db, monkeypatch):
 def test_claim_moves_credits_once_and_sessions(db):
     guest, token = credits.create_guest(db, "10.0.2.1", T0)
     for _ in range(10):
-        credits.spend(db, guest, now=T0)                    # 30 left
+        credits.spend(db, guest, now=T0)                    # guest_credits - 10 left
     sid = uuid4()
     create_session(db, sid, guest["id"], "visa-us", "text", "fr", {"turns": []})
     user = student(db, "user_claim_a")
-    assert credits.claim_guest(db, token, user, T0) == 30
-    assert balance(db, user) == 60 + 30 and balance(db, guest) == 0
+    left = settings.guest_credits - 10
+    assert credits.claim_guest(db, token, user, T0) == left
+    assert balance(db, user) == settings.login_bonus + left and balance(db, guest) == 0
     assert db.execute("SELECT user_id FROM practice_sessions WHERE id = %s", (sid,)).fetchone()["user_id"] == user["id"]
     assert credits.claim_guest(db, token, user, T0) == 0    # replaying the token gives nothing
-    assert balance(db, user) == 90
+    assert balance(db, user) == settings.login_bonus + left
 
 
 def test_a_user_can_claim_credits_only_once_even_with_new_guests(db):
     user = student(db, "user_claim_b")
     _, t1 = credits.create_guest(db, "10.0.2.2", T0)
     _, t2 = credits.create_guest(db, "10.0.2.3", T0)
-    assert credits.claim_guest(db, t1, user, T0) == 40
+    assert credits.claim_guest(db, t1, user, T0) == settings.guest_credits
     assert credits.claim_guest(db, t2, user, T0) == 0       # farming guests into one account does not work
-    assert balance(db, user) == 100
+    assert balance(db, user) == settings.login_bonus + settings.guest_credits
 
 
 def test_claim_rejects_forged_tokens(db):

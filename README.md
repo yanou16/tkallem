@@ -54,7 +54,7 @@ with nobody watching. The student can also *see* the freeze itself: how long the
 2. Answer the first question out loud, or type it. Not sure how to start? Press **Help me start**.
 3. Read the correction, press **Say it again**, finish the interview and open the **report**.
 
-A guest has **40 free answers**. Signing in adds 60 more and 15 every day. It installs on a phone like an app (PWA).
+A guest has **100 free answers**. Signing in adds 60 more and 15 every day. It installs on a phone like an app (PWA).
 A guest's sessions, reports and progress are kept on that device; creating an account moves them to the account.
 
 ## What a student can do
@@ -159,7 +159,7 @@ memory (one API process); no automatic dependency scanning; sign-in uses a Clerk
 
 ## Cost and limits
 
-One answer from the student uses one free answer. A guest gets **40**; signing in adds **60** and moves the guest's unused
+One answer from the student uses one free answer. A guest gets **100**; signing in adds **60** and moves the guest's unused
 answers over; then **15 every day**, never above **45**. `DAILY_SPEND_CAP` (default 5000) bounds what everyone together can
 spend in a day, with an alert at 80 % and at 100 %.
 

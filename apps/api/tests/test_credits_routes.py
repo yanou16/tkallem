@@ -65,11 +65,18 @@ def set_balance(db, user_clerk_id, n):
 
 # ---- creating guests -----------------------------------------------------------------------------------------
 
-def test_guest_creation_returns_a_token_and_40_credits(client):
+def test_guest_creation_returns_a_token_and_the_guest_credits(client):
     r = client.post("/guests")
     assert r.status_code == 201
     body = r.json()
-    assert guests.verify(body["guest_token"]) and body["credits"] == {"balance": 40, "next_refill_at": None}
+    assert guests.verify(body["guest_token"]) and body["credits"] == {"balance": settings.guest_credits, "next_refill_at": None}
+
+
+def test_a_guest_is_explained_in_english_first_and_has_a_generous_balance_for_a_jury(client):
+    body = client.post("/guests").json()
+    me = client.get("/me", headers={"Authorization": f"Guest {body['guest_token']}"}).json()
+    assert me["explain_lang"] == "en" and me["is_guest"] is True  # a jury may read English only; the switch stays on every screen
+    assert settings.guest_credits >= 100 and settings.guest_ip_daily_cap >= 100  # a group behind one network can test freely
 
 
 def test_guest_mode_is_off_without_a_secret(client, monkeypatch):
@@ -107,9 +114,9 @@ def test_a_guest_practises_and_each_answer_costs_one_credit(client):
     assert me["is_guest"] is True
     sid = start(client, h)
     first = answer(client, sid, h)
-    assert first.status_code == 200 and first.json()["credits"] == {"balance": 39, "next_refill_at": None}
-    assert answer(client, sid, h, "I like it.").json()["credits"]["balance"] == 38
-    assert client.get("/me/credits", headers=h).json()["balance"] == 38
+    assert first.status_code == 200 and first.json()["credits"] == {"balance": settings.guest_credits - 1, "next_refill_at": None}
+    assert answer(client, sid, h, "I like it.").json()["credits"]["balance"] == settings.guest_credits - 2
+    assert client.get("/me/credits", headers=h).json()["balance"] == settings.guest_credits - 2
 
 
 def test_forged_or_foreign_guest_tokens_are_refused(client):
@@ -137,9 +144,9 @@ def test_a_failed_answer_is_refunded(client, db):
     sid = start(client, h)
     app.dependency_overrides[get_llm] = lambda: FakeChat(found=[NONE], replies=[RuntimeError("provider down")])
     assert answer(client, sid, h).status_code == 502
-    assert client.get("/me/credits", headers=h).json()["balance"] == 40
+    assert client.get("/me/credits", headers=h).json()["balance"] == settings.guest_credits
     assert answer(client, sid, h, "   ").status_code == 422                # empty answer: refunded too
-    assert client.get("/me/credits", headers=h).json()["balance"] == 40
+    assert client.get("/me/credits", headers=h).json()["balance"] == settings.guest_credits
 
 
 def test_a_failed_transcription_is_refunded(client, db, monkeypatch):
@@ -152,7 +159,7 @@ def test_a_failed_transcription_is_refunded(client, db, monkeypatch):
     _, h = new_guest(client)
     sid = start(client, h)
     r = client.post(f"/sessions/{sid}/turn", files={"audio": ("a.webm", b"x", "audio/webm")}, headers=h)
-    assert r.status_code == 502 and client.get("/me/credits", headers=h).json()["balance"] == 40
+    assert r.status_code == 502 and client.get("/me/credits", headers=h).json()["balance"] == settings.guest_credits
 
 
 def test_the_daily_budget_returns_429_and_spends_nothing(client, monkeypatch):
@@ -162,7 +169,7 @@ def test_the_daily_budget_returns_429_and_spends_nothing(client, monkeypatch):
     r = answer(client, sid, h)
     assert r.status_code == 429 and r.json()["detail"]["code"] == "daily_budget_reached"
     monkeypatch.setattr(settings, "daily_spend_cap", 10**6)
-    assert client.get("/me/credits", headers=h).json()["balance"] == 40
+    assert client.get("/me/credits", headers=h).json()["balance"] == settings.guest_credits
 
 
 # ---- signing in ---------------------------------------------------------------------------------------------------
@@ -177,13 +184,13 @@ def test_signed_in_student_has_60_credits_and_a_refill_date(client):
 def test_claiming_a_guest_brings_its_credits_and_sessions(client, db):
     token, h = new_guest(client)
     sid = start(client, h)
-    answer(client, sid, h)                                                  # 39 left
+    answer(client, sid, h)                                                  # guest_credits - 1 left
     as_signed_in("user_claimer")
     r = client.post("/me/claim-guest", json={"guest_token": token})
-    assert r.status_code == 200 and r.json()["transferred"] == 39 and r.json()["credits"]["balance"] == 60 + 39
+    assert r.status_code == 200 and r.json()["transferred"] == settings.guest_credits - 1 and r.json()["credits"]["balance"] == settings.login_bonus + settings.guest_credits - 1
     assert client.get("/me/sessions").json()[0]["session_id"] == sid        # the practice history followed
     again = client.post("/me/claim-guest", json={"guest_token": token})
-    assert again.json()["transferred"] == 0 and again.json()["credits"]["balance"] == 99
+    assert again.json()["transferred"] == 0 and again.json()["credits"]["balance"] == settings.login_bonus + settings.guest_credits - 1
 
 
 def test_claim_endpoint_rules(client):

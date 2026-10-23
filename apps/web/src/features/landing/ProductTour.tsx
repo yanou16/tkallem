@@ -9,6 +9,7 @@ import {
 } from "@/features/plan/lib/plan";
 import Platform from "./PlatformPages";
 import { Browser, Lit, Pill, R } from "./TourParts";
+import { GUEST_FREE_ANSWERS } from "@/lib/config";
 import {
   INITIAL_PLAN, PAGE_ORDER, PLAN_STEPS, TABS, visibleCallouts, planReducer, planView,
   type Callout, type PlanAction, type PlanDemo, type PlatformPage, type TourTab,
@@ -190,7 +191,7 @@ export default function ProductTour() {
         <Link href="/plan" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-ink px-7 py-3 text-base font-semibold text-white hover:bg-black/80">
           Build my speaking plan <ArrowRight size={18} aria-hidden />
         </Link>
-        <p className="text-sm text-slate">No account needed · 40 free answers</p>
+        <p className="text-sm text-slate">No account needed · {GUEST_FREE_ANSWERS} free answers</p>
       </div>
     </section>
   );
