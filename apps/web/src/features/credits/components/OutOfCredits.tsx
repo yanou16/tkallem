@@ -18,14 +18,14 @@ export default function OutOfCredits({ error, isGuest }: { error: ApiError; isGu
 
   if (error.status === 429 || detail.code === "daily_budget_reached") {
     title = "Today's free practice is used up";
-    text = "A lot of students practiced today. Come back tomorrow, your answers are safe.";
+    text = "A lot of students practised today. Come back tomorrow, your credits are safe.";
   } else if (isGuest) {
     title = "You used your free answers";
-    text = "Create a free account to get 60 more answers, and new answers every day.";
+    text = "Create a free account to get 60 more credits, and new credits every day.";
     cta = { href: "/sign-up", label: "Create a free account" };
   } else {
-    title = "No answers left";
-    text = `New answers arrive ${comeBackText(detail.next_refill_at)}. Keep practicing then.`;
+    title = "No credits left";
+    text = `New credits arrive ${comeBackText(detail.next_refill_at)}. Keep practising then.`;
   }
 
   return (

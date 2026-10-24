@@ -183,3 +183,13 @@ def test_other_user_cannot_list_the_turns(db, session_id):
     other = get_or_create_by_clerk_id(db, "user_someone_else")
 
     assert list_turns(db, session_id, other["id"]) == []
+
+def test_save_turn_keeps_multiple_corrections_for_one_answer(db, user, session_id):
+    fixes = [
+        {"original": "dai", "fixed": "day", "type": "vocabulary", "why": "Spelling: day.", "rule": "other"},
+        {"original": "were", "fixed": "was", "type": "grammar", "why": "Day is singular.", "rule": "subject_verb_agreement"},
+    ]
+    save_turn(db, session_id, STATE, "my dai were good", "What did you do?", "orange", None, fixes, expected_turns=0)
+    turns = list_turns(db, session_id, user["id"])
+    assert len(turns) == 1
+    assert sorted(turns[0]["corrections"], key=lambda c: c["original"]) == sorted(fixes, key=lambda c: c["original"])

@@ -1,4 +1,4 @@
-/** DESIGN.md: each pastel carries one scenario meaning, never decoration. Visa interviews (travel), admission
+/** DESIGN.md: each pastel carries one scenario meaning, never decoration. Visa interviews (travel), Campus France
  *  (study), remote job (work) and IELTS (exams) get their tint; any other scenario sits on the quiet surface. */
 const TINT: Record<string, string> = {
   travel: "bg-tint-visa",

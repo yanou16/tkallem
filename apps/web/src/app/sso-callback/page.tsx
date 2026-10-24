@@ -8,7 +8,8 @@ export default function SSOCallbackPage() {
       signUpUrl="/sign-up"
       continueSignUpUrl="/sso-callback/continue"
       signInFallbackRedirectUrl="/"
-      signUpFallbackRedirectUrl="/"
+      signUpForceRedirectUrl="/plan"
+      signUpFallbackRedirectUrl="/plan"
     />
   );
 }

@@ -2,11 +2,15 @@
 """Tkallem — Pipecat WebRTC voice pipeline."""
 
 import asyncio
+from contextlib import aclosing
 import io
 import logging
 import struct
 import uuid
 import wave
+
+import httpx
+from collections import deque
 from datetime import datetime, timezone
 from typing import AsyncGenerator
 from uuid import UUID
@@ -61,6 +65,7 @@ from app.db.connection import ConnFactory
 from app.db.sessions import save_turn
 from app.voice.stt import transcribe
 from app.voice.tts import Speech, synthesize, TtsError
+from app.voice.tts_stream import stream_speech
 
 logger = logging.getLogger(__name__)
 
@@ -226,7 +231,9 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
         self.rtvi = rtvi
 
         self._current_speech_task = None
+        self._tts_client = None
         self._current_turn_task = None
+        self._pending_transcriptions = deque()
         self._background_tasks = set()
         self._is_speaking = False
 
@@ -267,56 +274,20 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
 
             logger.info("TTS started: %s", text)
 
-            speech: Speech = await asyncio.to_thread(
-                synthesize,
-                text,
-            )
-
-            audio = (
-                getattr(speech, "audio", None)
-                or getattr(speech, "audio_bytes", None)
-            )
-
-            if not audio:
-                raise RuntimeError(
-                    "TTS returned no audio"
-                )
-
-            pcm = audio_bytes_to_pcm16(
-                audio,
-                target_sr=16000,
-            )
-
-            if not pcm:
-                raise RuntimeError(
-                    "TTS audio could not be decoded"
-                )
-
-            chunk_size = 640
-
-            for index in range(0, len(pcm), chunk_size):
-                if not self._is_speaking:
-                    break
-
-                chunk = pcm[
-                    index:index + chunk_size
-                ]
-
-                if len(chunk) < chunk_size:
-                    chunk = chunk.ljust(
-                        chunk_size,
-                        b"\x00",
-                    )
-
-                await self.push_frame(
-                    TTSAudioRawFrame(
-                        audio=chunk,
-                        sample_rate=16000,
-                        num_channels=1,
-                    )
-                )
-
-                await asyncio.sleep(0)
+            # The async generator owns the provider connection. Closing it on
+            # interruption stops the HTTP download and discards pending samples.
+            if self._tts_client is None:
+                self._tts_client = httpx.AsyncClient()
+            async with aclosing(stream_speech(text, client=self._tts_client)) as stream:
+                async for pcm in stream:
+                    for index in range(0, len(pcm), 640):
+                        if not self._is_speaking:
+                            return
+                        chunk = pcm[index:index + 640]
+                        await self.push_frame(TTSAudioRawFrame(
+                            audio=chunk, sample_rate=16000, num_channels=1,
+                        ))
+                        await asyncio.sleep(0)
 
             logger.info("TTS audio queued successfully")
 
@@ -356,11 +327,17 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
         self._current_speech_task = None
 
     def start_speaking(self, text: str):
+        previous = self._current_speech_task
         self.interrupt_speech()
 
-        task = asyncio.create_task(
-            self.speak_text(text)
-        )
+        async def replace_speech():
+            # Finish closing the old stream before its finally block can reset
+            # speaking state or send a stop frame for the new utterance.
+            if previous:
+                await asyncio.gather(previous, return_exceptions=True)
+            await self.speak_text(text)
+
+        task = asyncio.create_task(replace_speech())
 
         self._current_speech_task = task
         self._track_task(task)
@@ -462,24 +439,27 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
         goal_covered = None
 
         try:
-            # Existing LangGraph / CoachSession logic.
-            def get_events():
-                return list(
-                    self.coach.turn_events(text)
-                )
-
-            events = await asyncio.to_thread(
-                get_events
-            )
-
-            for event in events:
+            # Advance the synchronous graph one event at a time off the event
+            # loop. Collecting it into a list delayed speech until correction ended.
+            events = iter(self.coach.turn_events(text))
+            end = object()
+            completed = False
+            while True:
+                event = await asyncio.to_thread(next, events, end)
+                if event is end:
+                    break
                 event_type = event.get("type")
 
                 if event_type == "reply":
-                    reply_text = event.get(
-                        "reply",
-                        "",
-                    )
+                    if not reply_text:
+                        reply_text = event.get("reply", "")
+                        if reply_text:
+                            await self.send_event({
+                                "type": "bot_transcript",
+                                "text": reply_text,
+                                "utterance_id": utterance_id,
+                            })
+                            self.start_speaking(reply_text)
 
                 elif event_type == "corrections":
                     corrections = event.get(
@@ -493,45 +473,21 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
 
                 elif event_type == "done":
                     turn = event.get("turn")
+                    completed = turn is not None
 
                     if turn:
                         goal_covered = (
                             turn.goal_covered
                         )
 
-            if not reply_text:
-                reply_text = (
-                    "I see. Let's continue."
-                )
+            if not completed or not reply_text:
+                raise RuntimeError("Voice turn ended without a complete coach response")
 
-            logger.info(
-                "LLM response: %s",
-                reply_text,
+            # Persist before processing another queued answer against the same session.
+            await self.save_correction(
+                utterance_id, text, reply_text, corrections,
+                sentence_status, goal_covered, expected_turns,
             )
-
-            # Send text to the frontend immediately.
-            await self.send_event({
-                "type": "bot_transcript",
-                "text": reply_text,
-                "utterance_id": utterance_id,
-            })
-
-            # Start audio generation automatically.
-            self.start_speaking(reply_text)
-
-            # Save conversation separately.
-            task = asyncio.create_task(
-                self.save_correction(
-                    utterance_id,
-                    text,
-                    reply_text,
-                    corrections,
-                    sentence_status,
-                    goal_covered,
-                    expected_turns,
-                )
-            )
-            self._track_task(task)
 
         except asyncio.CancelledError:
             raise
@@ -540,6 +496,13 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
             logger.exception(
                 "Voice conversation failed"
             )
+
+            # A reply can already be audible when the corrector fails. Stop it
+            # and report the failed turn instead of leaving an unsaved answer.
+            speech_task = self._current_speech_task
+            self.interrupt_speech()
+            if speech_task:
+                await asyncio.gather(speech_task, return_exceptions=True)
 
             try:
                 with self.connect() as conn:
@@ -635,23 +598,7 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
             text = frame.text.strip()
 
             if text:
-                # Do not block frame propagation
-                # with a slow LLM request.
-                if (
-                    self._current_turn_task
-                    and not self._current_turn_task.done()
-                ):
-                    logger.warning(
-                        "Previous turn still processing"
-                    )
-                    return
-
-                task = asyncio.create_task(
-                    self.handle_transcription(text)
-                )
-
-                self._current_turn_task = task
-                self._track_task(task)
+                self.queue_transcription(text)
 
             return
 
@@ -661,6 +608,18 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
             frame,
             direction,
         )
+
+    def queue_transcription(self, text: str):
+        """Keep later speech while the preceding answer is being corrected and saved."""
+        self._pending_transcriptions.append(text)
+        if self._current_turn_task and not self._current_turn_task.done():
+            return
+        self._current_turn_task = asyncio.create_task(self._drain_transcriptions())
+        self._track_task(self._current_turn_task)
+
+    async def _drain_transcriptions(self):
+        while self._pending_transcriptions:
+            await self.handle_transcription(self._pending_transcriptions.popleft())
 
     async def cleanup(self):
         self.interrupt_speech()
@@ -675,6 +634,9 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
                 return_exceptions=True,
             )
 
+        if self._tts_client is not None:
+            await self._tts_client.aclose()
+            self._tts_client = None
         await super().cleanup()
 
 
@@ -699,7 +661,7 @@ def build_voice_pipeline(
         params=VADParams(
             confidence=0.65,
             min_volume=0.1,
-            stop_secs=0.8,
+            stop_secs=settings.voice_turn_silence_secs,
             start_secs=0.2,
         )
     )

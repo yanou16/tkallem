@@ -12,7 +12,7 @@ export type Callout = { id: string; label: string; detail: string; side: "left" 
 export const TABS: { id: TourTab; label: string; title: string; text: string }[] = [
   { id: "platform", label: "The platform", title: "Everything in one place", text: "What a student sees after signing up: the plan, the situations, the progress." },
   { id: "plan", label: "Your plan", title: "Five questions, then your order", text: "Answer them in the preview: the order of the situations changes with your goal." },
-  { id: "voice", label: "Voice", title: "Say it out loud, hear the coach answer", text: "Tap the microphone and answer. The coach replies in a natural voice." },
+  { id: "voice", label: "Voice", title: "Say it out loud, hear the coach answer", text: "Start a call, then speak naturally. This miniature is a demonstration without microphone access." },
 ];
 
 export const CALLOUTS: Record<Exclude<TourTab, "platform">, Callout[]> = {
@@ -25,10 +25,10 @@ export const CALLOUTS: Record<Exclude<TourTab, "platform">, Callout[]> = {
     { id: "order", label: "The order of your situations", detail: "The situations are the same for everyone: your answers decide which come first.", side: "right", region: "order" },
   ],
   voice: [
-    { id: "mic", label: "Tap to speak", detail: "One tap to record, one tap to send.", side: "left", region: "mic" },
+    { id: "mic", label: "Start a voice call", detail: "Start the call, then speak naturally. This preview never accesses your microphone.", side: "left", region: "mic" },
     { id: "state", label: "You always know what is happening", detail: "Listening, Thinking, Speaking: one label at a time.", side: "left", region: "state" },
-    { id: "transcript", label: "Your words, written", detail: "Your speech is transcribed and corrected like a typed answer.", side: "right", region: "transcript" },
-    { id: "backup", label: "A voice that never fails", detail: "If a provider is down, another takes over, then your browser's voice.", side: "right", region: "backup" },
+    { id: "transcript", label: "Live corrections", detail: "Review the original phrase, the corrected version and an explanation.", side: "right", region: "transcript" },
+    { id: "backup", label: "A safe preview", detail: "Try the demonstration without recording or spending credits.", side: "right", region: "backup" },
   ],
 };
 
@@ -56,9 +56,9 @@ export const PAGE_CALLOUTS: Record<PlatformPage, Callout[]> = {
     c("kpi", "Progress that is measured", "Mistakes per 100 words, practice time and streak, from your own sessions.", "left"),
     c("plan", "Your plan, in order", "The situations that match your goal come first.", "left"),
     c("situations", "Real situations", "Visa, university admission, job, IELTS and everyday scenes like the taxi or renting a room.", "left"),
-    c("credits", "Free to try", "Guests get 100 free answers. No account needed.", "right"),
+    c("credits", "Free to try", "Guests get 40 free answers. No account needed.", "right"),
     c("goal", "Today's goal", "Your daily minutes of speaking, as a ring.", "right"),
-    c("real", "Real interview mode", "Nothing is corrected until the end, like the real one.", "right"),
+    c("real", "Start a situation", "Choose a scenario to open the conversation in this demonstration.", "right"),
     c("mistakes", "Your top mistakes", "What to work on next, from your last sessions.", "right"),
     c("recent", "Recent sessions", "Continue where you stopped, or do it again.", "right"),
   ],
@@ -77,14 +77,14 @@ export const PAGE_CALLOUTS: Record<PlatformPage, Callout[]> = {
     c("answer", "Type or speak", "Answer the way you prefer. Two free hints per question.", "right"),
   ],
   progress: [
+    c("nav", "Explore your pages", "Switch between the current app screens.", "left"),
     c("metrics", "Numbers, not feelings", "Mistakes, words per answer and hesitations, session after session.", "left"),
-    c("freeze", "Time before you speak", "The seconds between the question and your first word: the freeze, made visible.", "left"),
-    c("confidence", "How confident you feel", "You rate it before and after each session.", "right"),
+    c("voice", "Your voice metrics", "Hesitations and speaking time from your spoken answers.", "left"),
     c("top", "Your top mistakes", "The rules you break most often, with your own sentences.", "right"),
   ],
   profile: [
     c("setup", "Your learning setup", "Level, goal, daily minutes and focus, filled by your plan.", "left"),
-    c("lang", "Explained your way", "Corrections come in English or French, as you prefer.", "left"),
+    c("lang", "Your explanation language", "Corrections come in French or simple English, as you prefer.", "left"),
     c("focus", "What the coach keeps in mind", "The two things you said are hardest.", "right"),
     c("badges", "Badges to unlock", "First session, a streak, a spoken session.", "right"),
   ],
@@ -93,7 +93,7 @@ export const PAGE_REGIONS: Record<PlatformPage, string[]> = {
   home: ["nav", "kpi", "plan", "situations", "credits", "goal", "real", "mistakes", "recent"],
   practice: ["planlink", "grid", "real", "recent"],
   chat: ["mode", "question", "help", "feedback", "again", "answer"],
-  progress: ["metrics", "freeze", "confidence", "top"],
+  progress: ["nav", "metrics", "voice", "top"],
   profile: ["setup", "lang", "focus", "badges"],
 };
 /** The captions of what is on screen: the page for the platform tab, the tab otherwise. */

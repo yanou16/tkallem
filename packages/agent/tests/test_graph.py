@@ -174,3 +174,16 @@ def test_coach_retries_after_any_output_error():
     assert run(llm)["turn"].reply.startswith("Good") and llm.calls["Reply"] == 2
     llm = FakeChat([NONE], [RuntimeError("x"), RuntimeError("x")])
     assert "turn" not in run(llm)
+
+
+def test_missing_corrector_payload_retries_instead_of_marking_clean():
+    import pytest
+    with pytest.raises(ValueError, match="invalid corrector response"):
+        run(FakeChat([{}, {}], [GOOD]))
+
+
+def test_shared_corrector_requests_spelling_checks_and_preserves_names():
+    from tkallem_agent.graph import CORRECTOR_PROMPT
+    assert "'helo' becomes 'hello'" in CORRECTOR_PROMPT
+    assert "'hallo'" in CORRECTOR_PROMPT
+    assert "Preserve proper names" in CORRECTOR_PROMPT

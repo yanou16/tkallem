@@ -20,10 +20,10 @@ export const MAX_FOCUS = 2;
 
 /** `label` is what the profile stores in learning_goal, `first` the situations to practice first, in order. */
 export const GOALS: { id: GoalId; label: string; first: string[] }[] = [
-  { id: "visa", label: "Pass a visa interview", first: ["visa-us", "airport", "taxi", "renting-a-room"] },
-  { id: "study", label: "Study abroad (admission, visa, life on campus)", first: ["university-admission", "visa-us", "renting-a-room", "free-talk"] },
+  { id: "visa", label: "Pass a visa interview", first: ["visa-us", "visa-business", "airport", "taxi"] },
+  { id: "study", label: "Study abroad (Campus France, university)", first: ["campus-france", "visa-us", "cafe", "free-talk"] },
   { id: "job", label: "Get a job or work remotely", first: ["job-remote", "free-talk", "cafe", "shop"] },
-  { id: "ielts", label: "Prepare for IELTS Speaking", first: ["ielts-part2", "free-talk", "university-admission", "cafe"] },
+  { id: "ielts", label: "Prepare for IELTS Speaking", first: ["ielts-part2", "free-talk", "campus-france", "cafe"] },
   { id: "daily", label: "Speak English in daily life and travel", first: ["taxi", "shop", "cafe", "airport"] },
 ];
 
@@ -91,15 +91,6 @@ export function planOrder<T extends Orderable>(list: T[], goal: GoalId | null, i
     return liked.has(s.category ?? "") ? first.length : first.length + 1;
   };
   return list.map((s, i) => ({ s, i })).sort((a, b) => rank(a.s) - rank(b.s) || a.i - b.i).map((x) => x.s);
-}
-
-/** The situation the product is about. The API lists situations alphabetically, so without a plan it would be the fourth card. */
-export const FEATURED_SCENARIO = "visa-us";
-
-/** The featured situation first, the others in their order. A list without it is returned as it is. */
-export function featuredFirst<T extends { id: string }>(list: T[]): T[] {
-  const i = list.findIndex((s) => s.id === FEATURED_SCENARIO);
-  return i <= 0 ? list : [list[i], ...list.slice(0, i), ...list.slice(i + 1)];
 }
 
 /** The path shown at the end: guided situations only (free talk has no goal), at most four. */

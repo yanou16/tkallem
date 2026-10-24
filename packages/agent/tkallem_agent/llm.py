@@ -48,7 +48,14 @@ def get_llm(provider: str | None = None, model: str | None = None, *, timeout: f
         from langchain_openai import ChatOpenAI
 
         sort = os.getenv("OPENROUTER_PROVIDER_SORT", "latency")  # route to the fastest host of the model ("" = default)
-        extra = {"extra_body": {"provider": {"sort": sort}}} if sort else {}
+        routing = {"sort": sort} if sort else {}
+        preferred = [name.strip() for name in os.getenv("OPENROUTER_PROVIDER_ORDER", "").split(",") if name.strip()]
+        if preferred:
+            # Try configured hosts in order, with failover within that list.
+            # Do not route to a retired host outside the deployment's list.
+            # Strict require_parameters rejects SDK parameter aliases on some hosts.
+            routing.update(order=preferred, only=preferred, allow_fallbacks=True)
+        extra = {"extra_body": {"provider": routing}} if routing else {}
         return ChatOpenAI(base_url="https://openrouter.ai/api/v1", api_key=os.environ["OPENROUTER_API_KEY"], **common, **extra)
     raise ValueError(f"unknown LLM provider: {provider}")
 

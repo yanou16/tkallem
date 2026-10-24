@@ -63,7 +63,7 @@ describe("the plan preview", () => {
     const daily = planView({ ...INITIAL_PLAN, goal: "daily" }).path.map((s) => s.id);
     expect(daily).toEqual(["taxi", "shop", "cafe", "airport"]);
     const visa = planView(INITIAL_PLAN).path.map((s) => s.id);
-    expect(visa).toEqual(["visa-us", "airport", "taxi", "renting-a-room"]);
+    expect(visa).toEqual(["visa-us", "airport", "taxi", "cafe"]);
     const ielts = planView({ ...INITIAL_PLAN, goal: "ielts" }).path;
     expect(ielts[0].id).toBe("ielts-part2");
     expect(ielts.every((s) => s.mode === "guided")).toBe(true);

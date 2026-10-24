@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     stt_provider: str = "groq,deepinfra"  # backup chain, first one tried first: groq | deepinfra
     tts_provider: str = "groq,deepinfra"  # backup chain: groq (Orpheus, limited to 100 voices/day) | deepinfra (Kokoro, needs a balance)
     deepinfra_api_key: str = ""
+    voice_turn_silence_secs: float = Field(1.8, ge=0.5, le=5.0)  # allow learner hesitation before ending a turn
     voice_timeout: float = 20.0  # speech to text (the recording is uploaded, then transcribed)
     tts_compress: bool = True  # send the coach's voice as MP3 instead of WAV (8x smaller); TTS_COMPRESS=false goes back to WAV at once
     tts_mp3_kbps: int = Field(64, ge=24, le=128)

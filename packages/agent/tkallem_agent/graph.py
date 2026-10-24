@@ -21,7 +21,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 
 from .explain import render
 from .levels import LEVEL_RULES, MAX_WORDS
@@ -80,7 +80,7 @@ class Reply(BaseModel):
 
 
 class Found(BaseModel):
-    corrections: list[Correction] = []
+    corrections: list[Correction] = Field(default_factory=list, description="All clear independent spelling AND grammar mistakes across the entire message, up to 3. One item per mistake, not just the first or highest-priority mistake.")
     changes_meaning: bool = False  # one mistake changes what the student meant: the sentence is red (spec)
     praise: str | None = None  # one short true positive about the answer (checked by schemas.praise_problem)
     priority_index: int = 0  # the correction that matters most for being understood
@@ -264,6 +264,8 @@ def build_graph(llm: BaseChatModel):
         for attempt in range(MAX_RETRIES + 1):
             try:
                 raw = hedged_invoke(corrector, messages, config)
+                if not isinstance(raw, dict) or not isinstance(raw.get("corrections"), list):
+                    raise ValueError("invalid corrector response")
                 break
             except Exception:  # unparseable or runaway output, provider error: one more try, then the turn fails
                 if attempt == MAX_RETRIES:
