@@ -26,6 +26,7 @@ from app.voice.errors import provider_message
 GROQ_MAX_CHARS = 190  # the documented limit is 200
 GROQ_VOICE = "hannah"  # autumn, diana, hannah, austin, daniel, troy
 PRICE_PER_MILLION_CHARS = {"deepinfra": 0.99, "groq": 22.0}  # USD, from the providers' pages (October 2026)
+MP3_MIME = "audio/mpeg"
 
 
 class TtsError(RuntimeError):
@@ -46,6 +47,7 @@ class Speech:
     latency_s: float  # until the whole reply is ready
     first_part_s: float  # until the first part is ready: when the voice can start
     part_latencies: list[float] = field(default_factory=list)
+    _playable: tuple[bytes, str] | None = field(default=None, init=False, repr=False, compare=False)
 
     @property
     def audio(self) -> bytes:
@@ -53,9 +55,27 @@ class Speech:
         return merge_wav(self.parts) if self.mime == "audio/wav" else self.parts[0]  # also repairs a streaming header
 
     @property
+    def playable(self) -> tuple[bytes, str]:
+        """(bytes, mime) of what the front receives. Groq only speaks WAV (about 48 KB per second of voice), which is
+        400 KB for one reply: two seconds of download on a 3G phone. The reply is sent as a 64 kbps MP3 instead (about 8 KB
+        per second), which every browser plays. If the encoding cannot be done, the WAV goes out unchanged: the voice
+        never fails because of the compression."""
+        if self._playable is None:
+            wav_audio = self.mime == "audio/wav"
+            if wav_audio and settings.tts_compress:
+                try:
+                    self._playable = (encode_mp3(self.audio, settings.tts_mp3_kbps), MP3_MIME)
+                except (TtsError, ImportError, ValueError, RuntimeError):
+                    self._playable = (self.audio, self.mime)
+            else:
+                self._playable = (self.audio, self.mime)
+        return self._playable
+
+    @property
     def data_uri(self) -> str:
         """The audio as a `data:` URL the front can put in `<audio src>`: nothing is stored on the server."""
-        return f"data:{self.mime};base64,{base64.b64encode(self.audio).decode()}"
+        data, mime = self.playable
+        return f"data:{mime};base64,{base64.b64encode(data).decode()}"
 
     @property
     def cost_usd(self) -> float:
@@ -100,6 +120,21 @@ def merge_wav(parts: list[bytes]) -> bytes:
         for f in frames:
             w.writeframes(f)
     return out.getvalue()
+
+
+def encode_mp3(wav: bytes, kbps: int = 64) -> bytes:
+    """A mono or stereo 16-bit PCM WAV as an MP3 (LAME, constant bit rate)."""
+    import lameenc  # imported here: a missing wheel only turns the compression off, it does not stop the API
+
+    (channels, width, rate), pcm = _wav_pcm(wav)
+    if width != 2 or channels not in (1, 2):
+        raise TtsError("only 16-bit mono or stereo WAV can be compressed")
+    encoder = lameenc.Encoder()
+    encoder.set_bit_rate(kbps)
+    encoder.set_in_sample_rate(rate)
+    encoder.set_channels(channels)
+    encoder.set_quality(5)  # LAME default: 4 times faster than 2 (about 4 ms per second of voice) for the same size and no audible difference on speech
+    return bytes(encoder.encode(pcm)) + bytes(encoder.flush())
 
 
 def split_text(text: str, limit: int = GROQ_MAX_CHARS) -> list[str]:
