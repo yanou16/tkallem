@@ -38,7 +38,14 @@ def retry_outage(label: str, fn, waits=WAITS, sleep=time.sleep):
     """fn() again after each wait while the provider is down; any other error, or the last outage, is raised."""
     for wait in (*waits, None):
         try:
-            return fn()
+            result = fn()
+            # LangGraph may return a failed state rather than raise. Treat the
+            # same upstream error consistently in both representations.
+            if isinstance(result, dict) and result.get("turn") is None and result.get("error"):
+                error = RuntimeError(str(result["error"]))
+                if provider_down(error):
+                    raise error
+            return result
         except Exception as e:
             if wait is None or not provider_down(e):
                 raise

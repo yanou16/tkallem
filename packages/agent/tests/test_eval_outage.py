@@ -104,3 +104,34 @@ def test_upstream_404_is_retried_but_unknown_model_is_not():
 def test_upstream_404_wrapped_by_coach_is_retried_but_invalid_json_is_not():
     assert provider_down(RuntimeError("no usable output (OpenAIModelNotFoundError)"))
     assert not provider_down(RuntimeError("no usable output (ValidationError)"))
+
+
+def test_retries_provider_failure_returned_as_graph_state():
+    calls = []
+    def invoke():
+        calls.append(1)
+        if len(calls) == 1:
+            return {"error": "no usable output (OpenAIModelNotFoundError)"}
+        return {"turn": "valid turn"}
+    assert retry_outage("s24", invoke, waits=(0,), sleep=lambda _: None) == {"turn": "valid turn"}
+    assert len(calls) == 2
+
+
+def test_graph_validation_failure_is_not_retried():
+    calls = []
+    result = {"error": "no usable output (ValidationError)"}
+    def invoke():
+        calls.append(1)
+        return result
+    assert retry_outage("s24", invoke, waits=(0,), sleep=lambda _: None) == result
+    assert len(calls) == 1
+
+
+def test_persistent_graph_provider_failure_still_fails_after_retry_limit():
+    calls = []
+    def invoke():
+        calls.append(1)
+        return {"error": "no usable output (OpenAIModelNotFoundError)"}
+    with pytest.raises(RuntimeError, match="OpenAIModelNotFoundError"):
+        retry_outage("s24", invoke, waits=(0, 0), sleep=lambda _: None)
+    assert len(calls) == 3
