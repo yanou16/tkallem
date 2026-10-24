@@ -274,3 +274,88 @@ def test_two_turns_arriving_together_at_the_first_use_share_one_client(monkeypat
             clients = list(pool.map(lambda _: module._shared_client(), range(64)))
         assert len({id(c) for c in clients}) == 1, module.__name__
         clients[0].close()
+
+
+# ---- the coach's voice is sent as MP3 (Groq only speaks WAV: 48 KB per second of voice, 400 KB for a reply) ----
+
+def pcm_wav(seconds: float = 2.0, rate: int = 24000, width: int = 2) -> bytes:
+    """A real, non-silent WAV (a sweeping tone), so the encoder has something to compress."""
+    import io
+    import math
+    import struct
+    import wave
+
+    n = int(seconds * rate)
+    samples = b"".join(struct.pack("<h", int(8000 * math.sin(2 * math.pi * (200 + 80 * math.sin(i / 7000)) * i / rate))) for i in range(n))
+    if width == 1:
+        samples = bytes(b >> 8 for b in samples[1::2])
+    out = io.BytesIO()
+    with wave.open(out, "wb") as w:
+        w.setnchannels(1), w.setsampwidth(width), w.setframerate(rate)
+        w.writeframes(samples)
+    return out.getvalue()
+
+
+def groq_speech(*wavs: bytes):
+    from app.voice.tts import Speech
+
+    return Speech(list(wavs), "audio/wav", "groq", 20, 1.0, 1.0, [1.0])
+
+
+def test_a_wav_reply_goes_out_as_a_much_smaller_mp3():
+    wav = pcm_wav()
+    s = groq_speech(wav)
+    data, mime = s.playable
+    assert mime == "audio/mpeg" and s.data_uri.startswith("data:audio/mpeg;base64,")
+    assert data[:3] == b"ID3" or data[0] == 0xFF and data[1] & 0xE0 == 0xE0  # an MP3 stream: a tag or a frame sync
+    assert len(data) * 4 < len(wav)  # at 64 kbps against 384 kbps it is 6 times smaller
+
+
+def test_several_wav_parts_become_one_mp3_of_the_whole_reply():
+    one = groq_speech(pcm_wav(1.0)).playable[0]
+    three = groq_speech(pcm_wav(1.0), pcm_wav(1.0), pcm_wav(1.0)).playable[0]
+    assert 2.5 * len(one) < len(three) < 3.5 * len(one)
+
+
+def test_compression_can_be_switched_off_without_a_deploy(monkeypatch):
+    monkeypatch.setattr(settings, "tts_compress", False)
+    s = groq_speech(pcm_wav())
+    assert s.playable[1] == "audio/wav" and s.data_uri.startswith("data:audio/wav;base64,")
+
+
+def test_the_voice_never_fails_because_of_the_compression(monkeypatch):
+    from app.voice import tts
+
+    def broken(*a, **k):
+        raise RuntimeError("encoder crashed")
+
+    monkeypatch.setattr(tts, "encode_mp3", broken)
+    assert groq_speech(pcm_wav()).playable[1] == "audio/wav"  # the WAV goes out unchanged
+    monkeypatch.undo()
+    assert groq_speech(pcm_wav(width=1)).playable[1] == "audio/wav"  # a format the encoder does not take (8 bits) too
+
+
+def test_a_missing_encoder_only_turns_the_compression_off(monkeypatch):
+    import sys
+
+    monkeypatch.setitem(sys.modules, "lameenc", None)  # `import lameenc` now raises ImportError
+    assert groq_speech(pcm_wav()).playable[1] == "audio/wav"
+
+
+def test_a_provider_that_already_sends_mp3_is_not_touched():
+    from app.voice.tts import Speech
+
+    mp3 = b"\xff\xfb\x90\x00" + b"\x00" * 64
+    s = Speech([mp3], "audio/mpeg", "deepinfra", 5, 1.0, 1.0, [1.0])
+    assert s.playable == (mp3, "audio/mpeg")
+
+
+def test_the_encoding_is_done_once_per_reply(monkeypatch):
+    from app.voice import tts
+
+    calls = []
+    real = tts.encode_mp3
+    monkeypatch.setattr(tts, "encode_mp3", lambda wav, kbps=64: calls.append(1) or real(wav, kbps))
+    s = groq_speech(pcm_wav(0.5))
+    s.data_uri, s.data_uri, s.playable
+    assert len(calls) == 1

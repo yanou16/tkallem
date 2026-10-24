@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     tts_provider: str = "groq,deepinfra"  # backup chain: groq (Orpheus, limited to 100 voices/day) | deepinfra (Kokoro, needs a balance)
     deepinfra_api_key: str = ""
     voice_timeout: float = 20.0  # speech to text (the recording is uploaded, then transcribed)
+    tts_compress: bool = True  # send the coach's voice as MP3 instead of WAV (8x smaller); TTS_COMPRESS=false goes back to WAV at once
+    tts_mp3_kbps: int = Field(64, ge=24, le=128)
     tts_timeout: float = 5.0  # the coach's voice must start soon: after this many seconds the next provider (or the browser's own voice, at once) takes over
     voice_connect_timeout: float = 3.0  # a provider that cannot be reached in 3 s is retried once, then the next one answers
     database_url: str = ""

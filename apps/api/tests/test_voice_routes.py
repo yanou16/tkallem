@@ -71,8 +71,9 @@ def send_audio(client, sid, data=b"RIFF-audio", name="answer.webm", ctype="audio
 def test_voice_session_speaks_the_first_question(client, db):
     body = start(client, db, "voice").json()
     uri = body["first_question"]["audio_url"]
-    assert uri.startswith("data:audio/wav;base64,")
-    assert wave.open(io.BytesIO(base64.b64decode(uri.split(",", 1)[1]))).getframerate() == 24000
+    assert uri.startswith("data:audio/mpeg;base64,")
+    mp3 = base64.b64decode(uri.split(",", 1)[1])
+    assert mp3[:3] == b"ID3" or (mp3[0] == 0xFF and mp3[1] & 0xE0 == 0xE0)  # an MP3 stream, not the provider's WAV
 
 
 def test_text_session_has_no_audio(client, db):
@@ -86,7 +87,7 @@ def test_spoken_answer_is_transcribed_corrected_and_answered_with_a_voice(client
     body = r.json()
     assert body["transcript"] == "I go to the US for study."
     assert body["corrections"][0]["fixed"] == "to study" and body["sentence_status"] == "orange"
-    assert body["reply_audio_url"].startswith("data:audio/wav;base64,")
+    assert body["reply_audio_url"].startswith("data:audio/mpeg;base64,")
     state = db.execute("SELECT state FROM practice_sessions WHERE id = %s", (UUID(sid),)).fetchone()["state"]
     assert state["turns"][0]["audio_seconds"] == 2.4 and state["turns"][0]["pauses"] == 0
 
@@ -103,7 +104,7 @@ def test_long_pauses_measured_on_the_audio_are_stored_as_hesitations(client, db,
 def test_spoken_answer_in_a_text_session_still_gets_a_voice_reply(client, db):
     sid = start(client, db, "text").json()["session_id"]
     body = send_audio(client, sid).json()
-    assert body["transcript"] and body["reply_audio_url"].startswith("data:audio/wav")
+    assert body["transcript"] and body["reply_audio_url"].startswith("data:audio/mpeg")
 
 
 def test_voice_failure_never_fails_the_turn(client, db, monkeypatch):
@@ -168,7 +169,7 @@ def test_streaming_wav_header_is_repaired_with_the_right_duration():
     w = wave.open(io.BytesIO(fixed))  # the stdlib reader would fail or lie on the original
     assert w.getnframes() == 24000 and w.getframerate() == 24000 and w.getnchannels() == 1
     assert struct.unpack("<I", fixed[4:8])[0] == len(fixed) - 8
-    assert Speech([streaming_wav(24000)], "audio/wav", "groq", 5, 1, 1, [1]).data_uri.startswith("data:audio/wav;base64,")
+    assert Speech([streaming_wav(24000)], "audio/wav", "groq", 5, 1, 1, [1]).data_uri.startswith("data:audio/mpeg;base64,")
 
 
 def test_merge_wav_joins_parts_and_rejects_mixed_formats():
@@ -189,10 +190,10 @@ def test_switching_to_voice_speaks_the_last_coach_line_and_makes_replies_spoken(
 
     first = load_scenario("visa-us").questions[0]
     assert body["text"] == first and spoken == [first]
-    assert body["audio_url"].startswith("data:audio/wav;base64,")
+    assert body["audio_url"].startswith("data:audio/mpeg;base64,")
     assert db.execute("SELECT mode FROM practice_sessions WHERE id = %s", (UUID(sid),)).fetchone()["mode"] == "voice"
     typed = client.post(f"/sessions/{sid}/turn", data={"text": "I go to the US for study."}).json()
-    assert typed["reply_audio_url"].startswith("data:audio/wav")  # a typed answer in a voice session is answered aloud
+    assert typed["reply_audio_url"].startswith("data:audio/mpeg")  # a typed answer in a voice session is answered aloud
 
 
 def test_speak_degrades_to_text_and_is_limited_per_session(client, db, monkeypatch):
@@ -249,7 +250,7 @@ def test_streamed_spoken_answer_sends_each_part_then_done(client, db):
     assert names.index("reply") < names.index("audio")
     data = dict(events)
     assert data["transcript"]["text"] == "I go to the US for study."
-    assert data["audio"]["audio_url"].startswith("data:audio/wav;base64,")
+    assert data["audio"]["audio_url"].startswith("data:audio/mpeg;base64,")
     assert data["corrections"]["corrections"][0]["fixed"] == "to study"
     assert data["done"]["sentence_status"] == "orange" and data["done"]["credits"]["balance"] >= 0
     assert db.execute("SELECT count(*) AS n FROM turns WHERE session_id = %s", (UUID(sid),)).fetchone()["n"] == 1
