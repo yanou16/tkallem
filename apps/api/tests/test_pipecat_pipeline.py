@@ -127,3 +127,73 @@ def test_voice_pause_window_is_configurable_and_validated():
     assert Settings(_env_file=None, voice_turn_silence_secs=1.8).voice_turn_silence_secs == 1.8
     with pytest.raises(ValidationError):
         Settings(_env_file=None, voice_turn_silence_secs=0)
+
+
+def test_voice_reply_starts_before_slow_corrections_and_saves_all_fixes(monkeypatch):
+    import threading
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, MagicMock
+    from uuid import uuid4
+
+    release = threading.Event()
+    fixes = [{"original": "dai", "fixed": "day"}, {"original": "were", "fixed": "was"}]
+    coach = MagicMock()
+    coach.turns = []
+    def events(text):
+        yield {"type": "reply", "reply": "What did you do?"}
+        assert release.wait(3), "correction was never released"
+        yield {"type": "corrections", "corrections": fixes, "sentence_status": "orange"}
+        yield {"type": "done", "turn": SimpleNamespace(goal_covered="day")}
+    coach.turn_events.side_effect = events
+    monkeypatch.setattr(pipecat_pipeline.credits, "spend", MagicMock())
+
+    async def exercise():
+        processor = pipecat_pipeline.TkallemVoiceTurnProcessor(
+            session_id=uuid4(), user={}, coach=coach, connect=MagicMock(), rtvi=MagicMock())
+        reply_sent = asyncio.Event()
+        async def send(payload):
+            if payload["type"] == "bot_transcript":
+                reply_sent.set()
+        processor.send_event = AsyncMock(side_effect=send)
+        processor.start_speaking = MagicMock()
+        processor.save_correction = AsyncMock()
+        task = asyncio.create_task(processor.handle_transcription("my dai were good"))
+        try:
+            await asyncio.wait_for(reply_sent.wait(), 2)
+            processor.start_speaking.assert_called_once_with("What did you do?")
+            processor.save_correction.assert_not_called()
+        finally:
+            release.set()
+            await asyncio.wait_for(task, 3)
+        args = processor.save_correction.call_args.args
+        assert args[1:] == ("my dai were good", "What did you do?", fixes, "orange", "day", 0)
+        processor.save_correction.assert_awaited_once()
+    asyncio.run(exercise())
+
+
+def test_voice_late_graph_failure_stops_speech_and_does_not_save(monkeypatch):
+    from unittest.mock import AsyncMock, MagicMock
+    from uuid import uuid4
+    coach = MagicMock()
+    coach.turns = []
+    def events(text):
+        yield {"type": "reply", "reply": "Hello!"}
+        raise RuntimeError("corrector unavailable")
+    coach.turn_events.side_effect = events
+    monkeypatch.setattr(pipecat_pipeline.credits, "spend", MagicMock())
+    refund = MagicMock()
+    monkeypatch.setattr(pipecat_pipeline.credits, "refund", refund)
+    async def exercise():
+        processor = pipecat_pipeline.TkallemVoiceTurnProcessor(
+            session_id=uuid4(), user={}, coach=coach, connect=MagicMock(), rtvi=MagicMock())
+        processor.send_event = AsyncMock()
+        processor.start_speaking = MagicMock()
+        processor.interrupt_speech = MagicMock()
+        processor.save_correction = AsyncMock()
+        await processor.handle_transcription("hello")
+        processor.start_speaking.assert_called_once_with("Hello!")
+        processor.interrupt_speech.assert_called_once()
+        processor.save_correction.assert_not_called()
+        assert processor.send_event.call_args.args[0]["code"] == "conversation_error"
+        refund.assert_called_once()
+    asyncio.run(exercise())

@@ -464,24 +464,27 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
         goal_covered = None
 
         try:
-            # Existing LangGraph / CoachSession logic.
-            def get_events():
-                return list(
-                    self.coach.turn_events(text)
-                )
-
-            events = await asyncio.to_thread(
-                get_events
-            )
-
-            for event in events:
+            # Advance the synchronous graph one event at a time off the event
+            # loop. Collecting it into a list delayed speech until correction ended.
+            events = iter(self.coach.turn_events(text))
+            end = object()
+            completed = False
+            while True:
+                event = await asyncio.to_thread(next, events, end)
+                if event is end:
+                    break
                 event_type = event.get("type")
 
                 if event_type == "reply":
-                    reply_text = event.get(
-                        "reply",
-                        "",
-                    )
+                    if not reply_text:
+                        reply_text = event.get("reply", "")
+                        if reply_text:
+                            await self.send_event({
+                                "type": "bot_transcript",
+                                "text": reply_text,
+                                "utterance_id": utterance_id,
+                            })
+                            self.start_speaking(reply_text)
 
                 elif event_type == "corrections":
                     corrections = event.get(
@@ -495,31 +498,15 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
 
                 elif event_type == "done":
                     turn = event.get("turn")
+                    completed = turn is not None
 
                     if turn:
                         goal_covered = (
                             turn.goal_covered
                         )
 
-            if not reply_text:
-                reply_text = (
-                    "I see. Let's continue."
-                )
-
-            logger.info(
-                "LLM response: %s",
-                reply_text,
-            )
-
-            # Send text to the frontend immediately.
-            await self.send_event({
-                "type": "bot_transcript",
-                "text": reply_text,
-                "utterance_id": utterance_id,
-            })
-
-            # Start audio generation automatically.
-            self.start_speaking(reply_text)
+            if not completed or not reply_text:
+                raise RuntimeError("Voice turn ended without a complete coach response")
 
             # Persist before processing another queued answer against the same session.
             await self.save_correction(
@@ -534,6 +521,13 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
             logger.exception(
                 "Voice conversation failed"
             )
+
+            # A reply can already be audible when the corrector fails. Stop it
+            # and report the failed turn instead of leaving an unsaved answer.
+            speech_task = self._current_speech_task
+            self.interrupt_speech()
+            if speech_task:
+                await asyncio.gather(speech_task, return_exceptions=True)
 
             try:
                 with self.connect() as conn:
