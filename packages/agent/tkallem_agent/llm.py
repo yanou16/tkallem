@@ -48,7 +48,13 @@ def get_llm(provider: str | None = None, model: str | None = None, *, timeout: f
         from langchain_openai import ChatOpenAI
 
         sort = os.getenv("OPENROUTER_PROVIDER_SORT", "latency")  # route to the fastest host of the model ("" = default)
-        extra = {"extra_body": {"provider": {"sort": sort}}} if sort else {}
+        routing = {"sort": sort} if sort else {}
+        allowed = [name.strip() for name in os.getenv("OPENROUTER_PROVIDER_ONLY", "").split(",") if name.strip()]
+        if allowed:
+            # A deployment/CI can restrict an unhealthy upstream without changing
+            # the model or falling back to a different model's answers.
+            routing.update(only=allowed, allow_fallbacks=True, require_parameters=True)
+        extra = {"extra_body": {"provider": routing}} if routing else {}
         return ChatOpenAI(base_url="https://openrouter.ai/api/v1", api_key=os.environ["OPENROUTER_API_KEY"], **common, **extra)
     raise ValueError(f"unknown LLM provider: {provider}")
 
