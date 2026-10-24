@@ -49,11 +49,11 @@ def get_llm(provider: str | None = None, model: str | None = None, *, timeout: f
 
         sort = os.getenv("OPENROUTER_PROVIDER_SORT", "latency")  # route to the fastest host of the model ("" = default)
         routing = {"sort": sort} if sort else {}
-        allowed = [name.strip() for name in os.getenv("OPENROUTER_PROVIDER_ONLY", "").split(",") if name.strip()]
-        if allowed:
-            # A deployment/CI can restrict an unhealthy upstream without changing
-            # the model or falling back to a different model's answers.
-            routing.update(only=allowed, allow_fallbacks=True, require_parameters=True)
+        preferred = [name.strip() for name in os.getenv("OPENROUTER_PROVIDER_ORDER", "").split(",") if name.strip()]
+        if preferred:
+            # Prefer these hosts without excluding compatible fallback hosts.
+            # Strict require_parameters rejects SDK parameter aliases on some hosts.
+            routing.update(order=preferred, allow_fallbacks=True)
         extra = {"extra_body": {"provider": routing}} if routing else {}
         return ChatOpenAI(base_url="https://openrouter.ai/api/v1", api_key=os.environ["OPENROUTER_API_KEY"], **common, **extra)
     raise ValueError(f"unknown LLM provider: {provider}")

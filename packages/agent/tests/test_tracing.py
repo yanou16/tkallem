@@ -38,23 +38,23 @@ def test_llm_reads_the_dotenv_of_the_working_directory(tmp_path, monkeypatch):
     llm_module._load_dotenv_once.cache_clear()
 
 
-def test_openrouter_upstream_restriction_keeps_same_model_and_host_fallback(monkeypatch):
+def test_openrouter_upstream_preference_keeps_same_model_and_host_fallback(monkeypatch):
     from tkallem_agent.llm import get_llm
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setenv("OPENROUTER_PROVIDER_SORT", "")
-    monkeypatch.setenv("OPENROUTER_PROVIDER_ONLY", " deepinfra,parasail, ,venice ")
+    monkeypatch.setenv("OPENROUTER_PROVIDER_ORDER", " deepinfra,parasail, ,venice ")
     model = get_llm(provider="openrouter", model="qwen/qwen3-235b-a22b-2507")
     assert model.model_name == "qwen/qwen3-235b-a22b-2507"
     assert model.extra_body == {"provider": {
-        "only": ["deepinfra", "parasail", "venice"],
-        "allow_fallbacks": True, "require_parameters": True,
+        "order": ["deepinfra", "parasail", "venice"],
+        "allow_fallbacks": True,
     }}
 
 
-def test_openrouter_routing_is_unchanged_without_restriction(monkeypatch):
+def test_openrouter_routing_is_unchanged_without_preference(monkeypatch):
     from tkallem_agent.llm import get_llm
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.delenv("OPENROUTER_PROVIDER_ONLY", raising=False)
+    monkeypatch.delenv("OPENROUTER_PROVIDER_ORDER", raising=False)
     monkeypatch.setenv("OPENROUTER_PROVIDER_SORT", "latency")
     model = get_llm(provider="openrouter", model="qwen/qwen3-235b-a22b-2507")
     assert model.extra_body == {"provider": {"sort": "latency"}}

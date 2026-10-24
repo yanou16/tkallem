@@ -19,7 +19,29 @@ import injection  # noqa: E402
 import run_evals  # noqa: E402
 
 
+def provider_preflight() -> bool:
+    """Fail once with an actionable routing error before paying for the whole suite."""
+    from tkallem_agent.graph import Found, STRUCTURED_METHOD
+    from tkallem_agent.llm import get_llm
+    from langchain_core.messages import SystemMessage, HumanMessage
+    try:
+        checker = get_llm().with_structured_output(Found, method=STRUCTURED_METHOD)
+        result = checker.invoke([
+            SystemMessage("Find English errors. Return the requested structured output."),
+            HumanMessage("Hello."),
+        ])
+        if not isinstance(result, Found):
+            raise ValueError("Provider did not return the requested structured output")
+    except Exception as exc:
+        print(f"PROVIDER PREFLIGHT FAILED: {type(exc).__name__}: {str(exc)[:500]}", flush=True)
+        return False
+    print("PROVIDER PREFLIGHT PASSED", flush=True)
+    return True
+
+
 def main() -> int:
+    if not provider_preflight():
+        return 1
     m = run_evals.evaluate()
     attacks_failed = sum(bool(injection.check(*case)) for case in injection.CASES)
     h = hints.evaluate()
