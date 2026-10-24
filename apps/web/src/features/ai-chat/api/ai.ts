@@ -36,6 +36,8 @@ export const mapReport = (r: SessionReportDto): SessionReport => ({
     hesitationsPerMin: r.levels.hesitations_per_min,
   },
   redoIndex: r.redo_index,
+  verdict: r.verdict ?? null,
+  feedbackMode: r.feedback_mode ?? "practice",
 });
 
 /** Rebuilds the chat from GET /sessions/{id}: the first question, then each answer and the coach reply. */
@@ -63,6 +65,8 @@ export function mapSessionDetail(s: SessionDetailDto): AiSession {
           metrics: mapMetrics(s.metrics),
           levels: { mistakesPer100: null, wordsPerAnswer: null, hesitationsPerMin: null },
           redoIndex: null,
+          verdict: s.verdict ?? null,
+          feedbackMode: s.feedback_mode ?? "practice",
         }
       : undefined;
 

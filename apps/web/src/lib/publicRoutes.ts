@@ -9,6 +9,7 @@ export const PUBLIC_ROUTES = [
   "/practice(.*)",
   "/ai-chat(.*)",
   "/plan(.*)",
+  "/phrases(.*)",
   "/progress(.*)", // a guest's own numbers and last reports (the API answers /me/progress and /me/sessions for guests)
   "/groups(.*)", // guests see a read-only preview; the API refuses everything else to them
 ];

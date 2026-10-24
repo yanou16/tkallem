@@ -1,4 +1,5 @@
 "use client";
+import PhraseOfTheDay from "@/features/phrase-of-day/components/PhraseOfTheDay";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useMySessions, useScenarios } from "@/features/practice/hooks/usePractice";
 import { Async, Card, EmptyState, PageHeader, SectionTitle, Skeleton } from "@/components/ui";
@@ -18,6 +19,8 @@ export default function PracticePage() {
           title="Choose your next practice"
           subtitle="Real-life conversations, structured exercises, and exam preparation — all in one place."
         />
+
+        <div className="mb-8"><PhraseOfTheDay /></div>
 
         <SectionTitle title="All practice scenarios" />
         <Async query={all} skeleton={<CardsSkeleton n={4} h="h-48" cols="md:grid-cols-2" />}

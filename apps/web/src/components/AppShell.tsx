@@ -3,7 +3,7 @@ import { useClerk, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { Bell, ChevronDown, House, MessageCircle, Sparkles, Users, ChartNoAxesColumn, UserRound, LogOut } from "lucide-react";
+import { Bell, ChevronDown, House, MessageCircle, Sparkles, Users, ChartNoAxesColumn, UserRound, BookOpen, LogOut } from "lucide-react";
 import { Avatar, ErrorState, Skeleton } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/lib/config";
@@ -23,6 +23,7 @@ const NAV = [
   { href: "/practice", label: "Practice", icon: MessageCircle },
   { href: "/ai-chat", label: "AI Chat", icon: Sparkles },
   ...(FEATURES.groups ? [{ href: "/groups", label: "Groups", icon: Users }] : []),
+  { href: "/phrases", label: "Your phrases", icon: BookOpen },
   { href: "/progress", label: "Progress", icon: ChartNoAxesColumn },
   { href: "/profile", label: "Profile", icon: UserRound },
 ];
@@ -37,7 +38,7 @@ function Logo() {
 }
 
 /** A visitor without account only sees the screens that work without one. */
-const GUEST_NAV = NAV.filter((n) => n.href === "/practice" || n.href === "/ai-chat" || n.href === "/groups");
+const GUEST_NAV = NAV.filter((n) => n.href === "/phrases" || n.href === "/practice" || n.href === "/ai-chat" || n.href === "/groups");
 function useNav() {
   return useIdentity().isGuest ? GUEST_NAV : NAV;
 }
@@ -66,7 +67,7 @@ function Sidebar() {
 
 function MobileNav() {
   const path = usePathname();
-  const nav = useNav();
+  const nav = useNav().filter((n) => n.href !== "/phrases");
   return (
     <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-line bg-white/95 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:hidden">
       {nav.map(({ href, label, icon: I }) => {
@@ -96,6 +97,7 @@ function HeaderBar({ isGroups }: { isGroups?: boolean }) {
       isGroups ? "border-b border-line/60 px-4 py-2.5 sm:px-6 md:justify-end md:px-8" : "px-4 py-3 sm:px-6 md:justify-end md:px-10 md:pb-0 md:pt-5")}>
       <div className="md:hidden"><Logo /></div>
       <div className="flex min-w-0 items-center gap-1.5 sm:gap-5">
+        <Link href="/phrases" aria-label="Your phrases" className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-lilac md:hidden"><BookOpen size={20} /></Link>
         <CreditsPill />
         {FEATURES.notifications && (
           <button aria-label="Notifications" className="relative rounded-full p-2 hover:bg-black/5">

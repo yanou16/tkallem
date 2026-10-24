@@ -21,6 +21,8 @@ export type TurnDetailDto = {
 };
 
 export type SessionDetailDto = {
+  verdict?: VerdictDto | null;
+  feedback_mode?: FeedbackMode;
   session_id: string;
   scenario_id: string;
   title: string;
@@ -71,6 +73,8 @@ export type ReportLineDto = {
 };
 
 export type SessionReportDto = {
+  verdict?: VerdictDto | null;
+  feedback_mode?: FeedbackMode;
   lines: ReportLineDto[];
   note: string;
   metrics: ProgressMetricsDto;
@@ -106,6 +110,8 @@ export type ReportLine = {
 };
 
 export type SessionReport = {
+  verdict?: VerdictDto | null;
+  feedbackMode?: FeedbackMode;
   lines: ReportLine[];
   note: string;
   metrics: ProgressMetrics;
@@ -155,3 +161,12 @@ export type RepeatDto = {
 /** Freeze meter: the time before starting to answer, averaged by the server (POST /end, GET /sessions/{id}). */
 export type FreezeDto = { seconds: number; answers: number; kind: "voice" | "text" | "mixed"; previous?: number | null };
 export type HintDto = { kind: "starter" | "translation"; lines: string[]; fallback: boolean; remaining: number };
+
+export type FeedbackMode = "practice" | "interview";
+export type VerdictMetric = "mistakes_per_100" | "words_per_answer" | "hesitations_per_min";
+export type VerdictDto = {
+  status: "ready" | "almost" | "not_yet";
+  /** The level the practice was judged at (the session's): the same numbers mean less at A2 than at C1. */
+  level: "A2" | "B1" | "B2" | "C1";
+  reasons: { metric: VerdictMetric; level: SentenceStatus; value: number }[];
+};

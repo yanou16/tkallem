@@ -1,4 +1,5 @@
 "use client";
+import PhraseOfTheDay from "@/features/phrase-of-day/components/PhraseOfTheDay";
 import Link from "next/link";
 import { ArrowRight, ChartNoAxesColumn, Flame } from "lucide-react";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
@@ -25,6 +26,8 @@ export default function HomePage() {
           title={goal ? `Ready for ${goal} minutes of speaking?` : "Ready to speak?"}
           subtitle="A little practice today makes a big difference. Choose a situation, or continue your journey."
         />
+
+        <div className="mb-8"><PhraseOfTheDay /></div>
 
         <Async query={progress} skeleton={<CardsSkeleton n={3} h="h-28" cols="md:grid-cols-3" />}>
           {(p) => <StatCards p={p} />}

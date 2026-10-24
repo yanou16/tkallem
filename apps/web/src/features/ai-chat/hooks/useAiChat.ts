@@ -42,6 +42,7 @@ export const useStartSession = () => {
         finished: false,
         messages: [{ id: `${s.sessionId}-0`, role: "assistant", content: s.firstQuestion, createdAt: new Date().toISOString(), audioUrl: s.firstQuestionAudio }],
       });
+      qc.invalidateQueries({ queryKey: ["my-corrections"] });
       qc.invalidateQueries({ queryKey: MY_SESSIONS_KEY });
     },
   });
@@ -54,6 +55,7 @@ export const useSendAnswer = (sessionId?: string) => {
     onSuccess: (turn) => {
       if (!sessionId) return;
       qc.setQueryData<AiSession>(key(sessionId), (prev) => prev && addTurn(prev, turn));
+      qc.invalidateQueries({ queryKey: ["my-corrections"] });
       qc.invalidateQueries({ queryKey: MY_SESSIONS_KEY });
     },
   });
@@ -65,6 +67,7 @@ export const useEndSession = (sessionId?: string) => {
     mutationFn: () => endSession(sessionId!),
     onSuccess: (report) => {
       if (sessionId) qc.setQueryData<AiSession>(key(sessionId), (prev) => prev && { ...prev, report });
+      qc.invalidateQueries({ queryKey: ["my-corrections"] });
       qc.invalidateQueries({ queryKey: MY_SESSIONS_KEY });
       qc.invalidateQueries({ queryKey: ["progress"] });
       // A finished session can unlock badges.
@@ -91,6 +94,7 @@ export function useAnswer(sessionId: string | undefined, onAudio: (url: string |
       if (!sessionId) return;
       if (turn.credits) qc.setQueryData(CREDITS_KEY, turn.credits); // the header counter follows every answer
       qc.setQueryData<AiSession>(key(sessionId), (prev) => prev && addTurn(prev, turn));
+      qc.invalidateQueries({ queryKey: ["my-corrections"] });
       qc.invalidateQueries({ queryKey: MY_SESSIONS_KEY });
     },
     onSettled: () => setLive(null),

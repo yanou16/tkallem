@@ -3,6 +3,9 @@
  */
 export const endpoints = {
   me: "/me",
+  myCorrections: "/me/corrections",
+  phraseOfDay: "/phrase-of-the-day",
+  phraseOfDayCheck: "/phrase-of-the-day/check",
   mySessions: "/me/sessions",
   myAchievements: "/me/achievements",
   scenarios: "/scenarios",

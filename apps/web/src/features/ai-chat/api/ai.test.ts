@@ -147,6 +147,8 @@ describe("mapSessionDetail", () => {
       metrics: { mistakesPer100: 14.3, wordsPerAnswer: 7, hesitationsPerMin: null, speakingSeconds: null },
       levels: { mistakesPer100: null, wordsPerAnswer: null, hesitationsPerMin: null },
       redoIndex: null,
+      verdict: null,
+      feedbackMode: "practice",
     });
   });
 
@@ -219,5 +221,21 @@ describe("streamAnswer", () => {
   it("errors before the stream are plain JSON, as in apiFetch", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ detail: { code: "no_credits", balance: 0 } }), { status: 402 })));
     await expect(streamAnswer("s1", { text: "Hi" }, () => {}, () => {})).rejects.toMatchObject({ status: 402, message: "no_credits" });
+  });
+});
+
+
+describe("verdict persistence", () => {
+  const verdict = {
+    status: "almost" as const,
+    level: "A2" as const,
+    reasons: [{ metric: "words_per_answer" as const, level: "orange" as const, value: 7 }],
+  };
+  it("keeps the server verdict when ending a session", () => {
+    expect(mapReport({ ...REPORT, verdict, feedback_mode: "interview" })).toMatchObject({ verdict, feedbackMode: "interview" });
+  });
+  it("keeps the verdict when reopening a saved session", () => {
+    const reopened = mapSessionDetail({ ...OPEN_SESSION, ended_at: "2026-10-10T10:10:00Z", metrics: REPORT.metrics, verdict });
+    expect(reopened.report).toMatchObject({ verdict, feedbackMode: "practice" });
   });
 });

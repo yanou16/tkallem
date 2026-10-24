@@ -18,6 +18,7 @@ import CorrectionCard from "@/features/ai-chat/components/CorrectionCard";
 import { correctionHistory } from "@/features/ai-chat/lib/correctionHistory";
 import { applyVoiceCorrection } from "@/features/ai-chat/lib/voiceCorrection";
 import { markSentence } from "@/features/ai-chat/lib/marks";
+import VerdictCard from "@/features/ai-chat/components/VerdictCard";
 import type { AiSession, ChatMessage, Correction, SentenceStatus, SessionReport } from "@/features/ai-chat/types/ai";
 import { Avatar, Button, Card, EmptyState, PageHeader, Skeleton } from "@/components/ui";
 import { startHref } from "@/components/cards";
@@ -619,6 +620,7 @@ function SummaryRow({ icon, tone, title, sub }: { icon: React.ReactNode; tone: s
 }
 
 function Report({ report, title, onRestart }: { report: SessionReport; title?: string; onRestart: () => void }) {
+  const { user } = useCurrentUser();
   const metrics = [
     { label: "Mistakes per 100 words", value: report.metrics.mistakesPer100, level: report.levels.mistakesPer100, missing: "Not available" },
     { label: "Words per answer", value: report.metrics.wordsPerAnswer, level: report.levels.wordsPerAnswer, missing: "Not available" },
@@ -629,6 +631,7 @@ function Report({ report, title, onRestart }: { report: SessionReport; title?: s
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader eyebrow={title} title="Your session report" />
+      <VerdictCard verdict={report.verdict ?? null} lang={user?.explainLang ?? "en"} redoIndex={report.redoIndex} mode={report.feedbackMode ?? "practice"} />
       <Card>
         <h2 className="text-lg font-semibold">Your tutor's note</h2>
         <p className="mt-2 whitespace-pre-wrap">{report.note}</p>
@@ -654,7 +657,7 @@ function Report({ report, title, onRestart }: { report: SessionReport; title?: s
             line.role === "coach" ? (
               <li key={i} className="rounded-2xl bg-black/[0.04] px-4 py-3 text-sm">{line.text}</li>
             ) : (
-              <li key={i} className={cn("flex gap-3 rounded-2xl border p-3", i === report.redoIndex ? "border-ink" : "border-line")}>
+              <li key={i} id={i === report.redoIndex ? "redo-answer" : undefined} className={cn("flex gap-3 rounded-2xl border p-3", i === report.redoIndex ? "border-ink" : "border-line")}>
                 <span aria-hidden className={cn("w-1 shrink-0 rounded-full", line.status ? STATUS_BAR[line.status] : "bg-line")} />
                 <div className="min-w-0 flex-1 space-y-2">
                   <div className="flex flex-wrap items-start justify-between gap-2">
