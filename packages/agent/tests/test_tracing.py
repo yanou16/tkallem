@@ -47,6 +47,7 @@ def test_openrouter_upstream_preference_keeps_same_model_and_host_fallback(monke
     assert model.model_name == "qwen/qwen3-235b-a22b-2507"
     assert model.extra_body == {"provider": {
         "order": ["deepinfra", "parasail", "venice"],
+        "only": ["deepinfra", "parasail", "venice"],
         "allow_fallbacks": True,
     }}
 
