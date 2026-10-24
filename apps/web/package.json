@@ -15,7 +15,7 @@
     "@met4citizen/talkinghead": "^1.7.0",
     "@tanstack/react-query": "^5.104.1",
     "lucide-react": "^1.55.0",
-    "next": "^16.4.0",
+    "next": "^16.4.3",
     "@pipecat-ai/client-js": "^1.13.1",
     "@pipecat-ai/small-webrtc-transport": "^1.10.8",
     "react": "^19.3.0",
