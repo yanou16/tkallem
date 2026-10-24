@@ -17,7 +17,7 @@
   },
   {
     "id": "s02",
-    "sentence": "My family support me.",
+    "sentence": "My father support me.",
     "level": "B1",
     "errors": [
       {
@@ -28,7 +28,7 @@
       }
     ],
     "accepted": [
-      "My family supports me."
+      "My father supports me."
     ]
   },
   {
@@ -501,6 +501,16 @@
     "accepted": [
       "I finished my study two years ago.",
       "I finished my studies two years ago."
+    ]
+  },
+  {
+    "id": "s34",
+    "sentence": "My family support me.",
+    "level": "B1",
+    "errors": [],
+    "accepted": [
+      "My family support me.",
+      "My family supports me."
     ]
   }
 ]

@@ -38,8 +38,8 @@ def test_three_corrections_is_red():
 
 def test_eval_set_integrity():
     rows = json.loads((Path(__file__).parents[1] / "evals/correction_set.json").read_text())
-    assert len(rows) == 33
-    assert len({r["id"] for r in rows}) == 33
+    assert len(rows) == 34
+    assert len({r["id"] for r in rows}) == 34
     assert all(r["level"] in {"A2", "B1", "B2", "C1"} for r in rows)
     assert all(e["wrong"] != e["fixed"] for r in rows for e in r["errors"])
 
@@ -237,3 +237,13 @@ def test_priority_follows_a_merged_correction():
     assert out["priority_index"] == 0
     raw["priority_index"] = 2
     assert sanitize(raw, None, text)["priority_index"] == 1
+
+
+def test_eval_agreement_case_is_unambiguous_and_preserves_british_variant():
+    rows = json.loads((Path(__file__).parents[1] / "evals/correction_set.json").read_text())
+    by_id = {row["id"]: row for row in rows}
+    assert by_id["s02"]["sentence"] == "My father support me."
+    assert by_id["s02"]["errors"][0]["rule"] == "subject_verb_agreement"
+    assert by_id["s34"]["errors"] == []
+    assert "My family support me." in by_id["s34"]["accepted"]
+    assert sum(len(row["errors"]) for row in rows) == 29
