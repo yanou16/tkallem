@@ -1,6 +1,6 @@
 """Private check of a written text (practice groups): the corrector of a coach turn, applied to a text alone.
 
-Same prompt, same output schema, same retry and same code guardrails (schemas.sanitize) as the `correct` node of
+Shared corrector prompt, retry and code guardrails (schemas.sanitize) with the `correct` node of
 graph.py: only the call is rebuilt here, because that node lives inside build_graph. No coach, no scenario, nothing
 stored. Import it with `from tkallem_agent.check import check_text`.
 """
@@ -23,6 +23,23 @@ from .levels import MAX_WORDS
 from .llm import default_llm
 from .schemas import Correction, ExplainLang, Level
 from .session import MAX_TEXT_CHARS, AgentError
+
+DRAFT_INPUT_MESSAGE = "Write a clear message in English so your draft can be checked."
+DRAFT_RULES = """
+This is a private English draft check. Also classify input_issue:
+- non_english: clearly another language, e.g. 'ich bin'. Do not call it correct English.
+- unclear: unintelligible text or an unknown isolated word, e.g. 'hallon', whose intended English meaning is unclear.
+- null: understandable English, including short greetings and English with mistakes.
+For recognizable English misspellings, give a vocabulary correction. Do not guess a translation or intended meaning.
+English with grammar mistakes is still English: never classify it as unclear or non_english just because it is incorrect.
+Correct irregular past forms and adjective/adverb confusion, and explain the grammar rule in `why` using the requested explanation language.
+Examples of the distinction (do not replace already correct English with a stylistic alternative):
+- 'Hello' -> no corrections, input_issue null. Short greetings are valid English.
+- 'I goed' -> original 'goed', fixed 'went', rule verb_tense. Explain that go has the irregular past went.
+- 'I had a very well day' -> original 'a very well day', fixed 'a very good day', rule word_form. Explain that good is the adjective describing day; well is normally an adverb.
+- 'My day was very good' and 'I had a very good day' -> no corrections, input_issue null. These are already correct.
+Return input_issue explicitly, including null for English. Only return no corrections with input_issue null when the English needs no correction.
+"""
 
 
 def check_text(
@@ -55,20 +72,28 @@ def check_text(
         except (KeyError, ValueError) as e:  # missing API key, unknown provider: a configuration problem
             raise AgentError(f"LLM is not configured ({type(e).__name__}: {e})") from e
 
-    # The call of graph.correct: corrector prompt, learner text framed as data, one compact retry.
-    corrector = llm.with_structured_output(Found.model_json_schema(), method=STRUCTURED_METHOD)
-    system = CORRECTOR_PROMPT.format(level=level, **render(explain_lang, level))
+    # Extend the shared corrector with an explicit language/clarity decision for standalone drafts.
+    schema = Found.model_json_schema()
+    schema["properties"]["input_issue"] = {"enum": ["non_english", "unclear", None]}
+    schema["required"] = ["corrections", "input_issue"]
+    corrector = llm.with_structured_output(schema, method=STRUCTURED_METHOD)
+    system = CORRECTOR_PROMPT.format(level=level, **render(explain_lang, level)) + DRAFT_RULES
     messages = [SystemMessage(system), HumanMessage(learner_text(text))]
     for attempt in range(MAX_RETRIES + 1):
         try:
             raw = hedged_invoke(corrector, messages, config)
+            if (not isinstance(raw, dict) or not isinstance(raw.get("corrections"), list)
+                    or "input_issue" not in raw or raw["input_issue"] not in (None, "non_english", "unclear")):
+                raise ValueError("invalid draft check response")
             break
         except Exception as e:  # unparseable or runaway output, provider error: one more try, then it fails
             if attempt == MAX_RETRIES:
                 raise AgentError(f"corrector failed: {type(e).__name__}: {e}") from e
             messages = [*messages, SystemMessage(RETRY_COMPACT)]
 
-    found = raw.get("corrections") if isinstance(raw, dict) else None
+    if raw["input_issue"] is not None:
+        raise ValueError(DRAFT_INPUT_MESSAGE)
+    found = raw["corrections"]
     meaning = bool(raw.get("changes_meaning")) if isinstance(raw, dict) else False
     # No scenario: no goal ids to check. The praise and priority_index the corrector also gives are not used here.
     kept = final_corrections(found or [], {}, text, meaning)["corrections"]

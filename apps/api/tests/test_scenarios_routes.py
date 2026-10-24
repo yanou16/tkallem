@@ -50,7 +50,7 @@ def test_scenarios_are_public():
     assert response.status_code == 200
     ids = {s["id"] for s in response.json()}
     assert {"visa-us", "university-admission", "renting-a-room"} <= ids
-    assert not {"campus-france", "visa-business"} & ids  # one visa card, and the admission interview has no visa
+    assert {"campus-france", "visa-business"} <= ids  # retained for the pr-94 frontend alongside main scenarios
 
 
 def test_scenarios_include_card_fields(client):

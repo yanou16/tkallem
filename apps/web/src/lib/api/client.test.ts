@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, api, errorMessage, setAuthTokenProvider, setUnauthorizedHandler } from "./client";
+import { ApiError, api, apiStream, errorMessage, setAuthTokenProvider, setUnauthorizedHandler } from "./client";
 
 function serverReplies(status: number, body?: unknown) {
   const fetchMock = vi.fn(async (_url: string, _init: RequestInit) =>
@@ -86,5 +86,24 @@ describe("api", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
 
     await expect(api.get("/me")).rejects.toMatchObject({ status: 0 });
+  });
+});
+
+
+describe("stream completion", () => {
+  it.each(["\n", "\r\n"])("finishes at a persisted done event with %j line endings", async (newline) => {
+    const encoder = new TextEncoder();
+    const cancel = vi.fn();
+    const wire = `event: reply${newline}data: {"text":"Hi"}${newline}${newline}event: done${newline}data: {"saved":true}${newline}${newline}`;
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(new ReadableStream({
+      start(controller) {
+        // Deliberately split CRLF pairs and keep the connection open after done.
+        for (const character of wire) controller.enqueue(encoder.encode(character));
+      }, cancel,
+    }), { headers: { "content-type": "text/event-stream" } })));
+    const events: unknown[] = [];
+    await apiStream("/sessions/test/turn", new FormData(), (name, data) => events.push([name, data]));
+    expect(events).toEqual([["reply", { text: "Hi" }], ["done", { saved: true }]]);
+    expect(cancel).toHaveBeenCalledOnce();
   });
 });

@@ -1,0 +1,46 @@
+{
+  "id": "visa-business",
+  "title": "Business or tourist visa",
+  "description": "Answer a consular officer's questions for a short business or tourist visit to the US.",
+  "category": "travel",
+  "level": "B1",
+  "icon": "plane",
+  "mode": "guided",
+  "minutes": 8,
+  "coach_role": "A US consular officer: polite, direct, short questions. The student plays a professional or a visitor, not a student.",
+  "questions": [
+    "What is the purpose of your trip?",
+    "How long will you stay in the United States?",
+    "What do you do for a living?",
+    "Who will pay for your trip?",
+    "Have you traveled outside Algeria before?",
+    "What ties do you have to Algeria?"
+  ],
+  "goals": [
+    "purpose_of_trip",
+    "length_of_stay",
+    "occupation",
+    "funding",
+    "travel_history",
+    "ties_to_algeria"
+  ],
+  "useful_words": [
+    "conference",
+    "meeting",
+    "client",
+    "employer",
+    "invitation",
+    "return ticket",
+    "hotel",
+    "savings",
+    "family"
+  ],
+  "starters": [
+    "The purpose of my trip is to",
+    "I will stay in the United States for",
+    "I work as",
+    "My trip will be paid by",
+    "Outside Algeria, I have been to",
+    "My strongest tie to Algeria is"
+  ]
+}

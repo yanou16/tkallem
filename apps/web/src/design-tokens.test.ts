@@ -17,8 +17,8 @@ const offenders = (re: RegExp, allow: RegExp = /$^/) =>
   SOURCES.filter((f) => !allow.test(f.path)).flatMap((f) => (f.text.match(re) ?? []).map((m) => `${f.path}: ${m}`));
 
 describe("design tokens (docs/DESIGN.md)", () => {
-  it("has no violet (the soft pastels mint, butter, peach, rose and lilac are tokens of the new front)", () => {
-    expect(offenders(/#6d4ee3|#e7e0fb|#e8e2fb|#d0c6f5/gi)).toEqual([]);
+  it("has no violet and none of the retired pastel tokens", () => {
+    expect(offenders(/#6d4ee3|#e7e0fb|#e8e2fb|#d0c6f5|\b(bg|text|border)-(lilac|mint|butter|peach|rose)(-deep)?\b/gi)).toEqual([]);
   });
   it("keeps the brand yellow to the logo mark, the microphone ring and the PWA theme", () => {
     const uses = offenders(/bg-brand\b|#ffd02f/gi, /^(app\/(globals\.css|layout\.tsx|manifest\.ts)|features\/landing\/ProductTour\.tsx)$/i);
@@ -27,11 +27,11 @@ describe("design tokens (docs/DESIGN.md)", () => {
     const logoFiles = SOURCES.filter((f) => /bg-brand\b/.test(f.text)).map((f) => f.path).sort();
     expect(logoFiles).toEqual(["app/welcome/page.tsx", "components/AppShell.tsx", "components/InstallPrompt.tsx", "components/auth/AuthShell.tsx", "features/landing/PlatformPages.tsx"]);
   });
-  it("uses no font weight under 400 or over 800", () => {
-    expect(offenders(/\bfont-(thin|extralight|light|black)\b/g)).toEqual([]);
+  it("uses font weights 400, 500 and 600 only", () => {
+    expect(offenders(/\bfont-(thin|extralight|light|bold|extrabold|black)\b/g)).toEqual([]);
   });
   it("puts shadows only on menus, dialogs and the install banner", () => {
-    const found = offenders(/\bshadow-(pop|sm|md|lg|xl|2xl)\b/g); // shadow-soft (cards) is part of the new front
+    const found = offenders(/\bshadow-(soft|pop|sm|md|lg|xl|2xl)\b/g);
     const allowed = /^(app\/globals\.css|app\/\(app\)\/ai-chat\/page\.tsx|components\/(AppShell|InstallPrompt|ui)\.tsx):/;
     expect(found.filter((f) => !allowed.test(f))).toEqual([]);
   });

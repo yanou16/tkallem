@@ -1,0 +1,162 @@
+"use client";
+import { useLayoutEffect, useRef, useState } from "react";
+import { Flag } from "lucide-react";
+import { Avatar, Button, Dialog, EmptyState } from "@/components/ui";
+import { cn } from "@/lib/utils";
+import { useLoadOlder, useReportMessage } from "../hooks/useGroups";
+import { REASON_LABELS, memberName, reportError } from "../lib/labels";
+import { groupMessages } from "../lib/messages";
+import { REPORT_REASONS, type GroupMessage, type MessageLog, type ReportReason } from "../types/groups";
+
+/** Pixels from the bottom under which a new message scrolls the list down (she is reading the latest ones). */
+const NEAR_BOTTOM = 120;
+
+/** A chat bubble (DESIGN.md radii: --radius-bubble, the tail corner --radius-input). Long words wrap inside it. */
+const BUBBLE = "min-w-0 max-w-[85%] whitespace-pre-wrap rounded-bubble px-4 py-2.5 text-ink [overflow-wrap:anywhere] sm:max-w-[70%] lg:max-w-[560px]";
+
+/** "18:42": the time of a group's first message, in the student's time zone. */
+const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+
+/**
+ * The chat, oldest first. A new message keeps the list at the bottom when she was already there (or wrote it); an older
+ * page loaded above keeps the same message in view.
+ */
+export default function MessageList({ groupId, log, myId, colors = new Map<number, string>(), fill = false }: { groupId: number; log: MessageLog; myId?: number; colors?: ReadonlyMap<number, string>; fill?: boolean }) {
+  const { messages } = log;
+  const older = useLoadOlder(groupId);
+  const [reporting, setReporting] = useState<GroupMessage | null>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const seen = useRef<{ first?: number; last?: number; height: number; top: number }>({ height: 0, top: 0 });
+  const atBottom = useRef(true);
+  // Existing history stays still, including older pages loaded above it.
+  const [initialLastId] = useState(() => messages.at(-1)?.id ?? 0);
+
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const first = messages[0]?.id;
+    const last = messages[messages.length - 1];
+    const before = seen.current;
+    if (before.first !== undefined && first !== undefined && first < before.first && last?.id === before.last) {
+      el.scrollTop = el.scrollHeight - before.height + before.top; // older page added above
+    } else if (last && last.id !== before.last && (atBottom.current || last.author.id === myId)) {
+      el.scrollTop = el.scrollHeight;
+    }
+    seen.current = { first, last: last?.id, height: el.scrollHeight, top: el.scrollTop };
+  }, [messages, myId]);
+
+  const onScroll = () => {
+    const el = box.current;
+    if (!el) return;
+    atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM;
+    seen.current = { ...seen.current, height: el.scrollHeight, top: el.scrollTop };
+  };
+
+  return (
+    <>
+      <div
+        ref={box}
+        onScroll={onScroll}
+        className={cn(
+          "overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-6",
+          fill ? "min-h-0 flex-1" : "max-h-[60vh] min-h-[240px]"
+        )}
+        aria-label="Group conversation"
+        aria-live="polite"
+      >
+        <div className="flex min-h-full flex-col">
+          {log.hasOlder && (
+            <div className="mb-4 flex shrink-0 justify-center">
+              <Button dark={false} onClick={() => older.mutate()} disabled={older.isPending} className="!py-1.5 !px-3 text-xs sm:text-sm">
+                {older.isPending ? "Loading…" : "Load earlier messages"}
+              </Button>
+            </div>
+          )}
+          {older.error && <p role="alert" className="mb-3 rounded-2xl bg-bad-bg px-4 py-3 text-sm text-bad">{older.error.message}</p>}
+          {messages.length === 0 ? (
+            <div className="my-auto py-8">
+              <EmptyState title="No messages yet" text="Answer today's question to start the conversation." />
+            </div>
+          ) : (
+            <ul className="mt-auto space-y-4">
+              {groupMessages(messages).map((g) => g.author.id === myId ? (
+                <li key={g.messages[0].id} className="flex flex-col items-end gap-1">
+                  <p className="flex items-center gap-2 px-1 text-xs sm:text-sm text-muted">
+                    <span className="font-medium text-ink">You</span>
+                    <span>{clock(g.startedAt)}</span>
+                  </p>
+                  {g.messages.map((m) => (
+                    <p key={m.id} className={cn(BUBBLE, "rounded-br-input", colors.get(g.author.id) ?? "bg-mint", m.id > initialLastId && "tk-in")}>{m.body}</p>
+                  ))}
+                </li>
+              ) : (
+                <li key={g.messages[0].id} className="flex items-start gap-2.5 sm:gap-3">
+                  {/* A former member: "?" on light grey (Avatar's own background), like a member without a first name. */}
+                  <Avatar first={g.authorLeft ? undefined : g.author.firstName ?? undefined} size={32} className={cn("shrink-0 mt-0.5", !g.authorLeft && colors.get(g.author.id))} />
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="px-1 text-xs sm:text-sm text-muted">
+                      {g.authorLeft ? "Former member" : <span className="font-medium text-ink">{memberName(g.author)}</span>} · {clock(g.startedAt)}
+                    </p>
+                    {g.messages.map((m) => (
+                      <div key={m.id} className={cn("group flex items-start gap-1", m.id > initialLastId && "tk-in")}>
+                        <p className={cn(BUBBLE, "rounded-bl-input", g.authorLeft ? "bg-surface" : colors.get(g.author.id) ?? "bg-surface")}>{m.body}</p>
+                        <button
+                          onClick={() => setReporting(m)}
+                          aria-label={`Report the message of ${memberName(m.author)}`}
+                          className="flex h-9 w-9 shrink-0 items-center justify-center text-muted/60 opacity-60 transition hover:text-ink hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
+                        >
+                          <span className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-black/5">
+                            <Flag size={14} />
+                          </span>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+      {reporting && <ReportDialog groupId={groupId} message={reporting} onClose={() => setReporting(null)} />}
+    </>
+  );
+}
+
+function ReportDialog({ groupId, message, onClose }: { groupId: number; message: GroupMessage; onClose: () => void }) {
+  const report = useReportMessage(groupId);
+  const [reason, setReason] = useState<ReportReason | null>(null);
+
+  return (
+    <Dialog open title="Report this message" onClose={onClose}>
+      {report.isSuccess ? (
+        <>
+          <p className="text-sm">
+            {report.data.hidden
+              ? "Thank you. The message is now hidden for the whole group."
+              : "Thank you. A message is hidden for the whole group when 3 members report it."}
+          </p>
+          <div className="mt-4 flex justify-end"><Button onClick={onClose}>Close</Button></div>
+        </>
+      ) : (
+        <form onSubmit={(e) => { e.preventDefault(); if (reason) report.mutate({ messageId: message.id, reason }); }}>
+          <p className="mb-3 line-clamp-3 rounded-2xl bg-black/[0.04] px-4 py-3 text-sm text-muted">{message.body}</p>
+          <fieldset className="space-y-2">
+            <legend className="mb-2 text-sm font-medium">Why?</legend>
+            {REPORT_REASONS.map((r) => (
+              <label key={r} className={cn("flex min-h-11 cursor-pointer items-center gap-3 rounded-2xl border px-4", reason === r ? "border-ink" : "border-line")}>
+                <input type="radio" name="report-reason" value={r} checked={reason === r} onChange={() => setReason(r)} />
+                {REASON_LABELS[r]}
+              </label>
+            ))}
+          </fieldset>
+          {report.error && <p role="alert" className="mt-3 rounded-2xl bg-bad-bg px-4 py-3 text-sm">{reportError(report.error)}</p>}
+          <div className="mt-4 flex justify-end gap-2">
+            <Button type="button" dark={false} onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={!reason || report.isPending}>{report.isPending ? "Reporting…" : "Report"}</Button>
+          </div>
+        </form>
+      )}
+    </Dialog>
+  );
+}

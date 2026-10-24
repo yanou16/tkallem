@@ -3,6 +3,7 @@
  * that cannot load); the code stays, switch a flag on when its API is built.
  */
 export const FEATURES = {
+  groups: true, // /groups/*, /me/group and /ws/groups/{id}: live practice groups
   notifications: false, // /api/notifications/*, notification preferences
   profileExtras: false, // bio, photo, goals, practice mode, daily goal, focus areas, languages, badges, AI preferences
 } as const;

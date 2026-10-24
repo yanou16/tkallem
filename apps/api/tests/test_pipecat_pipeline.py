@@ -86,3 +86,44 @@ def test_build_voice_pipeline_includes_vad_processor():
     assert VADProcessor in processor_types
     assert pipecat_pipeline.TkallemSTTService in processor_types
     assert pipecat_pipeline.TkallemVoiceTurnProcessor in processor_types
+
+
+def test_later_transcription_is_kept_until_previous_turn_finishes():
+    from unittest.mock import MagicMock
+    from uuid import uuid4
+
+    async def exercise():
+        processor = pipecat_pipeline.TkallemVoiceTurnProcessor(
+            session_id=uuid4(), user={}, coach=MagicMock(), connect=MagicMock(), rtvi=MagicMock(),
+        )
+        started = asyncio.Event()
+        release = asyncio.Event()
+        handled = []
+
+        async def handle(text):
+            handled.append(text)
+            if text == "first":
+                started.set()
+                await release.wait()
+
+        processor.handle_transcription = handle
+        processor.queue_transcription("first")
+        await started.wait()
+        processor.queue_transcription("second")
+        processor.queue_transcription("third")
+        assert handled == ["first"]
+        release.set()
+        await processor._current_turn_task
+        assert handled == ["first", "second", "third"]
+        assert not processor._pending_transcriptions
+
+    asyncio.run(exercise())
+
+
+def test_voice_pause_window_is_configurable_and_validated():
+    import pytest
+    from app.config import Settings
+    from pydantic import ValidationError
+    assert Settings(_env_file=None, voice_turn_silence_secs=1.8).voice_turn_silence_secs == 1.8
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, voice_turn_silence_secs=0)

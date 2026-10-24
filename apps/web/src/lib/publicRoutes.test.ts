@@ -7,7 +7,7 @@ describe("what a visitor without an account may open", () => {
   });
 
   it("the guest menu holds Practice, Progress and Groups, and not Home or Profile", () => {
-    expect([...GUEST_PATHS].sort()).toEqual(["/phrases", "/practice", "/progress"]);
+    expect([...GUEST_PATHS].sort()).toEqual(["/groups", "/practice", "/progress"]);
   });
 
   it("opens Progress and its sub-pages, the practice flow and sign-in", () => {

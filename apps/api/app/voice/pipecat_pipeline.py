@@ -7,6 +7,7 @@ import logging
 import struct
 import uuid
 import wave
+from collections import deque
 from datetime import datetime, timezone
 from typing import AsyncGenerator
 from uuid import UUID
@@ -227,6 +228,7 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
 
         self._current_speech_task = None
         self._current_turn_task = None
+        self._pending_transcriptions = deque()
         self._background_tasks = set()
         self._is_speaking = False
 
@@ -519,19 +521,11 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
             # Start audio generation automatically.
             self.start_speaking(reply_text)
 
-            # Save conversation separately.
-            task = asyncio.create_task(
-                self.save_correction(
-                    utterance_id,
-                    text,
-                    reply_text,
-                    corrections,
-                    sentence_status,
-                    goal_covered,
-                    expected_turns,
-                )
+            # Persist before processing another queued answer against the same session.
+            await self.save_correction(
+                utterance_id, text, reply_text, corrections,
+                sentence_status, goal_covered, expected_turns,
             )
-            self._track_task(task)
 
         except asyncio.CancelledError:
             raise
@@ -635,23 +629,7 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
             text = frame.text.strip()
 
             if text:
-                # Do not block frame propagation
-                # with a slow LLM request.
-                if (
-                    self._current_turn_task
-                    and not self._current_turn_task.done()
-                ):
-                    logger.warning(
-                        "Previous turn still processing"
-                    )
-                    return
-
-                task = asyncio.create_task(
-                    self.handle_transcription(text)
-                )
-
-                self._current_turn_task = task
-                self._track_task(task)
+                self.queue_transcription(text)
 
             return
 
@@ -661,6 +639,18 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
             frame,
             direction,
         )
+
+    def queue_transcription(self, text: str):
+        """Keep later speech while the preceding answer is being corrected and saved."""
+        self._pending_transcriptions.append(text)
+        if self._current_turn_task and not self._current_turn_task.done():
+            return
+        self._current_turn_task = asyncio.create_task(self._drain_transcriptions())
+        self._track_task(self._current_turn_task)
+
+    async def _drain_transcriptions(self):
+        while self._pending_transcriptions:
+            await self.handle_transcription(self._pending_transcriptions.popleft())
 
     async def cleanup(self):
         self.interrupt_speech()
@@ -699,7 +689,7 @@ def build_voice_pipeline(
         params=VADParams(
             confidence=0.65,
             min_volume=0.1,
-            stop_secs=0.8,
+            stop_secs=settings.voice_turn_silence_secs,
             start_secs=0.2,
         )
     )

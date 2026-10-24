@@ -96,7 +96,7 @@ export default function ProfilePage() {
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
 
   const Pen = ({ onClick, label }: { onClick: () => void; label: string }) => (
-    <button onClick={onClick} aria-label={`Edit ${label}`} className="flex size-11 items-center justify-center rounded-full text-muted hover:bg-black/5"><Pencil size={16} /></button>
+    <button onClick={onClick} aria-label={`Edit ${label}`} className="rounded-full p-1.5 text-muted hover:bg-black/5"><Pencil size={15} /></button>
   );
 
   return (
@@ -114,7 +114,7 @@ export default function ProfilePage() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-3xl font-semibold">{fullName}</h2>
+              <h2 className="text-3xl font-bold">{fullName}</h2>
               <Pen label="name" onClick={openAccount} />
             </div>
             {user.email && <p className="mt-1 text-muted">{user.email}</p>}
@@ -164,7 +164,7 @@ export default function ProfilePage() {
 
       <aside className="space-y-5">
         <Card>
-          <h2 className="mb-2 text-lg font-semibold">Account settings</h2>
+          <h2 className="mb-2 text-lg font-bold">Account settings</h2>
           {ACCOUNT_ROWS.map(({ title, icon: I }) => (
             <button key={title} onClick={openAccount} className="flex w-full items-center gap-4 rounded-lg border-b border-line px-1 py-4 text-left last:border-0 hover:bg-black/[0.02]">
               <I size={20} className="text-muted" /><span className="flex-1">{title}</span><ChevronRight size={16} />
@@ -215,7 +215,7 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {update.error && <p role="alert" className="text-sm text-bad">{update.error.message}</p>}
+          {update.error && <p role="alert" className="text-sm text-red-600">{update.error.message}</p>}
 
           <div className="flex justify-end gap-2 pt-2">
             <Button dark={false} onClick={close}>Cancel</Button>
@@ -264,7 +264,7 @@ function SetupCard({ tone, icon, title, text, empty, onEdit }: { tone: number; i
     <div className={cn("relative flex min-h-[104px] items-center overflow-hidden rounded-card p-5 pr-28", toneBg[t])}>
       <div className="relative z-10 min-w-0 flex-1"><p className="font-semibold">{title}</p><p className={cn("mt-1 break-words text-sm leading-relaxed text-muted", !text && "italic")}>{text || empty}</p></div>
       <ProfileArt name={icon} className={cn("pointer-events-none absolute right-9 top-1/2 h-16 w-20 -translate-y-1/2", ART_COLORS[tone % ART_COLORS.length])} />
-      <button onClick={onEdit} aria-label={`Edit ${title}`} className="absolute right-1 top-1 z-20 flex size-11 items-center justify-center rounded-full text-muted transition-colors hover:bg-white/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"><Pencil size={15} /></button>
+      <button onClick={onEdit} aria-label={`Edit ${title}`} className="absolute right-2 top-2 z-20 flex h-9 w-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-white/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"><Pencil size={15} /></button>
     </div>
   );
 }

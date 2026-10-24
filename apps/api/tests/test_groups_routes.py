@@ -531,7 +531,7 @@ def check(client, group_id: int, text: str = DRAFT):
 def test_check_returns_private_corrections_and_stores_nothing(students, client, db):
     group = new_group(db)
     students.act_as(member(students, group))
-    llm = use_llm(FakeChat(found=[{"corrections": [FIX]}]))
+    llm = use_llm(FakeChat(found=[{"input_issue": None, "corrections": [FIX]}]))
 
     response = check(client, group)
 
@@ -553,7 +553,7 @@ def test_check_uses_my_level_and_my_explanation_language(students, client, db):
     amina = member(students, group, level="B2")
     update_profile(db, amina["id"], {"explain_lang": "en"})
     students.act_as(amina)
-    llm = use_llm(FakeChat(found=[{"corrections": []}]))
+    llm = use_llm(FakeChat(found=[{"input_issue": None, "corrections": []}]))
 
     assert check(client, group).json() == []
     system = llm.seen["Found"][0][0].content
@@ -564,7 +564,7 @@ def test_check_is_for_members_only(students, client, db):
     group = new_group(db)
     member(students, group)
     students.act_as(students.new())  # another student, not a member
-    llm = use_llm(FakeChat(found=[{"corrections": []}]))
+    llm = use_llm(FakeChat(found=[{"input_issue": None, "corrections": []}]))
 
     assert check(client, group).status_code == 403
     assert check(client, 999999999).status_code == 404
@@ -595,7 +595,7 @@ def test_check_returns_502_when_the_model_fails(students, client, db):
 def test_at_most_30_checks_per_day(students, client, db):
     group = new_group(db)
     students.act_as(member(students, group))
-    use_llm(FakeChat(found=[{"corrections": []}] * 30))
+    use_llm(FakeChat(found=[{"input_issue": None, "corrections": []}] * 30))
 
     statuses = [check(client, group).status_code for _ in range(31)]
 
@@ -607,8 +607,35 @@ def test_check_keeps_the_type_when_there_is_no_rule(students, client, db):
     group = new_group(db)
     students.act_as(member(students, group))
     no_rule = {"original": "big fault", "fixed": "big mistake", "type": "vocabulary", "why": "On dit « mistake »."}
-    use_llm(FakeChat(found=[{"corrections": [no_rule]}]))
+    use_llm(FakeChat(found=[{"input_issue": None, "corrections": [no_rule]}]))
 
     [correction] = check(client, group, "I made a big fault yesterday.").json()
 
     assert (correction["type"], correction["rule"]) == ("vocabulary", None)
+
+
+@pytest.mark.parametrize("text, issue", [("ich bin", "non_english"), ("hallon", "unclear")])
+def test_check_explains_uncheckable_drafts(students, client, db, text, issue):
+    group = new_group(db)
+    students.act_as(member(students, group))
+    use_llm(FakeChat(found=[{"input_issue": issue, "corrections": []}]))
+    response = check(client, group, text)
+    assert response.status_code == 422
+    assert response.json()["detail"] == "Write a clear message in English so your draft can be checked."
+
+
+@pytest.mark.parametrize("text, original, fixed, rule, why", [
+    ("I goed", "goed", "went", "verb_tense", "Le passé irrégulier de go est went."),
+    ("I had a very well day", "a very well day", "a very good day", "word_form",
+     "Good est un adjectif qui décrit day ; well est normalement un adverbe."),
+])
+def test_check_delivers_english_correction_and_explanation(students, client, db, text, original, fixed, rule, why):
+    group = new_group(db)
+    students.act_as(member(students, group))
+    use_llm(FakeChat(found=[{"input_issue": None, "corrections": [
+        {"original": original, "fixed": fixed, "type": "grammar", "why": why, "rule": rule}
+    ]}]))
+    response = check(client, group, text)
+    assert response.status_code == 200
+    assert response.json() == [{"original": original, "correction": fixed,
+                                "explanation": why, "type": "grammar", "rule": rule}]

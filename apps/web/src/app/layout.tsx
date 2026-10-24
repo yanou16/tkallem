@@ -4,7 +4,6 @@ import "./globals.css";
 import Providers from "./providers";
 import PwaRegister from "@/components/PwaRegister";
 import InstallPrompt from "@/components/InstallPrompt";
-import { Analytics } from "@vercel/analytics/next";
 
 const font = Figtree({ // DESIGN.md: one family everywhere
   subsets: ["latin"],
@@ -13,7 +12,7 @@ const font = Figtree({ // DESIGN.md: one family everywhere
 
 export const metadata: Metadata = {
   title: "Tkallem",
-  description: "Rehearse your interview in English: an AI coach that corrects every sentence and explains it in English or French.",
+  description: "Rehearse your interview in English: an AI coach that corrects every sentence and explains it in French.",
   applicationName: "Tkallem",
   appleWebApp: { capable: true, title: "Tkallem", statusBarStyle: "default" },
   icons: {
@@ -24,8 +23,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ffffff", // the colour at the very top of the page (the header is white), not the brand yellow
-  interactiveWidget: "resizes-content", // the keyboard shrinks the layout on Android Chrome, as it does on iOS
+  themeColor: "#FFD02F",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover", // the app draws under the iPhone notch: safe areas are handled in CSS
@@ -42,7 +40,6 @@ export default function RootLayout({
         <Providers>{children}</Providers>
         <PwaRegister />
         <InstallPrompt />
-        <Analytics />
       </body>
     </html>
   );

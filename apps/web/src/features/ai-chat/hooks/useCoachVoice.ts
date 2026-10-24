@@ -1,7 +1,6 @@
 "use client";
 import { useCallback, useRef, useState } from "react";
 import type { AvatarSpeech } from "@/components/CoachAvatar";
-import { voiceRoute } from "../lib/voice";
 
 type Line = { url: string | null; text: string };
 
@@ -41,12 +40,11 @@ export function useCoachVoice(useAvatar: boolean) {
     (url: string | null | undefined, text: string) => {
       stop();
       setBlocked(null);
-      const route = voiceRoute(url, useAvatar, avatarBroken);
-      if (route === "browser" || !url) {
+      if (!url) {
         speakWithBrowser(text, setSpeaking);
         return;
       }
-      if (route === "avatar") {
+      if (useAvatar && !avatarBroken) {
         setSpeech({ id: Date.now(), url, text });
         return;
       }

@@ -1,13 +1,9 @@
 "use client";
 import Link from "next/link";
 import { ArrowRight, AudioLines, Mic } from "lucide-react";
-import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useProgress } from "@/features/progress/hooks/useProgress";
-import { useMySessions } from "@/features/practice/hooks/usePractice";
-import GuestSaveNote from "@/components/GuestSaveNote";
-import { SessionList } from "@/components/cards";
 import { mistakeLabel, type ProgressMetrics } from "@/features/progress/types/progress";
-import { Async, Card, EmptyState, ErrorState, Skeleton } from "@/components/ui";
+import { Card, ErrorState, Skeleton } from "@/components/ui";
 import { formatMinutes, formatNumber } from "@/lib/utils";
 
 type Metric = {
@@ -15,16 +11,14 @@ type Metric = {
   label: string;
   /** Why the value can be missing. */
   missing: string;
-  /** Which way is better, said in words (it differs from one metric to the next). */
-  better: string;
   format?: (value: number) => string;
 };
 
 const METRICS: Metric[] = [
-  { key: "mistakesPer100", label: "Mistakes per 100 words", missing: "Finish a session to see this", better: "Lower is better" },
-  { key: "wordsPerAnswer", label: "Words per answer", missing: "Finish a session to see this", better: "Higher is better" },
-  { key: "hesitationsPerMin", label: "Hesitations per minute", missing: "Voice sessions only", better: "Lower is better" },
-  { key: "speakingSeconds", label: "Speaking time per session", missing: "Voice sessions only", better: "Higher is better", format: (s) => formatMinutes(s / 60) },
+  { key: "mistakesPer100", label: "Mistakes per 100 words", missing: "Finish a session to see this" },
+  { key: "wordsPerAnswer", label: "Words per answer", missing: "Finish a session to see this" },
+  { key: "hesitationsPerMin", label: "Hesitations per minute", missing: "Voice sessions only" },
+  { key: "speakingSeconds", label: "Speaking time per session", missing: "Voice sessions only", format: (s) => formatMinutes(s / 60) },
 ];
 
 const show = (metric: Metric, value: number | null) =>
@@ -54,9 +48,7 @@ function ProgressArt({ kind, className }: { kind: "mistakes" | "words" | "review
 }
 
 export default function ProgressPage() {
-  const { user, isGuest } = useCurrentUser();
   const q = useProgress();
-  const recent = useMySessions(5);
   const p = q.data;
 
   const comparison = (metric: Metric) => {
@@ -67,19 +59,12 @@ export default function ProgressPage() {
   return (
     <div className="w-full pb-10 pt-3 lg:pt-5">
       <header className="mb-9 sm:mb-12">
+        <p className="mb-3 text-xs font-medium uppercase tracking-[0.16em] text-muted">Your learning snapshot</p>
         <h1 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl xl:text-5xl">Small steps. Real progress.</h1>
-        <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">{!isGuest && user?.firstName ? `Salam ${user.firstName}. ` : ""}Your speaking metrics and what to work on next.</p>
+        <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">Your speaking metrics and what to work on next.</p>
       </header>
-      {q.isLoading ? <Skeleton className="h-56" /> : q.error ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : !p ? (
-        <EmptyState title="No progress yet" text="Finish a practice session and your numbers will appear here."
-          action={<Link href="/practice" className="inline-flex min-h-11 items-center rounded-full bg-ink px-5 text-sm font-semibold text-white">Choose a situation</Link>} />
-      ) : p.current.mistakesPer100 === null && p.current.wordsPerAnswer === null ? (
-        <EmptyState title="Your numbers start with your first session" text="Answer the questions of one situation, then come back: you will see your mistakes, your words per answer and what to work on."
-          action={<Link href="/practice" className="inline-flex min-h-11 items-center rounded-full bg-ink px-5 text-sm font-semibold text-white">Choose a situation</Link>} />
-      ) : (
+      {q.isLoading ? <Skeleton className="h-56" /> : q.error ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : !p ? null : (
         <div className="space-y-7 lg:space-y-8">
-          {isGuest && <GuestSaveNote />}
-          {!p.baseline && <p className="text-sm text-slate">This is your starting point. The comparison with your first sessions appears after your next one.</p>}
           <div className="grid gap-6 sm:grid-cols-2 lg:gap-8">
             {METRICS.slice(0, 2).map((metric, index) => {
               const value = p.current[metric.key];
@@ -87,12 +72,12 @@ export default function ProgressPage() {
                 <section key={metric.key} aria-label={metric.label} className={`relative overflow-hidden rounded-card p-7 sm:p-8 lg:min-h-[250px] lg:p-10 ${index === 0 ? "bg-mint/70" : "bg-butter/70"}`}>
                   <div className="relative z-10 max-w-[68%]">
                     <h2 className="text-sm font-medium text-ink/70 sm:text-base">{metric.label}</h2>
-                    <p className="mt-6 text-5xl font-extrabold tracking-tight sm:text-6xl xl:text-7xl">{show(metric, value)}</p>
-                    {value === null && <p className="mt-2 text-sm text-slate">{metric.missing}</p>}
+                    <p className="mt-6 text-5xl font-bold tracking-tight sm:text-6xl xl:text-7xl">{show(metric, value)}</p>
+                    {value === null && <p className="mt-2 text-sm text-muted">{metric.missing}</p>}
                     {metric.key === "mistakesPer100" && p.mistakesChange !== null && (
                       <p className="mt-3 text-sm font-medium">{changeText(p.mistakesChange)}</p>
                     )}
-                    <p className="mt-3 text-sm text-slate">{metric.better} · {comparison(metric)}</p>
+                    <p className="mt-3 text-sm text-muted">{comparison(metric)}</p>
                   </div>
                   <ProgressArt kind={index === 0 ? "mistakes" : "words"} className={`absolute right-3 top-1/2 h-24 w-28 -translate-y-1/2 sm:right-5 lg:right-8 lg:h-36 lg:w-44 ${index === 0 ? "text-[#70A794]" : "text-[#C89B31]"}`} />
                 </section>
@@ -138,28 +123,13 @@ export default function ProgressPage() {
                   <li key={m.id} className="flex items-center justify-between gap-4 py-4">
                     <div className="min-w-0">
                       <p className="font-medium">{mistakeLabel(m.category)}</p>
-                      <p className="mt-1 [overflow-wrap:anywhere] text-sm leading-relaxed text-muted"><span className="line-through decoration-ink/30">{m.original}</span> <span aria-label="corrected to">→</span> <span className="font-medium text-ink">{m.correction}</span></p>
+                      <p className="mt-1 break-words text-sm leading-relaxed text-muted"><span className="line-through decoration-ink/30">{m.original}</span> <span aria-label="corrected to">→</span> <span className="font-medium text-ink">{m.correction}</span></p>
                     </div>
-                    <span aria-label={`${m.count} times`} className="shrink-0 rounded-full bg-peach/60 px-3 py-1.5 text-xs font-medium">{formatNumber(m.count)}×</span>
+                    <span className="shrink-0 rounded-full bg-peach/60 px-3 py-1.5 text-xs font-medium">{m.count}×</span>
                   </li>
                 ))}
               </ul>
             )}
-            {p.topMistakes.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-3">
-                <Link href="/practice" className="inline-flex min-h-11 items-center rounded-full border border-hairline-strong px-5 text-sm font-semibold hover:bg-surface">Practice again</Link>
-                <Link href="/phrases" className="inline-flex min-h-11 items-center rounded-full border border-hairline-strong px-5 text-sm font-semibold hover:bg-surface">See all your phrases</Link>
-              </div>
-            )}
-          </Card>
-
-          <Card className="p-7 sm:p-8 lg:p-10">
-            <h2 className="text-lg font-semibold sm:text-xl">Your last reports</h2>
-            <p className="mt-1 text-sm text-muted">Open one to read its report again.</p>
-            <Async query={recent} skeleton={<Skeleton className="mt-4 h-40" />} isEmpty={(d) => d.length === 0}
-              empty={<EmptyState className="mt-4" title="No reports yet" text="Finish a practice session and its report will be kept here." />}>
-              {(list) => <SessionList sessions={list} />}
-            </Async>
           </Card>
         </div>
       )}

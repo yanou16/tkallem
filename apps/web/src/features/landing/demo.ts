@@ -26,7 +26,7 @@ export const CALLOUTS: Record<DemoTab, Callout[]> = {
     { id: "install", label: "Add to home screen", detail: "On Android, Install. On iPhone, Share then Add to Home Screen. It opens full screen.", side: "left", region: "screen" },
     { id: "nostore", label: "No download", detail: "It is a web app: nothing to find in a store, and it updates by itself.", side: "left", region: "screen" },
     { id: "thumb", label: "Thumb-sized buttons", detail: "Every button is at least 44 px, and nothing scrolls sideways on a small phone.", side: "right", region: "thumb" },
-    { id: "same", label: "Same coach, same account", detail: "Start on your phone, finish on your laptop. Guests get 100 free answers, no sign-up.", side: "right", region: "thumb" },
+    { id: "same", label: "Same coach, same account", detail: "Start on your phone, finish on your laptop. Guests get 40 free answers, no sign-up.", side: "right", region: "thumb" },
   ],
   voice: [
     { id: "mic", label: "Tap to speak", detail: "One tap to record, one tap to send. A silent recording is refused before it is sent.", side: "left", region: "mic" },

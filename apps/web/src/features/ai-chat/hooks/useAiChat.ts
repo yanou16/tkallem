@@ -1,14 +1,16 @@
 "use client";
+import { answerConfidence, askHint, repeatAnswer } from "../api/ai";
+import type { HintRequestDto } from "../types/ai";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { answerConfidence, askHint, endSession, explainNote, repeatAnswer, getSession, sendAnswer, speakLastLine, startSession, streamAnswer, type AnswerInput, type LiveTurn } from "../api/ai";
+import { endSession, getSession, sendAnswer, speakLastLine, startSession, streamAnswer, type AnswerInput, type LiveTurn } from "../api/ai";
 import { CREDITS_KEY } from "@/features/credits/hooks/useCredits";
 import { MY_SESSIONS_KEY } from "@/features/practice/hooks/usePractice";
 import { ACHIEVEMENTS_KEY } from "@/features/profile/hooks/useProfile";
-import type { ExplainLang } from "@/features/auth/types/user";
-import type { AiSession, FeedbackMode, HintRequestDto, Turn } from "../types/ai";
+import type { AiSession, Turn } from "../types/ai";
 
-const key = (id?: string) => ["ai-session", id] as const;
+export const aiSessionKey = (id?: string) => ["ai-session", id] as const;
+const key = aiSessionKey;
 
 /** Adds one turn: the student's answer (with its status and corrections), then the coach reply. */
 export function addTurn(session: AiSession, turn: Turn, at = new Date().toISOString()): AiSession {
@@ -18,7 +20,7 @@ export function addTurn(session: AiSession, turn: Turn, at = new Date().toISOStr
     finished: turn.finished,
     messages: [
       ...session.messages,
-      { id: `${session.id}-${n}`, role: "user", content: turn.transcript, createdAt: at, status: turn.sentenceStatus, corrections: turn.corrections, praise: turn.praise, priorityIndex: turn.priorityIndex },
+      { id: `${session.id}-${n}`, role: "user", content: turn.transcript, createdAt: at, status: turn.sentenceStatus, corrections: turn.corrections },
       { id: `${session.id}-${n + 1}`, role: "assistant", content: turn.reply, createdAt: at, audioUrl: turn.audioUrl },
     ],
   };
@@ -32,14 +34,11 @@ export const useAiSession = (id?: string) =>
 export const useStartSession = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ scenarioId, mode, feedbackMode }: { scenarioId: string; mode: "text" | "voice"; feedbackMode?: FeedbackMode }) =>
-      startSession(scenarioId, mode, feedbackMode),
+    mutationFn: ({ scenarioId, mode }: { scenarioId: string; mode: "text" | "voice" }) => startSession(scenarioId, mode),
     onSuccess: (s, { scenarioId }) => {
       qc.setQueryData<AiSession>(key(s.sessionId), {
         id: s.sessionId,
         scenarioId,
-        feedbackMode: s.feedbackMode,
-        confidence: { before: null, after: null },
         finished: false,
         messages: [{ id: `${s.sessionId}-0`, role: "assistant", content: s.firstQuestion, createdAt: new Date().toISOString(), audioUrl: s.firstQuestionAudio }],
       });
@@ -133,11 +132,8 @@ export const useConfidence = (sessionId?: string) => {
     onSuccess: (_, { when, value }) =>
       qc.setQueryData<AiSession>(key(sessionId), (prev) => {
         if (!prev) return prev;
-        const confidence = { ...prev.confidence, [when]: value };
+        const confidence = { before: null, after: null, ...prev.confidence, [when]: value };
         return { ...prev, confidence, report: prev.report ? { ...prev.report, confidence } : prev.report };
       }),
   });
 };
-
-/** The report's note in the other language. */
-export const useExplainNote = (sessionId?: string) => useMutation({ mutationFn: (lang: ExplainLang) => explainNote(sessionId!, lang) });

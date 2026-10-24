@@ -15,9 +15,8 @@ import {
 } from "./lib/plan";
 
 const STEP_LABELS = ["Your goal", "Your level", "Daily rhythm", "Focus areas", "Your interests"];
-// Goals follow the scenario colours: visa mint, admission butter, job peach, IELTS rose, everyday lilac.
-const TONES = ["bg-mint", "bg-butter", "bg-peach", "bg-rose", "bg-lilac"];
-const ART = ["visa-us", "university-admission", "job-remote", "ielts-part2", "cafe"];
+const TONES = ["bg-rose", "bg-mint", "bg-peach", "bg-lilac", "bg-butter"];
+const ART = ["visa-us", "campus-france", "job-remote", "ielts-part2", "cafe"];
 const STEPS = 5;
 const SKIP_HREF = startHref("visa-us");
 
@@ -42,6 +41,10 @@ export default function PlanFlow() {
 
   return (
     <div className="w-full px-1 py-5 sm:px-3 lg:px-6 lg:py-8">
+      <div className="mb-7 flex flex-wrap items-center justify-between gap-4">
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted">Your speaking plan</p>
+        <span className="rounded-full bg-mint px-4 py-2 text-xs font-medium">A few questions. A plan that fits you.</span>
+      </div>
       <div className="mb-5 grid grid-cols-5 gap-2 sm:gap-4" aria-label="Plan steps">{STEP_LABELS.map((label, i) => <div key={label} aria-current={i === step ? "step" : undefined} className="min-w-0">
         <div className={cn("mb-2 h-1.5 rounded-full transition-colors motion-reduce:transition-none", i <= step ? "bg-ink" : "bg-line")} />
         <p className={cn("hidden text-sm sm:block", i === step ? "font-semibold text-ink" : "text-muted")}>{label}</p>
@@ -87,7 +90,7 @@ export default function PlanFlow() {
         <Question title="Which subjects do you like?" hint="Optional. They decide which situations come next.">
           <div className="col-span-full grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {INTEREST_CHOICES.map((i, index) => (
-              <Choice tone={TONES[index]} art={["visa-us", "university-admission", "job-remote", "ielts-part2", "cafe"][index]} key={i.id} selected={a.interests.includes(i.id)} onClick={() => setA((p) => ({ ...p, interests: toggleInterest(p.interests, i.id) }))}
+              <Choice tone={TONES[index]} art={["visa-us", "campus-france", "job-remote", "ielts-part2", "cafe"][index]} key={i.id} selected={a.interests.includes(i.id)} onClick={() => setA((p) => ({ ...p, interests: toggleInterest(p.interests, i.id) }))}
                 title={i.label} multi centered />
             ))}
           </div>
@@ -107,7 +110,7 @@ export default function PlanFlow() {
 function Question({ title, hint, children }: { title: string; hint: string; children: React.ReactNode }) {
   return (
     <section aria-labelledby="plan-q" className="tk-in motion-reduce:animate-none">
-      <h1 id="plan-q" className="max-w-4xl text-3xl font-extrabold tracking-tight leading-tight sm:text-4xl lg:text-5xl">{title}</h1>
+      <h1 id="plan-q" className="max-w-4xl text-3xl font-bold tracking-tight leading-tight sm:text-4xl lg:text-5xl">{title}</h1>
       <p className="mb-8 mt-4 max-w-3xl text-base leading-relaxed text-muted sm:text-lg">{hint}</p>
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">{children}</div>
     </section>
@@ -133,7 +136,7 @@ function Summary({ a, saving, failed, retry, scenarios, level }: {
   const focus = FOCUS_CHOICES.filter((f) => a.focus.includes(f.id)).map((f) => f.label);
   return (
     <div className="w-full px-1 py-5 sm:px-3 lg:px-6 lg:py-8">
-      <h1 className="max-w-4xl text-3xl font-extrabold tracking-tight leading-tight sm:text-4xl lg:text-5xl">Your plan</h1>
+      <h1 className="max-w-4xl text-3xl font-bold tracking-tight leading-tight sm:text-4xl lg:text-5xl">Your plan</h1>
       <dl className="mb-6 mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-charcoal">
         {a.goal && <><dt className="text-slate">Goal</dt><dd className="font-medium">{goalLabel(a.goal)}</dd></>}
         <dt className="text-slate">Level</dt><dd className="font-medium">{level ?? "B1"}</dd>

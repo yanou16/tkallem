@@ -15,12 +15,12 @@ const LEVELS = [
 /** First visit of a signed-in student: the coach needs a level (sentence length, vocabulary) before any session. */
 export default function ChooseLevel() {
   const [level, setLevel] = useState<(typeof LEVELS)[number]["id"]>("B1");
-  const [lang, setLang] = useState<"fr" | "en">("en"); // English first: the jury may read English only; French is one tap away
+  const [lang, setLang] = useState<"fr" | "en">("fr");
   const update = useUpdateProfile();
 
   return (
     <Card className="mx-auto mt-8 max-w-xl">
-      <h1 className="text-2xl font-semibold">Welcome to Tkallem</h1>
+      <h1 className="text-2xl font-bold">Welcome to Tkallem</h1>
       <p className="mt-1 text-muted">Two quick choices so your coach speaks at the right level. You can change them later in your profile.</p>
 
       <fieldset className="mt-6">
@@ -38,7 +38,7 @@ export default function ChooseLevel() {
       <fieldset className="mt-6">
         <legend className="mb-2 font-semibold">Explain my mistakes in</legend>
         <div className="flex gap-2">
-          {([["en", "Simple English"], ["fr", "Français"]] as const).map(([id, label]) => (
+          {([["fr", "Français"], ["en", "Simple English"]] as const).map(([id, label]) => (
             <label key={id} className={cn("flex-1 cursor-pointer rounded-full border px-4 py-2 text-center text-sm font-medium", lang === id ? "border-ink bg-ink text-white" : "border-line")}>
               <input type="radio" name="explain" value={id} checked={lang === id} onChange={() => setLang(id)} className="sr-only" />
               {label}
@@ -47,9 +47,9 @@ export default function ChooseLevel() {
         </div>
       </fieldset>
 
-      {update.error && <p role="alert" className="mt-4 text-sm text-bad">Could not save: {(update.error as Error).message}. Try again.</p>}
+      {update.error && <p role="alert" className="mt-4 text-sm text-red-600">Could not save: {(update.error as Error).message}. Try again.</p>}
       <Button className="mt-6 w-full" disabled={update.isPending} onClick={() => update.mutate({ level, explainLang: lang })}>
-        {update.isPending ? "Saving…" : "Start practicing"}
+        {update.isPending ? "Saving…" : "Start practising"}
       </Button>
     </Card>
   );
