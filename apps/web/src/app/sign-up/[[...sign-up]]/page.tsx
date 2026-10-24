@@ -16,7 +16,7 @@ export default function SignUpPage() {
   /* If already signed in, skip the form and go home */
   useEffect(() => {
     if (isSignedIn) {
-      router.replace("/");
+      router.replace("/plan");
     }
   }, [isSignedIn, router]);
 
@@ -64,7 +64,7 @@ export default function SignUpPage() {
       await signUp.authenticateWithRedirect({
         strategy: "oauth_google",
         redirectUrl: "/sso-callback",
-        redirectUrlComplete: "/",
+        redirectUrlComplete: "/plan",
       });
     } catch (err) {
       setError(clerkMessage(err));
@@ -82,7 +82,7 @@ export default function SignUpPage() {
       const sessionId = res.status === "complete" ? res.createdSessionId : await completeUsername(res as never);
       if (sessionId) {
         await setActive({ session: sessionId });
-        router.push("/");
+        router.replace("/plan");
       } else {
         setError(`Your account needs more information (${res.missingFields.join(", ")}).`);
       }

@@ -1,12 +1,9 @@
-import Image from "next/image";
+import HowPreview from "./HowPreview";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { HOW_STEPS, PRIVACY_LINE } from "./howSteps";
 
-/**
- * "How it works" (welcome page): the loop in four lines, each with the real screen it talks about. No icons, no cards:
- * a number, one short line, the picture. The call to action comes back after the last step.
- */
+/** Four steps, rendered with current app components and example data. */
 export default function HowItWorks({ ctaHref, ctaLabel }: { ctaHref: string; ctaLabel: string }) {
   return (
     <section id="how" aria-labelledby="how-title" className="scroll-mt-6">
@@ -20,8 +17,7 @@ export default function HowItWorks({ ctaHref, ctaLabel }: { ctaHref: string; cta
               <span aria-hidden className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-base font-semibold text-white">{s.n}</span>
               <span><span className="sr-only">Step {s.n}: </span>{s.line}</span>
             </p>
-            <Image src={s.src} alt={s.alt} width={s.w} height={s.h} sizes="(min-width: 1024px) 270px, (min-width: 640px) 45vw, 92vw"
-              className="h-auto w-full max-w-[390px] rounded-[20px] border border-hairline" />
+            <HowPreview step={s.n} />
           </li>
         ))}
       </ol>

@@ -134,7 +134,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const { user, error, refetch, hasProfile, isGuest } = useCurrentUser();
   const { guestFailed } = useIdentity();
-  const needsLevel = hasProfile && !isGuest && !user?.level; // new account: no session can start without a level
+  const needsLevel = hasProfile && !isGuest && !user?.level && !isActive(path, "/plan"); // new account: no session can start without a level
   const isGroups = isActive(path, "/groups");
 
   useEffect(() => {

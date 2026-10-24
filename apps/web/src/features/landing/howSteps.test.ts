@@ -1,18 +1,15 @@
-import { readFileSync } from "node:fs";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import HowItWorks from "./HowItWorks";
 import { HOW_STEPS, PRIVACY_LINE } from "./howSteps";
 
-const publicFile = (src: string) => new URL(`../../../public${src}`, import.meta.url);
-const pngSize = (src: string) => { const b = readFileSync(publicFile(src)); return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) }; };
 const html = renderToStaticMarkup(createElement(HowItWorks, { ctaHref: "/ai-chat?scenarioId=visa-us", ctaLabel: "Try a visa interview now" }));
 
 describe("How it works (landing)", () => {
   it("has four numbered steps, in order", () => {
     expect(HOW_STEPS.map((s) => s.n)).toEqual([1, 2, 3, 4]);
-    expect(html.match(/<li /g)).toHaveLength(4);
+    expect(HOW_STEPS).toHaveLength(4);
     expect(html).toContain("<ol");
   });
 
@@ -21,15 +18,12 @@ describe("How it works (landing)", () => {
     expect(HOW_STEPS.map((s) => s.line).join(" ")).not.toMatch(/practise|colour|organis/i);
   });
 
-  it("shows a real picture for every step: file exists, real pixel size, alt text, no icon tile", () => {
-    for (const s of HOW_STEPS) {
-      expect(pngSize(s.src)).toEqual({ w: s.w, h: s.h });
-      expect(s.alt.length).toBeGreaterThan(20);
-    }
-    expect(html.match(/<img /g)).toHaveLength(4);
-    expect(html.match(/ alt="[^"]{20,}"/g)).toHaveLength(4);
-    expect(html).toMatch(/width="780"/);
-    expect(html).not.toMatch(/<svg[^>]*lucide-(mic|check|target)/); // pictures, not icons
+  it("renders UI previews instead of screenshots", () => {
+    expect(html).not.toContain("<img");
+    expect(html).toContain("Visa interview");
+    expect(html).toContain("Yesterday I went to the park.");
+    expect(html).toContain("Go has an irregular past tense");
+    expect(html).not.toContain("/landing/how-");
   });
 
   it("brings the main call to action back, with a 44px target, and states the audio rule", () => {

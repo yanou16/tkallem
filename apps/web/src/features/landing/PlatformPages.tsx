@@ -1,9 +1,12 @@
 "use client";
+import Miniature from "./Miniature";
+import ProgressView from "@/features/progress/components/ProgressView";
+import ProfileView from "@/features/profile/components/ProfileView";
+import { PREVIEW_PROGRESS, PREVIEW_BADGES } from "./previewData";
 import { useState } from "react";
-import { Check, Lightbulb, Lock, Mic, Zap } from "lucide-react";
-import { scenarioTint } from "@/lib/tint";
+import { Check, Lightbulb, Mic, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FOCUS_CHOICES, GOALS, planOrder } from "@/features/plan/lib/plan";
+import { GOALS, planOrder } from "@/features/plan/lib/plan";
 import { ScenarioCard } from "@/components/cards";
 import { Browser, Pill, R } from "./TourParts";
 import { DEMO_SCENARIOS, PAGES, menuOf, planView, type DemoScenario, type PlanDemo, type PlatformPage } from "./tour";
@@ -45,8 +48,8 @@ function Home({ plan, open }: { plan: PlanDemo; open: () => void }) {
   return (
     <>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <span className="text-xs text-slate">Salam Amina · {v.level}</span>
-        <R id="credits" as="span"><Pill className="inline-flex items-center gap-1"><Zap size={12} aria-hidden /> 33 free answers</Pill></R>
+        <span className="text-xs text-slate">Salam User · {v.level}</span>
+        <R id="credits" as="span"><Pill className="inline-flex items-center gap-1"><Zap size={12} aria-hidden /> 33 credits</Pill></R>
       </div>
       <h3 className="mb-3 text-[24px] font-bold leading-tight tracking-tight">Ready for {v.minutes} minutes of speaking?</h3>
       <R id="kpi" className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -127,57 +130,13 @@ function Chat() {
 }
 
 function Progress() {
-  return (
-    <div className="min-h-[420px]">
-      <Head eyebrow="Salam Amina" title="Track your progress" />
-      <R id="metrics" className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-        {[["Mistakes per 100 words", "12.4", "↓ 3.1"], ["Words per answer", "48", "↑ 9"], ["Hesitations per minute", "5", "↓ 2"]].map(([k, v, d]) => (
-          <div key={k} className="rounded-2xl border border-hairline p-2.5"><span className="block text-xs text-muted">{k}</span><b className="text-xl font-medium">{v}</b><em className="ml-1 text-xs font-semibold not-italic text-good">{d}</em></div>
-        ))}
-      </R>
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-3">
-          <R id="freeze"><Box><h4 className="text-[13px] font-semibold">Time before you speak</h4><b className="text-3xl font-medium tracking-tight">3.0 s</b><div className="text-xs text-slate">was 9.3 s</div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-hairline-soft"><i className="block h-full w-1/3 bg-ink" /></div></Box></R>
-          <R id="confidence"><Box><h4 className="text-[13px] font-semibold">How confident you feel</h4><b className="text-3xl font-medium tracking-tight">2 → 4</b><div className="text-xs text-slate">before → after, 1 to 5</div></Box></R>
-        </div>
-        <R id="top"><Box className="h-full"><h4 className="mb-1 text-[13px] font-semibold">Top mistakes</h4>
-          {[["Verb tense", "I go → I went", "5×"], ["Articles", "to US → to the US", "3×"], ["Prepositions", "for study → to study", "2×"]].map(([k, ex, n]) => (
-            <div key={k} className="flex items-center justify-between border-t border-hairline-soft py-2 text-xs first:border-0"><span><b className="block text-[13px]">{k}</b><span className="text-slate">{ex}</span></span><b className="rounded-full bg-surface px-2 py-0.5">{n}</b></div>
-          ))}</Box></R>
-      </div>
-    </div>
-  );
+  return <Miniature><ProgressView q={{ data: PREVIEW_PROGRESS, isLoading: false, error: null, refetch: () => {} }} /></Miniature>;
 }
-
 function Profile({ plan }: { plan: PlanDemo }) {
   const v = planView(plan);
-  const rows: [string, string][] = [["English level", v.level], ["Learning goal", GOALS.find((g) => g.id === v.goal)?.label ?? ""], ["Daily goal", `${v.minutes} minutes of speaking`]];
-  return (
-    <div className="min-h-[420px]">
-      <div className="mb-3 flex items-center gap-3">
-        <span className="flex size-14 items-center justify-center rounded-full bg-surface text-xl font-medium">AM</span>
-        <div><h3 className="text-[22px] font-medium leading-tight">Amina</h3><Pill>Learning English · {v.level}</Pill></div>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate">My learning setup</p>
-          <R id="setup" className="space-y-2">{rows.map(([k, t]) => <Box key={k} className="py-2.5"><b className="block text-[13px]">{k}</b><span className="text-xs text-slate">{t}</span></Box>)}</R>
-          <R id="lang"><Box className="py-2.5"><b className="block text-[13px]">Explanation language</b><span className="text-xs text-slate">French (Français)</span></Box></R>
-          <R id="focus"><Box className="py-2.5"><b className="block text-[13px]">Focus areas</b><span className="text-xs text-slate">{FOCUS_CHOICES.filter((f) => v.focus.includes(f.id)).map((f) => f.label).join(", ")}</span></Box></R>
-        </div>
-        <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate">My achievements</p>
-          <R id="badges" className="space-y-2">
-            {[["First session", "Finish your first practice session.", true], ["3-day streak", "Practice 3 days in a row.", true], ["First spoken session", "Answer every question out loud.", false], ["Level B1", "Practice at level B1 or above.", false]].map(([t, d, ok]) => (
-              <Box key={String(t)} className="flex items-center gap-2 py-2.5"><span className="min-w-0 flex-1"><b className="block text-[13px]">{t}</b><span className="text-xs text-slate">{d}</span></span>
-                {ok ? <Check size={16} className="text-good" aria-hidden /> : <Lock size={14} className="text-stone" aria-hidden />}</Box>
-            ))}
-          </R>
-        </div>
-      </div>
-    </div>
-  );
+  return <Miniature><ProfileView user={{ firstName: "User", email: "", level: v.level, explainLang: "en", dailyGoalMinutes: v.minutes, learningGoal: GOALS.find((g) => g.id === v.goal)?.label ?? null, practiceMode: "both", focusAreas: ["fluency"] }}
+    sessions={{ data: [], isLoading: false, error: null, refetch: () => {} }}
+    achievements={{ data: PREVIEW_BADGES, isLoading: false, error: null, refetch: () => {} }} /></Miniature>;
 }
 
 /* ---------- the app: a sidebar that works ---------- */

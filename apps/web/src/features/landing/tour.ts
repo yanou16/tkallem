@@ -77,14 +77,14 @@ export const PAGE_CALLOUTS: Record<PlatformPage, Callout[]> = {
     c("answer", "Type or speak", "Answer the way you prefer. Two free hints per question.", "right"),
   ],
   progress: [
+    c("nav", "Explore your pages", "Switch between the current app screens.", "left"),
     c("metrics", "Numbers, not feelings", "Mistakes, words per answer and hesitations, session after session.", "left"),
-    c("freeze", "Time before you speak", "The seconds between the question and your first word: the freeze, made visible.", "left"),
-    c("confidence", "How confident you feel", "You rate it before and after each session.", "right"),
+    c("voice", "Your voice metrics", "Hesitations and speaking time from your spoken answers.", "left"),
     c("top", "Your top mistakes", "The rules you break most often, with your own sentences.", "right"),
   ],
   profile: [
     c("setup", "Your learning setup", "Level, goal, daily minutes and focus, filled by your plan.", "left"),
-    c("lang", "Explained in French", "Corrections come in French or simple English, as you prefer.", "left"),
+    c("lang", "Your explanation language", "Corrections come in French or simple English, as you prefer.", "left"),
     c("focus", "What the coach keeps in mind", "The two things you said are hardest.", "right"),
     c("badges", "Badges to unlock", "First session, a streak, a spoken session.", "right"),
   ],
@@ -93,7 +93,7 @@ export const PAGE_REGIONS: Record<PlatformPage, string[]> = {
   home: ["nav", "kpi", "plan", "situations", "credits", "goal", "real", "mistakes", "recent"],
   practice: ["planlink", "grid", "real", "recent"],
   chat: ["mode", "question", "help", "feedback", "again", "answer"],
-  progress: ["metrics", "freeze", "confidence", "top"],
+  progress: ["nav", "metrics", "voice", "top"],
   profile: ["setup", "lang", "focus", "badges"],
 };
 /** The captions of what is on screen: the page for the platform tab, the tab otherwise. */

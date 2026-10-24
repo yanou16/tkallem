@@ -28,7 +28,7 @@ export default function ContinueSignUpPage() {
           return;
         }
         await setActive({ session: sessionId });
-        router.replace("/");
+        router.replace("/plan");
       })
       .catch((err) => setError(clerkMessage(err)));
   }, [isLoaded, signUp, setActive, router]);
