@@ -23,7 +23,7 @@ const NAV = [
   { href: "/practice", label: "Practice", icon: MessageCircle },
   { href: "/ai-chat", label: "AI Chat", icon: Sparkles },
   ...(FEATURES.groups ? [{ href: "/groups", label: "Groups", icon: Users }] : []),
-  { href: "/phrases", label: "Your phrases", icon: BookOpen },
+  { href: "/phrases", label: "Your Mistakes", icon: BookOpen },
   { href: "/progress", label: "Progress", icon: ChartNoAxesColumn },
   { href: "/profile", label: "Profile", icon: UserRound },
 ];

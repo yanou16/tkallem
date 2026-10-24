@@ -20,7 +20,7 @@ export default function PhrasesPage() {
 
   return (
     <div>
-      <PageHeader eyebrow="MAKE IT STICK" title="Your phrases" subtitle="Your own corrections, kept here. Say each one out loud until it comes out clean." />
+      <PageHeader eyebrow="MAKE IT STICK" title="Your mistakes" subtitle="Your own corrections, kept here. Say each one out loud until it comes out clean." />
       {q.isLoading ? <Skeleton className="h-56" /> : q.error ? <ErrorState error={q.error} onRetry={() => q.refetch()} /> : list.length === 0 ? (
         <EmptyState title="No phrases yet" text="Answer a question in Practice: every sentence the coach corrects is kept here for you to say again."
           action={<Link href="/practice" className="inline-flex min-h-11 items-center rounded-full bg-ink px-5 text-sm font-semibold text-white">Choose a situation</Link>} />
