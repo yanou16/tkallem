@@ -197,3 +197,36 @@ def test_voice_late_graph_failure_stops_speech_and_does_not_save(monkeypatch):
         assert processor.send_event.call_args.args[0]["code"] == "conversation_error"
         refund.assert_called_once()
     asyncio.run(exercise())
+
+
+def test_interrupting_speech_closes_stream_before_next_utterance(monkeypatch):
+    from unittest.mock import AsyncMock, MagicMock
+    from uuid import uuid4
+    async def exercise():
+        started = asyncio.Event()
+        closed = []
+        async def stream(text, **kwargs):
+            try:
+                yield b"\x01\x00" * 320
+                started.set()
+                await asyncio.Event().wait()
+            finally:
+                closed.append(text)
+        monkeypatch.setattr(pipecat_pipeline, "stream_speech", stream)
+        processor = pipecat_pipeline.TkallemVoiceTurnProcessor(
+            session_id=uuid4(), user={}, coach=MagicMock(), connect=MagicMock(), rtvi=MagicMock())
+        processor.push_frame = AsyncMock()
+        processor.start_speaking("first")
+        await asyncio.wait_for(started.wait(), 2)
+        processor.start_speaking("second")
+        for _ in range(20):
+            await asyncio.sleep(0)
+            if closed:
+                break
+        assert closed == ["first"]
+        task = processor._current_speech_task
+        processor.interrupt_speech()
+        await asyncio.gather(task, return_exceptions=True)
+        assert not processor._is_speaking
+        await processor._tts_client.aclose()
+    asyncio.run(exercise())

@@ -2,11 +2,14 @@
 """Tkallem — Pipecat WebRTC voice pipeline."""
 
 import asyncio
+from contextlib import aclosing
 import io
 import logging
 import struct
 import uuid
 import wave
+
+import httpx
 from collections import deque
 from datetime import datetime, timezone
 from typing import AsyncGenerator
@@ -62,6 +65,7 @@ from app.db.connection import ConnFactory
 from app.db.sessions import save_turn
 from app.voice.stt import transcribe
 from app.voice.tts import Speech, synthesize, TtsError
+from app.voice.tts_stream import stream_speech
 
 logger = logging.getLogger(__name__)
 
@@ -227,6 +231,7 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
         self.rtvi = rtvi
 
         self._current_speech_task = None
+        self._tts_client = None
         self._current_turn_task = None
         self._pending_transcriptions = deque()
         self._background_tasks = set()
@@ -269,56 +274,20 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
 
             logger.info("TTS started: %s", text)
 
-            speech: Speech = await asyncio.to_thread(
-                synthesize,
-                text,
-            )
-
-            audio = (
-                getattr(speech, "audio", None)
-                or getattr(speech, "audio_bytes", None)
-            )
-
-            if not audio:
-                raise RuntimeError(
-                    "TTS returned no audio"
-                )
-
-            pcm = audio_bytes_to_pcm16(
-                audio,
-                target_sr=16000,
-            )
-
-            if not pcm:
-                raise RuntimeError(
-                    "TTS audio could not be decoded"
-                )
-
-            chunk_size = 640
-
-            for index in range(0, len(pcm), chunk_size):
-                if not self._is_speaking:
-                    break
-
-                chunk = pcm[
-                    index:index + chunk_size
-                ]
-
-                if len(chunk) < chunk_size:
-                    chunk = chunk.ljust(
-                        chunk_size,
-                        b"\x00",
-                    )
-
-                await self.push_frame(
-                    TTSAudioRawFrame(
-                        audio=chunk,
-                        sample_rate=16000,
-                        num_channels=1,
-                    )
-                )
-
-                await asyncio.sleep(0)
+            # The async generator owns the provider connection. Closing it on
+            # interruption stops the HTTP download and discards pending samples.
+            if self._tts_client is None:
+                self._tts_client = httpx.AsyncClient()
+            async with aclosing(stream_speech(text, client=self._tts_client)) as stream:
+                async for pcm in stream:
+                    for index in range(0, len(pcm), 640):
+                        if not self._is_speaking:
+                            return
+                        chunk = pcm[index:index + 640]
+                        await self.push_frame(TTSAudioRawFrame(
+                            audio=chunk, sample_rate=16000, num_channels=1,
+                        ))
+                        await asyncio.sleep(0)
 
             logger.info("TTS audio queued successfully")
 
@@ -358,11 +327,17 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
         self._current_speech_task = None
 
     def start_speaking(self, text: str):
+        previous = self._current_speech_task
         self.interrupt_speech()
 
-        task = asyncio.create_task(
-            self.speak_text(text)
-        )
+        async def replace_speech():
+            # Finish closing the old stream before its finally block can reset
+            # speaking state or send a stop frame for the new utterance.
+            if previous:
+                await asyncio.gather(previous, return_exceptions=True)
+            await self.speak_text(text)
+
+        task = asyncio.create_task(replace_speech())
 
         self._current_speech_task = task
         self._track_task(task)
@@ -659,6 +634,9 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
                 return_exceptions=True,
             )
 
+        if self._tts_client is not None:
+            await self._tts_client.aclose()
+            self._tts_client = None
         await super().cleanup()
 
 
