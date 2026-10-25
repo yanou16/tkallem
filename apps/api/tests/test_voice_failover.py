@@ -133,3 +133,18 @@ def test_stt_connection_failure_retried_then_falls_back(monkeypatch):
     monkeypatch.setattr(stt, "PROVIDERS", {"groq": down, **fake_stt(calls, {"deepinfra": None})})
     assert stt.transcribe(b"audio").provider == "deepinfra"
     assert calls == ["groq", "groq", "deepinfra"]
+
+
+def test_a_provider_that_keeps_timing_out_rests_longer_each_time_and_a_success_resets_it():
+    failover.reset()
+    rests = []
+    for _ in range(5):
+        failover.mark_down("tts", "deepinfra", None, now=1000.0)
+        rests.append(failover._down_until[("tts", "deepinfra")] - 1000.0)
+    assert rests == [20.0, 60.0, 180.0, 300.0, 300.0]
+    failover.mark_ok("tts", "deepinfra")
+    failover.mark_down("tts", "deepinfra", None, now=1000.0)
+    assert failover._down_until[("tts", "deepinfra")] - 1000.0 == 20.0
+    failover.mark_down("tts", "groq", 429, now=1000.0)  # a quota stays 5 minutes at once
+    assert failover._down_until[("tts", "groq")] - 1000.0 == 300.0
+    failover.reset()
