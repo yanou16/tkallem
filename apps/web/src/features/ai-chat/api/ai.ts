@@ -161,3 +161,9 @@ export const answerConfidence = (sessionId: string, when: "before" | "after", va
 /** The report's coach note written again in `lang` (nothing is saved, nothing is spent). */
 export const explainNote = (sessionId: string, lang: ExplainLang) =>
   api.post<{ note: string; explain_lang: ExplainLang }>(endpoints.ai.note(sessionId), { lang });
+
+/** Whether the live call is on, and the relay (ICE) servers the browser needs to reach it (GET /sessions/{id}/ice-servers). */
+export type CallConfig = { callEnabled: boolean; iceServers: RTCIceServer[] };
+type CallConfigDto = { call_enabled: boolean; ice_servers: RTCIceServer[] };
+export const getCallConfig = (sessionId: string): Promise<CallConfig> =>
+  api.get<CallConfigDto>(endpoints.ai.iceServers(sessionId)).then((d) => ({ callEnabled: d.call_enabled === true, iceServers: d.ice_servers ?? [] }));

@@ -2,10 +2,17 @@
 import { Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ChartNoAxesColumn, Check, ChevronDown, ChevronRight, CircleAlert, Lightbulb, MessageCircle, Mic, Send, Square, TrendingUp, UserRound, Volume2 } from "lucide-react";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
 import { useScenarios } from "@/features/practice/hooks/usePractice";
-import { useAiSession, useAnswer, useEndSession, useExplainNote, useSpeakLastLine, useStartSession } from "@/features/ai-chat/hooks/useAiChat";
+import { aiSessionKey, useAiSession, useAnswer, useCallConfig, useEndSession, useExplainNote, useSpeakLastLine, useStartSession } from "@/features/ai-chat/hooks/useAiChat";
+import { CREDITS_KEY } from "@/features/credits/hooks/useCredits";
+import { useRealtimeVoice } from "@/features/ai-chat/hooks/useRealtimeVoice";
+import AnswerModeSwitch from "@/features/ai-chat/components/AnswerModeSwitch";
+import CallPanel from "@/features/ai-chat/components/CallPanel";
+import { addCoachLine, addHeard, applyCallTurn, type CallError } from "@/features/ai-chat/lib/call";
+import { browserCanCall, offeredModes, readAnswerMode, rememberAnswerMode, type AnswerMode } from "@/features/ai-chat/lib/answerMode";
 import { useUpdateProfile } from "@/features/profile/hooks/useProfile";
 import ExplainToggle from "@/features/ai-chat/components/ExplainToggle";
 import VerdictCard from "@/features/ai-chat/components/VerdictCard";
@@ -26,7 +33,7 @@ import { feedbackView } from "@/features/ai-chat/lib/feedback";
 import { freezeView, thinkSeconds } from "@/features/ai-chat/lib/freeze";
 import { confidenceLine, shouldAskBefore } from "@/features/ai-chat/lib/confidence";
 import { MODE_LABEL, feedbackModeFrom, modeHint } from "@/features/ai-chat/lib/mode";
-import type { ChatMessage, Correction, SentenceStatus, SessionReport } from "@/features/ai-chat/types/ai";
+import type { AiSession, ChatMessage, Correction, SentenceStatus, SessionReport } from "@/features/ai-chat/types/ai";
 import { Avatar, Button, Card, EmptyState, PageHeader, Skeleton } from "@/components/ui";
 import { startHref } from "@/components/cards";
 import { ApiError } from "@/lib/api/client";
@@ -35,7 +42,6 @@ import { scenarioTint } from "@/lib/tint";
 import { cn, formatMinutes, formatNumber, plural } from "@/lib/utils";
 
 const MAX = 500;
-const MODE_KEY = "tkallem.mode";
 const AVATAR_KEY = "tkallem.avatar";
 
 /** The 3D coach is off by default (heavy on phones, approximate lip sync): only for students who turn it on. */
@@ -44,15 +50,6 @@ function readAvatar(): boolean {
     return localStorage.getItem(AVATAR_KEY) === "on";
   } catch {
     return false;
-  }
-}
-
-/** Voice first (it is a speaking coach); the student's last choice is remembered on this device. */
-function readMode(): "text" | "voice" {
-  try {
-    return localStorage.getItem(MODE_KEY) === "text" ? "text" : "voice";
-  } catch {
-    return "voice";
   }
 }
 
@@ -135,7 +132,13 @@ function Chat() {
   useEffect(() => { if (user && !explainTouched.current) setExplain(user.explainLang); }, [user]);
   const chooseExplain = (lang: ExplainLang) => { explainTouched.current = true; setExplain(lang); saveProfile.mutate({ explainLang: lang }); };
 
-  const [mode, setMode] = useState<"text" | "voice">(readMode);
+  const qc = useQueryClient();
+  const [mode, setMode] = useState<AnswerMode>(readAnswerMode);
+  const modeNow = useRef(mode); // read by async callbacks: a spoken line that arrives after the student chose the call must stay silent
+  modeNow.current = mode;
+  const callConfig = useCallConfig(sessionId);
+  const callAvailable = callConfig.data?.callEnabled === true && browserCanCall();
+  const [callProblem, setCallProblem] = useState<CallError | null>(null);
   const [avatarOn, setAvatarOn] = useState(readAvatar);
   const toggleAvatar = () => {
     coach.stop();
@@ -162,6 +165,31 @@ function Chat() {
   const maxSeconds = maxRecordingSeconds(scenarioId);
   const rec = useVoiceRecorder({ onAutoStop: (r) => r && sendRecording(r), maxSeconds });
 
+  // The live call. What it hears and says is written into the session as it happens; the saved session is reloaded when it ends.
+  const patchSession = (change: (session: AiSession) => AiSession) => {
+    if (sessionId) qc.setQueryData<AiSession>(aiSessionKey(sessionId), (prev) => (prev ? change(prev) : prev));
+  };
+  const call = useRealtimeVoice({
+    sessionId,
+    iceServers: callConfig.data?.iceServers ?? [],
+    onHeard: (heard) => patchSession((prev) => addHeard(prev, heard)),
+    onCoachLine: (line) => patchSession((prev) => addCoachLine(prev, line)),
+    onTurn: (turn) => {
+      patchSession((prev) => applyCallTurn(prev, turn, prev.feedbackMode === "interview"));
+      qc.invalidateQueries({ queryKey: CREDITS_KEY });
+    },
+    onError: (problem) => setCallProblem(problem),
+    onEnded: () => {
+      if (sessionId) qc.invalidateQueries({ queryKey: aiSessionKey(sessionId) });
+      qc.invalidateQueries({ queryKey: CREDITS_KEY });
+    },
+  });
+  const startCall = () => {
+    setCallProblem(null);
+    coach.stop();
+    void call.start();
+  };
+
   const begin = (id: string) => {
     started.current = id;
     // The session starts as text so the first question shows at once; in voice mode its audio is asked right after
@@ -169,7 +197,7 @@ function Chat() {
     start.mutate({ scenarioId: id, mode: "text", feedbackMode }, {
       onSuccess: (s) => {
         router.replace(`/ai-chat?sessionId=${encodeURIComponent(s.sessionId)}&scenarioId=${encodeURIComponent(id)}`);
-        if (mode === "voice") speakLast.mutate(s.sessionId, { onSuccess: (r) => coach.play(r.audio_url, r.text) });
+        if (mode === "voice") speakLast.mutate(s.sessionId, { onSuccess: (r) => { if (modeNow.current === "voice") coach.play(r.audio_url, r.text); } });
       },
     });
   };
@@ -197,6 +225,7 @@ function Chat() {
   const restart = (id = scenarioId) => {
     setText("");
     coach.stop();
+    void call.stop();
     send.reset();
     end.reset();
     if (!id) return router.push("/practice");
@@ -233,21 +262,34 @@ function Chat() {
     }
   }
 
-  function chooseMode(m: "text" | "voice") {
+  function chooseMode(m: AnswerMode) {
     if (m === mode) return;
+    if (mode === "call") void call.stop();
+    setCallProblem(null);
     setMode(m);
-    try { localStorage.setItem(MODE_KEY, m); } catch { /* private mode */ }
+    rememberAnswerMode(m);
+    if (m === "call") {
+      coach.stop();
+      if (rec.isRecording) rec.stop();
+      return;
+    }
     if (m === "text") {
       coach.stop();
       if (rec.isRecording) rec.stop();
       return;
     }
     // Switching to voice in the middle: the coach repeats its last line aloud, and its next replies are spoken.
-    if (sessionId && s && !s.finished && !send.isPending) speakLast.mutate(sessionId, { onSuccess: (r) => coach.play(r.audio_url, r.text) });
+    if (sessionId && s && !s.finished && !send.isPending) speakLast.mutate(sessionId, { onSuccess: (r) => { if (modeNow.current === "voice") coach.play(r.audio_url, r.text); } });
   }
   const finish = () => {
-    if (sessionId && !end.isPending) end.mutate();
+    if (!sessionId || end.isPending) return;
+    void call.stop();
+    end.mutate();
   };
+  // If the call is switched off for this session (or the browser cannot make one) the call mode is dropped.
+  useEffect(() => {
+    if (mode === "call" && callConfig.isFetched && !callAvailable) setMode("voice");
+  }, [mode, callConfig.isFetched, callAvailable]);
 
   const scenario = scenarios.data?.find((x) => x.id === scenarioId);
   const title = s?.title ?? scenario?.title ?? scenarioId;
@@ -268,7 +310,7 @@ function Chat() {
   // In voice mode the reply text is shown before its voice exists (a second or two): say so instead of "Thinking…".
   const waitingForVoice = mode === "voice" && send.isPending && !!live?.reply && !coach.speaking;
   const coachState: CoachState = rec.isRecording ? "listening" : coach.speaking ? "speaking" : waitingForVoice ? "preparing" : send.isPending || speakLast.isPending ? "thinking" : "idle";
-  const barState: CoachState = coachState === "thinking" && pending ? "idle" : coachState; // "Thinking…" already shows in the chat
+  const barState: CoachState = mode === "call" || (coachState === "thinking" && pending) ? "idle" : coachState; // "Thinking…" already shows in the chat
 
   const answers = s?.messages.filter((m) => m.role === "user") ?? [];
   const lastCoachLine = [...(s?.messages ?? [])].reverse().find((m) => m.role === "assistant");
@@ -318,15 +360,6 @@ function Chat() {
             <span className="truncate">{title}</span><span className="sr-only">, change scenario</span>
             <ChevronDown size={16} className="shrink-0" aria-hidden />
           </button>
-          {/* One toggle: how the student answers. The only status shown is the real interview (a state, not a control). */}
-          <div className="ml-auto inline-flex shrink-0 rounded-full bg-surface p-0.5" role="radiogroup" aria-label="Answer mode">
-            {(["voice", "text"] as const).map((m) => (
-              <button key={m} role="radio" aria-checked={mode === m} onClick={() => chooseMode(m)}
-                className={cn("inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-sm font-semibold capitalize", mode === m ? "bg-ink text-white" : "text-muted")}>
-                <span className="hidden sm:inline-flex">{m === "text" ? <MessageCircle size={15} aria-hidden /> : <Mic size={15} aria-hidden />}</span> {m}
-              </button>
-            ))}
-          </div>
           {menu && (
               <ul className="absolute left-0 top-full z-20 mt-2 max-h-72 w-full overflow-auto rounded-2xl border border-line bg-white p-1.5 shadow-soft">
                 {(scenarios.data ?? []).map((sc) => (
@@ -336,13 +369,14 @@ function Chat() {
               </ul>
             )}
         </div>
+        <AnswerModeSwitch modes={offeredModes(callAvailable)} value={mode} onChange={chooseMode} showHint={false} className="mb-2 shrink-0 md:mb-3 md:max-w-md" />
         {interview && <p className="-mt-1 mb-3 shrink-0 text-sm text-charcoal"><span className="font-semibold">{MODE_LABEL.interview}.</span> {modeHint("interview")}</p>}
         {mode === "voice" && avatarOn && <div className="mb-4"><CoachAvatar {...coach.avatarProps} /></div>}
 
           </>
         ) : (
           <>
-        <div className="mb-4 grid gap-3 md:grid-cols-[1.3fr_0.8fr_1fr]">
+        <div className="mb-4 grid gap-3 md:grid-cols-[1.3fr_0.8fr]">
           <div className="relative">
             <button onClick={() => setMenu((m) => !m)} className={cn("flex w-full items-center gap-3 rounded-2xl p-3 text-left", tint)}>
               <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/70"><Icon name={icon ?? "briefcase"} /></span>
@@ -363,14 +397,8 @@ function Chat() {
             <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white"><ChartNoAxesColumn size={20} /></span>
             <span><span className="block text-sm text-muted">Level</span><span className="font-semibold">{user?.level ?? "—"}</span></span>
           </div>
-          <div className="flex items-center gap-2 rounded-2xl bg-black/[0.03] p-2" role="radiogroup" aria-label="Answer mode">
-            {(["voice", "text"] as const).map((m) => (
-              <button key={m} role="radio" aria-checked={mode === m} onClick={() => chooseMode(m)} className={cn("flex flex-1 items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold capitalize", mode === m ? "bg-ink text-white" : "text-muted")}>
-                {m === "text" ? <MessageCircle size={16} /> : <Mic size={16} />} {m}
-              </button>
-            ))}
-          </div>
         </div>
+        <AnswerModeSwitch modes={offeredModes(callAvailable)} value={mode} onChange={chooseMode} className="mb-4 md:max-w-md" />
 
         {mode === "voice" && (
           <div className="mb-4">
@@ -461,11 +489,15 @@ function Chat() {
                   )}
                 </div>
               )}
-              {sessionId && s && !interview && (
+              {sessionId && s && !interview && mode !== "call" && (
                 <HelpMeStart sessionId={sessionId} question={lastCoachLine?.content} questionKey={lastCoachLine?.id ?? "start"} typing={text.trim().length > 0}
                   recording={rec.isRecording} busy={coachState === "thinking" || coachState === "preparing" || coachState === "speaking" || !!pending}
                   onUse={(t) => { setText(t); answerField.current?.focus(); }} />
               )}
+              {mode === "call" ? (
+                <CallPanel phase={call.phase} state={call.state} muted={call.muted} seconds={call.seconds} error={callProblem} disabled={!sessionId || !s || s.finished}
+                  onStart={startCall} onStop={() => void call.stop()} onMute={call.toggleMute} onUseVoiceMessage={() => chooseMode("voice")} />
+              ) : (
               <div className="flex items-center gap-3 p-3 sm:p-4">
                 <div className="flex flex-col items-center">
                   <button onClick={toggleMic} disabled={!s || send.isPending} aria-label={rec.isRecording ? "Stop and send" : "Answer by voice"}
@@ -487,6 +519,7 @@ function Chat() {
                 <button onClick={submit} disabled={!text.trim() || !s || send.isPending || rec.isRecording} aria-label="Send"
                   className="flex h-14 w-14 items-center justify-center rounded-full bg-ink text-white disabled:opacity-40"><Send size={20} /></button>
               </div>
+              )}
             </div>
           )}
         </div>

@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 export type CoachState = "idle" | "listening" | "thinking" | "preparing" | "speaking";
 
 /** DESIGN.md state indicator: one shape per state, always with a word, never a face. */
-export default function VoiceState({ state, seconds, className }: { state: CoachState; seconds?: number; className?: string }) {
+export default function VoiceState({ state, seconds, className, label: custom }: { state: CoachState; seconds?: number; className?: string; label?: string }) {
   if (state === "idle") return null;
-  const label = stateLabel(state, seconds ?? 0);
+  const label = custom ?? stateLabel(state, seconds ?? 0);
   return (
     <div role="status" aria-live="polite" className={cn("flex items-center gap-3", className)}>
       {state === "listening" && (
