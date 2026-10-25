@@ -145,11 +145,18 @@ class TkallemSTTService(SegmentedSTTService):
             return
 
         try:
+            stt_started = time.monotonic()
             result = await asyncio.to_thread(
                 transcribe,
                 audio,
                 "turn.wav",
                 "audio/wav",
+            )
+            logger.warning(
+                "call stt: %s in %.1f s (%.1f s of speech)",
+                getattr(result, "provider", "?"),
+                time.monotonic() - stt_started,
+                len(audio) / 32000,
             )
 
             if not result or not result.text:
@@ -266,6 +273,7 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
                     timeout=settings.voice_call_safety_net_wait_secs,
                 )
             self._tts_failures = 0
+            logger.warning("call voice: %s in %.1f s (%d characters)", speech.provider, speech.latency_s, len(text))
 
             audio = (
                 getattr(speech, "audio", None)
@@ -458,62 +466,69 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
         goal_covered = None
 
         try:
-            # Existing LangGraph / CoachSession logic.
-            def get_events():
-                return list(
-                    self.coach.turn_events(text)
-                )
+            # Existing LangGraph / CoachSession logic, read as a stream: the reply is sent and spoken as soon as it
+            # exists, while the corrections are still being made (the turn used to be read to the end first, which
+            # added the whole corrector call to the wait: 10 to 25 s on production).
+            loop = asyncio.get_running_loop()
+            events_queue: asyncio.Queue = asyncio.Queue()
+            started = time.monotonic()
 
-            events = await asyncio.to_thread(
-                get_events
-            )
+            def produce():
+                try:
+                    for event in self.coach.turn_events(text):
+                        loop.call_soon_threadsafe(events_queue.put_nowait, ("event", event))
+                except BaseException as exc:  # handed to the loop below, which raises it
+                    loop.call_soon_threadsafe(events_queue.put_nowait, ("error", exc))
+                else:
+                    loop.call_soon_threadsafe(events_queue.put_nowait, ("end", None))
 
-            for event in events:
-                event_type = event.get("type")
+            self._track_task(asyncio.ensure_future(asyncio.to_thread(produce)))
+            replied = False
+
+            async def say(reply: str):
+                nonlocal replied
+                replied = True
+                logger.warning("call turn: reply ready in %.1f s", time.monotonic() - started)
+                # Send text to the frontend immediately, then start the audio.
+                await self.send_event({
+                    "type": "bot_transcript",
+                    "text": reply,
+                    "utterance_id": utterance_id,
+                })
+                self.start_speaking(reply)
+
+            while True:
+                kind, payload = await events_queue.get()
+                if kind == "error":
+                    raise payload
+                if kind == "end":
+                    break
+                event_type = payload.get("type")
 
                 if event_type == "reply":
-                    reply_text = event.get(
-                        "reply",
-                        "",
-                    )
+                    reply_text = payload.get("reply", "")
+                    if reply_text and not replied:
+                        await say(reply_text)
 
                 elif event_type == "corrections":
-                    corrections = event.get(
-                        "corrections",
-                        [],
-                    )
-                    sentence_status = event.get(
-                        "sentence_status",
-                        "green",
-                    )
+                    corrections = payload.get("corrections", [])
+                    sentence_status = payload.get("sentence_status", "green")
 
                 elif event_type == "done":
-                    turn = event.get("turn")
+                    turn = payload.get("turn")
 
                     if turn:
-                        goal_covered = (
-                            turn.goal_covered
-                        )
+                        goal_covered = turn.goal_covered
 
-            if not reply_text:
-                reply_text = (
-                    "I see. Let's continue."
-                )
+            if not replied:
+                reply_text = reply_text or "I see. Let's continue."
+                await say(reply_text)
 
+            logger.warning("call turn: corrections done in %.1f s", time.monotonic() - started)
             logger.info(
                 "LLM response: %s",
                 reply_text,
             )
-
-            # Send text to the frontend immediately.
-            await self.send_event({
-                "type": "bot_transcript",
-                "text": reply_text,
-                "utterance_id": utterance_id,
-            })
-
-            # Start audio generation automatically.
-            self.start_speaking(reply_text)
 
             # Save conversation separately.
             task = asyncio.create_task(
