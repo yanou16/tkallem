@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ANSWER_MODE_HINT, ANSWER_MODE_LABEL, MODE_KEY, browserCanCall, offeredModes, readAnswerMode, rememberAnswerMode } from "./answerMode";
+import { ANSWER_MODE_HINT, ANSWER_MODE_LABEL, ANSWER_MODE_SHORT, MODE_KEY, browserCanCall, offeredModes, readAnswerMode, rememberAnswerMode } from "./answerMode";
 
 const store = (initial: Record<string, string> = {}) => {
   const data = { ...initial };
@@ -8,8 +8,10 @@ const store = (initial: Record<string, string> = {}) => {
 
 describe("answer modes", () => {
   it("names the three modes so the difference is readable", () => {
-    expect(ANSWER_MODE_LABEL).toEqual({ call: "Call", voice: "Voice message", text: "Text" });
+    expect(ANSWER_MODE_LABEL).toEqual({ call: "Live call", voice: "Voice message", text: "Text" });
     expect(new Set(Object.values(ANSWER_MODE_HINT)).size).toBe(3);
+    expect(new Set(Object.values(ANSWER_MODE_SHORT)).size).toBe(3);
+    expect(Math.max(...Object.values(ANSWER_MODE_SHORT).map((t) => t.length))).toBeLessThanOrEqual(50); // one line at 390 px
   });
 
   it("starts on the voice message and remembers text, never the call", () => {

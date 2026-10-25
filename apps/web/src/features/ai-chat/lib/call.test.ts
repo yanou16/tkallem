@@ -61,11 +61,14 @@ describe("call errors", () => {
     const e = new Error("Permission denied");
     e.name = "NotAllowedError";
     expect(callError(e).kind).toBe("mic-denied");
+    expect(callError(e).message).toMatch(/type your answers/i); // the voice message needs the microphone too
+    expect(callError(e).message).not.toMatch(/voice message/i);
   });
   it("explains a missing microphone", () => {
     const e = new Error("Requested device not found");
     e.name = "NotFoundError";
     expect(callError(e).message).toMatch(/No microphone/);
+    expect(callError(e).message).toMatch(/type your answers/i);
   });
   it("explains a timeout and always offers the voice message", () => {
     const e = new Error("x");

@@ -4,11 +4,15 @@ import { cn } from "@/lib/utils";
 export type CoachState = "idle" | "listening" | "thinking" | "preparing" | "speaking";
 
 /** DESIGN.md state indicator: one shape per state, always with a word, never a face. */
-export default function VoiceState({ state, seconds, className, label: custom }: { state: CoachState; seconds?: number; className?: string; label?: string }) {
+export default function VoiceState({ state, seconds, className, label: custom, large, quiet }: {
+  state: CoachState; seconds?: number; className?: string; label?: string;
+  large?: boolean; // the main message of a screen (the live call), not a line under a bubble
+  quiet?: boolean; // not a live region: a call changes state every few seconds and must not be read out over the coach's voice
+}) {
   if (state === "idle") return null;
   const label = custom ?? stateLabel(state, seconds ?? 0);
   return (
-    <div role="status" aria-live="polite" className={cn("flex items-center gap-3", className)}>
+    <div {...(quiet ? {} : { role: "status", "aria-live": "polite" as const })} className={cn("flex items-center gap-3", className)}>
       {state === "listening" && (
         <span className="flex h-6 items-center gap-[3px]" aria-hidden>
           {Array.from({ length: 12 }).map((_, i) => (
@@ -22,7 +26,7 @@ export default function VoiceState({ state, seconds, className, label: custom }:
         </span>
       )}
       {state === "speaking" && <span className="tk-breathe h-6 w-6 rounded-full bg-ink" aria-hidden />}
-      <span className="text-sm font-medium">{label}</span>
+      <span className={large ? "text-base font-semibold" : "text-sm font-medium"}>{label}</span>
     </div>
   );
 }

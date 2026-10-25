@@ -1,12 +1,19 @@
 /** How the student answers: a live call, a voice message, or text. Plain functions, tested in answerMode.test.ts. */
 export type AnswerMode = "call" | "voice" | "text";
 
-export const ANSWER_MODE_LABEL: Record<AnswerMode, string> = { call: "Call", voice: "Voice message", text: "Text" };
+export const ANSWER_MODE_LABEL: Record<AnswerMode, string> = { call: "Live call", voice: "Voice message", text: "Text" };
 
 /** One line each, so a visitor who opens the app alone understands the difference between the three. */
 export const ANSWER_MODE_HINT: Record<AnswerMode, string> = {
   call: "Talk with the coach hands-free, like a phone interview: it answers out loud as soon as you stop.",
   voice: "Record one answer, send it, then read and hear the coach's reply.",
+  text: "Type your answers and read the replies.",
+};
+
+/** The same three, short enough for one line under the switch during a session on a phone. */
+export const ANSWER_MODE_SHORT: Record<AnswerMode, string> = {
+  call: "Talk live, hands-free, like a phone interview.",
+  voice: "Record one answer, then hear the coach reply.",
   text: "Type your answers and read the replies.",
 };
 

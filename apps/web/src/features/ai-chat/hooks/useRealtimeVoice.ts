@@ -44,6 +44,9 @@ export function useRealtimeVoice(options: RealtimeVoiceOptions) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const live = useRef(false);
   const lastCoachLine = useRef("");
+  /** The microphone level (0 to 1), written many times a second: a ref, so the page does not render for each one. */
+  const levelRef = useRef(0);
+  const attempt = useRef(0); // a start that was cancelled while it waited (microphone prompt) must not connect afterwards
   const mutedRef = useRef(false);
 
   const clearTimer = () => {
@@ -53,6 +56,8 @@ export function useRealtimeVoice(options: RealtimeVoiceOptions) {
 
   const teardown = useCallback(async () => {
     clearTimer();
+    attempt.current += 1;
+    levelRef.current = 0;
     const client = clientRef.current;
     clientRef.current = null;
     if (audioRef.current) {
@@ -115,6 +120,7 @@ export function useRealtimeVoice(options: RealtimeVoiceOptions) {
   const start = useCallback(async () => {
     const { sessionId, iceServers } = opts.current;
     if (!sessionId || clientRef.current) return;
+    const mine = ++attempt.current;
     setPhase("connecting");
     try {
       // The audio element is made inside the tap, so the browser lets it play the coach's voice later.
@@ -128,9 +134,11 @@ export function useRealtimeVoice(options: RealtimeVoiceOptions) {
       // a microphone when it is refused, and the student would sit in a call nobody hears. No 12 s limit while the prompt is open.
       const probe = await navigator.mediaDevices.getUserMedia({ audio: true });
       probe.getTracks().forEach((t) => t.stop());
+      if (attempt.current !== mine) return; // cancelled while the browser asked for the microphone
 
       const headers = new Headers();
       const auth = await getAuthHeaderValue();
+      if (attempt.current !== mine) return;
       if (auth) headers.set("Authorization", auth);
 
       const transport = new SmallWebRTCTransport({
@@ -168,6 +176,7 @@ export function useRealtimeVoice(options: RealtimeVoiceOptions) {
       client.on(RTVIEvent.Disconnected, () => {
         if (clientRef.current === client && live.current) void stop();
       });
+      client.on(RTVIEvent.LocalAudioLevel, (level: number) => { levelRef.current = level; });
       client.on(RTVIEvent.UserStartedSpeaking, () => setState("listening"));
       client.on(RTVIEvent.UserStoppedSpeaking, () => setState("thinking"));
       client.on(RTVIEvent.BotStartedSpeaking, () => setState("speaking"));
@@ -223,5 +232,5 @@ export function useRealtimeVoice(options: RealtimeVoiceOptions) {
     clientRef.current = null;
   }, []);
 
-  return { phase, state, muted, seconds, start, stop, toggleMute };
+  return { phase, state, muted, seconds, levelRef, start, stop, toggleMute };
 }
