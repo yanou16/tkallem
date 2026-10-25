@@ -6,6 +6,7 @@ import audioop
 import io
 import logging
 import struct
+import time
 import uuid
 import wave
 from datetime import datetime, timezone
@@ -179,6 +180,10 @@ class TkallemSTTService(SegmentedSTTService):
 # VOICE CONVERSATION PROCESSOR
 # ============================================================
 
+class _VoiceSkipped(TtsError):
+    """The server voice was not even tried: it failed repeatedly a moment ago."""
+
+
 class TkallemVoiceTurnProcessor(FrameProcessor):
 
     def __init__(
@@ -203,6 +208,8 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
         self._current_turn_task = None
         self._background_tasks = set()
         self._is_speaking = False
+        self._tts_failures = 0  # server voice failures in a row (call only)
+        self._tts_skip_until = 0.0  # monotonic time until which the browser's voice is used straight away
 
     def _track_task(self, task):
         self._background_tasks.add(task)
@@ -241,10 +248,16 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
 
             logger.info("TTS started: %s", text)
 
-            speech: Speech = await asyncio.to_thread(
-                synthesize,
-                text,
+            if time.monotonic() < self._tts_skip_until:
+                raise _VoiceSkipped("server voice skipped after repeated failures")
+
+            # A call cannot wait for a slow voice: the reply text is already on the student's screen, and past this wait
+            # the browser reads it (a late audio is dropped). The thread keeps running, its result is discarded.
+            speech: Speech = await asyncio.wait_for(
+                asyncio.to_thread(synthesize, text),
+                timeout=settings.voice_call_tts_wait_secs,
             )
+            self._tts_failures = 0
 
             audio = (
                 getattr(speech, "audio", None)
@@ -297,6 +310,10 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
 
         except (TtsError, Exception) as exc:
             logger.exception("TTS failed")
+            if not isinstance(exc, _VoiceSkipped):  # a skipped attempt is not a new failure: it must not extend the pause
+                self._tts_failures += 1
+                if self._tts_failures >= settings.voice_call_tts_failures_to_skip:
+                    self._tts_skip_until = time.monotonic() + settings.voice_call_tts_skip_secs
 
             await self.send_event({
                 "type": "error",

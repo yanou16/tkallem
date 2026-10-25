@@ -74,3 +74,16 @@ export function callError(error: unknown, code?: string): CallError {
 }
 
 export const CALL_CONNECT_TIMEOUT_MS = 12_000;
+
+/** The most natural English voice a browser offers, for when the server's voice is not available (the line is read by the
+ *  browser). Neural and "Google" voices first, then the well-known system ones, then any US or UK English voice. */
+export function bestEnglishVoice(voices: readonly { name: string; lang: string; localService?: boolean }[]): { name: string; lang: string } | null {
+  const english = voices.filter((v) => /^en([-_]|$)/i.test(v.lang));
+  if (english.length === 0) return null;
+  const liked = [/natural|neural|online/i, /google (us|uk) english/i, /samantha|ava|allison|serena|daniel|karen|moira/i, /aria|jenny|guy|zira|david/i];
+  for (const re of liked) {
+    const hit = english.find((v) => re.test(v.name));
+    if (hit) return hit;
+  }
+  return english.find((v) => /^en[-_]us$/i.test(v.lang)) ?? english.find((v) => /^en[-_]gb$/i.test(v.lang)) ?? english[0];
+}

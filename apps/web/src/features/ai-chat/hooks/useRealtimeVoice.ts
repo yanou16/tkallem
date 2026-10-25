@@ -7,7 +7,7 @@ import { endpoints } from "@/lib/api/endpoints";
 import { getAuthHeaderValue } from "@/lib/api/client";
 import type { CoachState } from "../components/VoiceState";
 import type { Correction, SentenceStatus } from "../types/ai";
-import { CALL_CONNECT_TIMEOUT_MS, callError, type CallError, type CallTurn } from "../lib/call";
+import { CALL_CONNECT_TIMEOUT_MS, bestEnglishVoice, callError, type CallError, type CallTurn } from "../lib/call";
 
 export type CallPhase = "idle" | "connecting" | "live";
 
@@ -104,6 +104,9 @@ export function useRealtimeVoice(options: RealtimeVoiceOptions) {
     if (!text || typeof window === "undefined" || !("speechSynthesis" in window)) return;
     const u = new SpeechSynthesisUtterance(text);
     u.lang = "en-US";
+    u.rate = 0.95;
+    const voice = bestEnglishVoice(window.speechSynthesis.getVoices());
+    if (voice) u.voice = window.speechSynthesis.getVoices().find((x) => x.name === voice.name && x.lang === voice.lang) ?? null;
     const done = () => {
       setState("idle");
       if (clientRef.current === client && !mutedRef.current) client.enableMic(true);
