@@ -22,5 +22,19 @@ export const endpoints = {
     confidence: (id: string) => `/sessions/${id}/confidence`,
     note: (id: string) => `/sessions/${id}/note`,
   },
+  groups: {
+    mine: "/me/group",
+    /** The only group route a guest may call: theme, question of the day, a few groups (no names, no messages). */
+    preview: "/groups/preview",
+    join: "/groups/join",
+    detail: (id: number) => `/groups/${id}`,
+    messages: (id: number) => `/groups/${id}/messages`,
+    report: (id: number, messageId: number) => `/groups/${id}/messages/${messageId}/report`,
+    leave: (id: number) => `/groups/${id}/members/me`,
+    check: (id: number) => `/groups/${id}/check`,
+    leaderboard: (id: number) => `/groups/${id}/leaderboard`,
+    /** WebSocket, on WS_URL: receives only, sending goes through `messages`. */
+    socket: (id: number) => `/ws/groups/${id}`,
+  },
   progress: "/me/progress",
 } as const;

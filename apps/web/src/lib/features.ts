@@ -3,6 +3,10 @@
  * that cannot load); the code stays, switch a flag on when its API is built.
  */
 export const FEATURES = {
+  // Practice groups (/groups/*, /me/group, WS /ws/groups/{id}): on, groups of the student's level with the question of the day.
+  // NEXT_PUBLIC_FEATURE_GROUPS=0 hides the menu link and the /groups page (they redirect to /practice).
+  // Read at build time: restart `npm run dev`, or redeploy, after changing it.
+  groups: process.env.NEXT_PUBLIC_FEATURE_GROUPS !== "0",
   notifications: false, // /api/notifications/*, notification preferences
   profileExtras: false, // bio, photo, goals, practice mode, daily goal, focus areas, languages, badges, AI preferences
 } as const;
