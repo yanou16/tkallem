@@ -138,6 +138,8 @@ function Chat() {
   modeNow.current = mode;
   const callConfig = useCallConfig(sessionId);
   const callAvailable = callConfig.data?.callEnabled === true && browserCanCall();
+  // While the server is still asked (a cold server takes a while), Call stays in the switch, greyed out: it must not pop in later and push the others aside.
+  const callPending = !callConfig.isFetched && browserCanCall();
   const [callProblem, setCallProblem] = useState<CallError | null>(null);
   const [avatarOn, setAvatarOn] = useState(readAvatar);
   const toggleAvatar = () => {
@@ -369,7 +371,7 @@ function Chat() {
               </ul>
             )}
         </div>
-        <AnswerModeSwitch modes={offeredModes(callAvailable)} value={mode} onChange={chooseMode} showHint={false} className="mb-2 shrink-0 md:mb-3 md:max-w-md" />
+        <AnswerModeSwitch modes={offeredModes(callAvailable || callPending)} value={mode} onChange={chooseMode} showHint={false} className="mb-2 shrink-0 md:mb-3 md:max-w-md" />
         {interview && <p className="-mt-1 mb-3 shrink-0 text-sm text-charcoal"><span className="font-semibold">{MODE_LABEL.interview}.</span> {modeHint("interview")}</p>}
         {mode === "voice" && avatarOn && <div className="mb-4"><CoachAvatar {...coach.avatarProps} /></div>}
 
@@ -398,7 +400,7 @@ function Chat() {
             <span><span className="block text-sm text-muted">Level</span><span className="font-semibold">{user?.level ?? "—"}</span></span>
           </div>
         </div>
-        <AnswerModeSwitch modes={offeredModes(callAvailable)} value={mode} onChange={chooseMode} className="mb-4 md:max-w-md" />
+        <AnswerModeSwitch modes={offeredModes(callAvailable || callPending)} value={mode} onChange={chooseMode} className="mb-4 md:max-w-md" />
 
         {mode === "voice" && (
           <div className="mb-4">
@@ -495,7 +497,7 @@ function Chat() {
                   onUse={(t) => { setText(t); answerField.current?.focus(); }} />
               )}
               {mode === "call" ? (
-                <CallPanel phase={call.phase} state={call.state} muted={call.muted} seconds={call.seconds} error={callProblem} disabled={!sessionId || !s || s.finished}
+                <CallPanel phase={call.phase} state={call.state} muted={call.muted} seconds={call.seconds} error={callProblem} disabled={!sessionId || !s || s.finished || !callAvailable} preparing={callPending}
                   onStart={startCall} onStop={() => void call.stop()} onMute={call.toggleMute} onUseVoiceMessage={() => chooseMode("voice")} />
               ) : (
               <div className="flex items-center gap-3 p-3 sm:p-4">
