@@ -7,7 +7,7 @@ import { memberName } from "../lib/labels";
 type Query = { data?: LeaderboardEntry[]; isLoading: boolean; error: unknown; refetch: () => unknown };
 
 /** Practice time of each member over the last 7 days, then the streak, as computed by the API (ties share a rank). */
-export default function Leaderboard({ query }: { query: Query }) {
+export default function Leaderboard({ query, colors }: { query: Query; colors?: ReadonlyMap<number, string> }) {
   return (
     <Card>
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -20,8 +20,8 @@ export default function Leaderboard({ query }: { query: Query }) {
           <ol className="divide-y divide-line">
             {(query.data ?? []).map((e) => (
               <li key={e.member.id} className={cn("flex items-center gap-3 py-3", e.isMe && "font-semibold")}>
-                <span className="w-5 text-center">{e.rank}</span>
-                <Avatar first={e.member.firstName ?? undefined} size={36} />
+                <span className="w-6 text-center text-base">{e.rank}</span>
+                <Avatar first={e.member.firstName ?? undefined} size={36} className={colors?.get(e.member.id)} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate">{memberName(e.member, e.isMe)}</p>
                   <p className="text-sm font-normal text-muted">Streak: {plural(e.streakDays, "day")}</p>

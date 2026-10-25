@@ -1,5 +1,5 @@
 "use client";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Flag } from "lucide-react";
 import { Avatar, Button, Dialog, EmptyState } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -21,7 +21,7 @@ const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-d
  * The chat, oldest first. A new message keeps the list at the bottom when she was already there (or wrote it); an older
  * page loaded above keeps the same message in view.
  */
-export default function MessageList({ groupId, log, myId, colors = new Map<number, string>(), fill = false }: { groupId: number; log: MessageLog; myId?: number; colors?: ReadonlyMap<number, string>; fill?: boolean }) {
+export default function MessageList({ groupId, log, myId, colors = new Map<number, string>(), fill = false, empty }: { groupId: number; log: MessageLog; myId?: number; colors?: ReadonlyMap<number, string>; fill?: boolean; empty?: ReactNode }) {
   const { messages } = log;
   const older = useLoadOlder(groupId);
   const [reporting, setReporting] = useState<GroupMessage | null>(null);
@@ -61,32 +61,33 @@ export default function MessageList({ groupId, log, myId, colors = new Map<numbe
           "overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-6",
           fill ? "min-h-0 flex-1" : "max-h-[60vh] min-h-[240px]"
         )}
+        role="log"
         aria-label="Group conversation"
-        aria-live="polite"
+        aria-relevant="additions"
       >
         <div className="flex min-h-full flex-col">
           {log.hasOlder && (
             <div className="mb-4 flex shrink-0 justify-center">
-              <Button dark={false} onClick={() => older.mutate()} disabled={older.isPending} className="!py-1.5 !px-3 text-xs sm:text-sm">
+              <Button dark={false} onClick={() => older.mutate()} disabled={older.isPending} className="!min-h-11 !px-4 text-sm">
                 {older.isPending ? "Loading…" : "Load earlier messages"}
               </Button>
             </div>
           )}
           {older.error && <p role="alert" className="mb-3 rounded-2xl bg-bad-bg px-4 py-3 text-sm text-bad">{older.error.message}</p>}
           {messages.length === 0 ? (
-            <div className="my-auto py-8">
-              <EmptyState title="No messages yet" text="Answer today's question to start the conversation." />
+            <div className="my-auto py-6">
+              {empty ?? <EmptyState title="No messages yet" text="Answer today's question to start the conversation." />}
             </div>
           ) : (
             <ul className="mt-auto space-y-4">
               {groupMessages(messages).map((g) => g.author.id === myId ? (
                 <li key={g.messages[0].id} className="flex flex-col items-end gap-1">
-                  <p className="flex items-center gap-2 px-1 text-xs sm:text-sm text-muted">
+                  <p className="flex items-center gap-2 px-1 text-sm text-muted">
                     <span className="font-medium text-ink">You</span>
                     <span>{clock(g.startedAt)}</span>
                   </p>
                   {g.messages.map((m) => (
-                    <p key={m.id} className={cn(BUBBLE, "rounded-br-input", colors.get(g.author.id) ?? "bg-mint", m.id > initialLastId && "tk-in")}>{m.body}</p>
+                    <p key={m.id} className={cn(BUBBLE, "rounded-br-input !bg-ink !text-white", m.id > initialLastId && "tk-in")}>{m.body}</p>
                   ))}
                 </li>
               ) : (
@@ -94,7 +95,7 @@ export default function MessageList({ groupId, log, myId, colors = new Map<numbe
                   {/* A former member: "?" on light grey (Avatar's own background), like a member without a first name. */}
                   <Avatar first={g.authorLeft ? undefined : g.author.firstName ?? undefined} size={32} className={cn("shrink-0 mt-0.5", !g.authorLeft && colors.get(g.author.id))} />
                   <div className="min-w-0 flex-1 space-y-1">
-                    <p className="px-1 text-xs sm:text-sm text-muted">
+                    <p className="px-1 text-sm text-muted">
                       {g.authorLeft ? "Former member" : <span className="font-medium text-ink">{memberName(g.author)}</span>} · {clock(g.startedAt)}
                     </p>
                     {g.messages.map((m) => (
@@ -103,11 +104,9 @@ export default function MessageList({ groupId, log, myId, colors = new Map<numbe
                         <button
                           onClick={() => setReporting(m)}
                           aria-label={`Report the message of ${memberName(m.author)}`}
-                          className="flex h-9 w-9 shrink-0 items-center justify-center text-muted/60 opacity-60 transition hover:text-ink hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-steel transition-colors hover:bg-black/5 hover:text-ink"
                         >
-                          <span className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-black/5">
-                            <Flag size={14} />
-                          </span>
+                          <Flag size={16} aria-hidden />
                         </button>
                       </div>
                     ))}
