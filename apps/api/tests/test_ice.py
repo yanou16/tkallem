@@ -78,7 +78,15 @@ def test_the_browser_gets_every_transport_but_the_port_53_ones():
     assert not any(":53?" in u or u.endswith(":53") for u in urls)
 
 
-def test_our_own_peer_gets_stun_and_turn_over_udp_only():
+def test_our_own_peer_gets_stun_and_turn_over_udp_on_port_443_only():
+    body = {"iceServers": [CLOUDFLARE["iceServers"][0], {**CLOUDFLARE["iceServers"][1], "urls": [
+        "turn:turn.cloudflare.com:3478?transport=udp", "turn:turn.cloudflare.com:443?transport=udp",
+        "turn:turn.cloudflare.com:3478?transport=tcp", "turns:turn.cloudflare.com:443?transport=tcp"]}]}
+    urls = [u for s in ice.server_ice_servers(fake_cloudflare([], body=body)) for u in s["urls"]]
+    assert urls == ["stun:stun.cloudflare.com:3478", "turn:turn.cloudflare.com:443?transport=udp"]
+
+
+def test_without_a_443_url_the_peer_keeps_one_udp_turn_url():
     urls = [u for s in ice.server_ice_servers(fake_cloudflare([])) for u in s["urls"]]
     assert urls == ["stun:stun.cloudflare.com:3478", "turn:turn.cloudflare.com:3478?transport=udp"]
 
