@@ -43,6 +43,8 @@ export function useRealtimeVoice(options: RealtimeVoiceOptions) {
   const startedAt = useRef<number | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const live = useRef(false);
+  const lastCoachLine = useRef("");
+  const mutedRef = useRef(false);
 
   const clearTimer = () => {
     if (timer.current) clearTimeout(timer.current);
@@ -65,6 +67,9 @@ export function useRealtimeVoice(options: RealtimeVoiceOptions) {
       /* already closed */
     }
     startedAt.current = null;
+    lastCoachLine.current = "";
+    mutedRef.current = false;
+    window.speechSynthesis?.cancel();
     setPhase("idle");
     setState("idle");
     setMuted(false);
@@ -86,6 +91,26 @@ export function useRealtimeVoice(options: RealtimeVoiceOptions) {
     opts.current.onError(callError(error, code));
     if (wasOpen) opts.current.onEnded();
   }, [teardown]);
+
+  /** The server could not make the coach's voice (daily quota, outage): the call goes on and the browser reads the line.
+   *  The microphone is closed while it reads, or the call would hear the browser's voice as the student's. */
+  const speakWithBrowser = (client: PipecatClient) => {
+    const text = lastCoachLine.current;
+    if (!text || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-US";
+    const done = () => {
+      setState("idle");
+      if (clientRef.current === client && !mutedRef.current) client.enableMic(true);
+    };
+    u.onstart = () => {
+      setState("speaking");
+      client.enableMic(false);
+    };
+    u.onend = u.onerror = done;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  };
 
   const start = useCallback(async () => {
     const { sessionId, iceServers } = opts.current;
@@ -150,7 +175,10 @@ export function useRealtimeVoice(options: RealtimeVoiceOptions) {
       // What is heard and said comes from our own server messages (whole lines, one per turn), not from the transcription events.
       client.on(RTVIEvent.ServerMessage, (data: { type?: string; text?: string; code?: string; detail?: string; message?: string } & Partial<CorrectionEvent>) => {
         if (data?.type === "user_transcript" && data.text) opts.current.onHeard(data.text);
-        else if (data?.type === "bot_transcript" && data.text) opts.current.onCoachLine(data.text);
+        else if (data?.type === "bot_transcript" && data.text) {
+          lastCoachLine.current = data.text;
+          opts.current.onCoachLine(data.text);
+        } else if (data?.type === "error" && data.code === "tts_error") speakWithBrowser(client);
         else if (data?.type === "correction" && data.original !== undefined && data.reply !== undefined) opts.current.onTurn(data as CallTurn);
         else if (data?.type === "error") void fail(new Error(String(data.detail ?? data.message ?? data.code ?? "call error")), data.code);
       });
@@ -175,6 +203,7 @@ export function useRealtimeVoice(options: RealtimeVoiceOptions) {
     if (!client) return;
     const next = !muted;
     client.enableMic(!next);
+    mutedRef.current = next;
     setMuted(next);
   }, [muted]);
 
