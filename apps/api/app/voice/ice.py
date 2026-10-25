@@ -14,11 +14,13 @@ Every call gets its own credentials, one set for the browser and one for our ser
 all the peers made the server's TURN requests fail with 401 on production (24 October). They live for a few hours
 (`turn_credentials_ttl_secs`), which is longer than any session.
 """
+import asyncio
 import logging
 import threading
 import time
 
 import httpx
+from aioice import stun, turn
 
 from app.config import settings
 
@@ -111,3 +113,40 @@ def _as_list(urls) -> list[str]:
 def _port_is(url: str, port: int) -> bool:
     host = url.split("?", 1)[0].split(":", 2)
     return len(host) == 3 and host[2] == str(port)
+
+
+def _turn_target(servers: list[dict]) -> tuple[str, int, str, str] | None:
+    """(host, port, username, credential) of the first TURN UDP URL of `servers`."""
+    for server in servers:
+        for url in _as_list(server.get("urls")):
+            if url.startswith("turn:") and "transport=udp" in url and server.get("username"):
+                host, port = url[len("turn:"):].split("?", 1)[0].rsplit(":", 1)
+                return host, int(port), server["username"], server["credential"]
+    return None
+
+
+async def warm_relay(servers: list[dict], attempts: int = 3, timeout: float = 1.2) -> bool:
+    """Open and close a TURN allocation before the call's own peer opens one.
+
+    On production the first allocation after a quiet period often gets no answer from Cloudflare (four requests in a row
+    unanswered for 5 seconds, while a STUN request to the same provider is answered in 1 ms), so the peer has no relay
+    address, the browser cannot reach it, and the first caller sees the call fail; the next attempts, seconds later, all
+    work. A short allocation here, retried, finds the path open (or opens it) so that the real one does not run into it.
+    Returns whether an allocation succeeded; the call goes on either way, and the browser falls back to the voice message."""
+    target = _turn_target(servers)
+    if target is None:
+        return False
+    host, port, username, credential = target
+    for attempt in range(1, attempts + 1):
+        try:
+            transport, _ = await asyncio.wait_for(
+                turn.create_turn_endpoint(asyncio.DatagramProtocol, (host, port), username, credential), timeout
+            )
+        except (asyncio.TimeoutError, OSError, stun.TransactionError, ValueError) as e:
+            logger.info("TURN pre-flight attempt %d/%d failed (%s)", attempt, attempts, type(e).__name__)
+            continue
+        transport.close()  # gives the allocation back
+        logger.info("TURN pre-flight ok (attempt %d)", attempt)
+        return True
+    logger.warning("TURN pre-flight failed %d times: the call may have no relay", attempts)
+    return False
