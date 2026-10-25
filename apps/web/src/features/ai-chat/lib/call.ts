@@ -51,7 +51,7 @@ export function applyCallTurn(session: AiSession, turn: CallTurn, hideFeedback: 
 
 export type CallError = { kind: "mic-denied" | "timeout" | "no-credits" | "unavailable" | "other"; message: string };
 
-/** What went wrong, in words the student can act on. Every case ends with the voice message as the way out. */
+/** What went wrong, in words the student can act on. Every case ends with a way out: the voice message, or text when the microphone itself is the problem (the voice message needs it too). */
 export function callError(error: unknown, code?: string): CallError {
   const name = error instanceof Error ? error.name : "";
   const text = error instanceof Error ? error.message : String(error ?? "");
@@ -59,10 +59,10 @@ export function callError(error: unknown, code?: string): CallError {
     return { kind: "no-credits", message: code === "no_credits" ? "You have no answers left. Create a free account to get more." : "Today's free practice is used up. Come back tomorrow." };
   }
   if (name === "NotAllowedError" || name === "SecurityError" || /permission|not allowed|denied/i.test(text)) {
-    return { kind: "mic-denied", message: "The microphone is blocked. Allow it for this site, or answer with a voice message." };
+    return { kind: "mic-denied", message: "The microphone is blocked. Allow it in your browser settings for this site, or type your answers instead." };
   }
   if (name === "NotFoundError" || /no .*(microphone|device)|requested device not found/i.test(text)) {
-    return { kind: "mic-denied", message: "No microphone was found. Plug one in, or answer by text." };
+    return { kind: "mic-denied", message: "No microphone was found. Plug one in, or type your answers instead." };
   }
   if (/switched off|503|call_disabled/i.test(text)) {
     return { kind: "unavailable", message: "The live call is not available right now. Use a voice message instead." };

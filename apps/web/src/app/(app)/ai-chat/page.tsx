@@ -153,6 +153,7 @@ function Chat() {
   // The coach's voice is played as soon as it arrives, while the corrections are still being written.
   const send = useAnswer(sessionId, (url, reply) => coach.play(url, reply));
   const [text, setText] = useState("");
+  const [starter, setStarter] = useState(""); // voice message: the first words suggested by "Help me start", shown above the microphone
   const [pending, setPending] = useState<Pending | null>(null);
   const [menu, setMenu] = useState(false);
   const started = useRef<string | null>(null);
@@ -302,7 +303,7 @@ function Chat() {
   const lastLineId = [...(s?.messages ?? [])].reverse().find((m) => m.role === "assistant")?.id ?? "";
   const coachBusy = rec.isRecording || coach.speaking || send.isPending || speakLast.isPending || !!pending;
   useEffect(() => {
-    if (questionDone.current.line !== lastLineId) { questionDone.current = { line: lastLineId, at: null }; began.current = null; }
+    if (questionDone.current.line !== lastLineId) { questionDone.current = { line: lastLineId, at: null }; began.current = null; setStarter(""); }
     if (!coachBusy && questionDone.current.at === null && lastLineId && !s?.finished) questionDone.current.at = Date.now();
   }, [lastLineId, coachBusy, s?.finished]);
 
@@ -371,7 +372,7 @@ function Chat() {
               </ul>
             )}
         </div>
-        <AnswerModeSwitch modes={offeredModes(callAvailable || callPending)} value={mode} onChange={chooseMode} showHint={false} className="mb-2 shrink-0 md:mb-3 md:max-w-md" />
+        <AnswerModeSwitch modes={offeredModes(callAvailable || callPending)} value={mode} onChange={chooseMode} shortHint lockedTo={call.phase !== "idle" ? "call" : undefined} className="mb-2 shrink-0 md:mb-3 md:max-w-md" />
         {interview && <p className="-mt-1 mb-3 shrink-0 text-sm text-charcoal"><span className="font-semibold">{MODE_LABEL.interview}.</span> {modeHint("interview")}</p>}
         {mode === "voice" && avatarOn && <div className="mb-4"><CoachAvatar {...coach.avatarProps} /></div>}
 
@@ -400,7 +401,7 @@ function Chat() {
             <span><span className="block text-sm text-muted">Level</span><span className="font-semibold">{user?.level ?? "—"}</span></span>
           </div>
         </div>
-        <AnswerModeSwitch modes={offeredModes(callAvailable || callPending)} value={mode} onChange={chooseMode} className="mb-4 md:max-w-md" />
+        <AnswerModeSwitch modes={offeredModes(callAvailable || callPending)} value={mode} onChange={chooseMode} lockedTo={call.phase !== "idle" ? "call" : undefined} className="mb-4 md:max-w-md" />
 
         {mode === "voice" && (
           <div className="mb-4">
@@ -435,7 +436,7 @@ function Chat() {
 
           <div ref={logRef} role="log" aria-label="Conversation" className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
             {body}
-            {sessionId && s && shouldAskBefore(answers.length, skippedConfidence) && !pending && (
+            {sessionId && s && shouldAskBefore(answers.length, skippedConfidence) && !pending && call.phase === "idle" && (
               <ConfidenceAsk sessionId={sessionId} when="before" question="How confident do you feel about this interview?"
                 value={s.confidence.before} onSkip={() => setSkippedConfidence(true)} />
             )}
@@ -494,33 +495,39 @@ function Chat() {
               {sessionId && s && !interview && mode !== "call" && (
                 <HelpMeStart sessionId={sessionId} question={lastCoachLine?.content} questionKey={lastCoachLine?.id ?? "start"} typing={text.trim().length > 0}
                   recording={rec.isRecording} busy={coachState === "thinking" || coachState === "preparing" || coachState === "speaking" || !!pending}
-                  onUse={(t) => { setText(t); answerField.current?.focus(); }} />
+                  onUse={(t) => { if (mode === "text") { setText(t); answerField.current?.focus(); } else setStarter(t); }} />
               )}
               {mode === "call" ? (
-                <CallPanel phase={call.phase} state={call.state} muted={call.muted} seconds={call.seconds} error={callProblem} disabled={!sessionId || !s || s.finished || !callAvailable} preparing={callPending}
-                  onStart={startCall} onStop={() => void call.stop()} onMute={call.toggleMute} onUseVoiceMessage={() => chooseMode("voice")} />
+                <CallPanel phase={call.phase} state={call.state} muted={call.muted} seconds={call.seconds} levelRef={call.levelRef} error={callProblem} disabled={!sessionId || !s || s.finished || !callAvailable} preparing={callPending}
+                  onStart={startCall} onStop={() => void call.stop()} onMute={call.toggleMute} onUseVoiceMessage={() => chooseMode("voice")} onUseText={() => chooseMode("text")}
+                  avatar={<span className={cn("flex h-12 w-12 items-center justify-center rounded-full", tint ?? "bg-surface")}><Icon name={icon ?? "briefcase"} /></span>} />
               ) : (
-              <div className="flex items-center gap-3 p-3 sm:p-4">
-                <div className="flex flex-col items-center">
-                  <button onClick={toggleMic} disabled={!s || send.isPending} aria-label={rec.isRecording ? "Stop and send" : "Answer by voice"}
-                    className={cn("flex h-14 w-14 items-center justify-center rounded-full bg-ink text-white disabled:opacity-50", rec.isRecording && "ring-[6px] ring-brand")}>
-                    {rec.isRecording ? <Square size={18} /> : <Mic size={22} />}
-                  </button>
-                  <span className="mt-1 text-sm text-muted">{rec.isRecording ? `Tap to send · max ${maxSeconds}s` : "Tap to speak"}</span>
-                </div>
-                {rec.isRecording ? (
-                  <VoiceState state="listening" seconds={rec.seconds} className="flex-1" />
-                ) : (
-                  <div className="flex-1">
-                    <input ref={answerField} value={text} maxLength={MAX} onChange={(e) => { if (e.target.value && began.current === null) began.current = Date.now(); setText(e.target.value); }} onKeyDown={(e) => e.key === "Enter" && submit()}
-                      disabled={!s || send.isPending} aria-label="Your answer" placeholder="Type here"
-                      className="w-full rounded-full border border-line px-3.5 py-3.5 outline-none focus:border-ink disabled:bg-black/[0.03]" />
-                    <p className={cn("mt-1 text-right text-sm text-muted", text.length < 400 && "max-md:hidden")}>{text.length} / {MAX}</p>
-                  </div>
+              mode === "voice" ? (
+              <div className="flex flex-col items-center gap-2 p-4">
+                {starter && !rec.isRecording && (
+                  <p className="max-w-full rounded-2xl bg-surface px-4 py-2 text-center text-sm"><span className="text-slate">Start with: </span><span className="font-semibold">{starter}</span></p>
                 )}
-                <button onClick={submit} disabled={!text.trim() || !s || send.isPending || rec.isRecording} aria-label="Send"
-                  className="flex h-14 w-14 items-center justify-center rounded-full bg-ink text-white disabled:opacity-40"><Send size={20} /></button>
+                <button onClick={toggleMic} disabled={!s || send.isPending} aria-label={rec.isRecording ? "Stop and send" : "Answer by voice"}
+                  className={cn("flex h-16 w-16 items-center justify-center rounded-full bg-ink text-white transition-transform active:scale-95 disabled:opacity-50", rec.isRecording && "ring-[6px] ring-brand")}>
+                  {rec.isRecording ? <Square size={20} /> : <Mic size={26} />}
+                </button>
+                {rec.isRecording
+                  ? <VoiceState state="listening" seconds={rec.seconds} />
+                  : <span className="text-sm text-slate">Tap to record your answer, tap again to send</span>}
+                {rec.isRecording && <span className="text-sm text-muted">Max {maxSeconds}s</span>}
               </div>
+              ) : (
+              <div className="flex items-start gap-3 p-3 sm:p-4">
+                <div className="flex-1">
+                  <input ref={answerField} value={text} maxLength={MAX} onChange={(e) => { if (e.target.value && began.current === null) began.current = Date.now(); setText(e.target.value); }} onKeyDown={(e) => e.key === "Enter" && submit()}
+                    disabled={!s || send.isPending} aria-label="Your answer" placeholder="Type your answer here" enterKeyHint="send"
+                    className="w-full rounded-full border border-line px-4 py-3.5 text-base outline-none focus:border-ink disabled:bg-black/[0.03]" />
+                  <p className={cn("mt-1 text-right text-sm text-muted", text.length < 400 && "max-md:hidden")}>{text.length} / {MAX}</p>
+                </div>
+                <button onClick={submit} disabled={!text.trim() || !s || send.isPending} aria-label="Send"
+                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-ink text-white transition-transform active:scale-95 disabled:opacity-40"><Send size={20} /></button>
+              </div>
+              )
               )}
             </div>
           )}
