@@ -2,6 +2,7 @@
 """Tkallem — Pipecat WebRTC voice pipeline."""
 
 import asyncio
+import audioop
 import io
 import logging
 import struct
@@ -70,11 +71,19 @@ logger = logging.getLogger(__name__)
 # AUDIO UTILITIES
 # ============================================================
 
+OUT_SAMPLE_RATE = 24000  # what the voices make (Orpheus and Kokoro): sent as it is, nothing is resampled on the usual path
+OUT_CHUNK_BYTES = OUT_SAMPLE_RATE * 2 // 50  # 20 ms of 16-bit mono
+
+
 def audio_bytes_to_pcm16(
     audio_bytes: bytes,
-    target_sr: int = 16000,
+    target_sr: int = OUT_SAMPLE_RATE,
 ) -> bytes:
-    """Convert WAV audio to mono signed PCM16."""
+    """Convert WAV audio to mono signed PCM16 at target_sr.
+
+    The conversion is audioop's (filtered, in C). It used to keep one sample out of three to go from 24 kHz to 16 kHz,
+    which folds high frequencies back into the voice: the call sounded metallic, much worse than the voice message.
+    """
 
     if not audio_bytes:
         return b""
@@ -87,53 +96,17 @@ def audio_bytes_to_pcm16(
             raw = wf.readframes(wf.getnframes())
 
         if width == 1:
-            samples = [
-                (value - 128) << 8
-                for value in raw
-            ]
-        elif width == 2:
-            samples = list(
-                struct.unpack(
-                    f"<{len(raw) // 2}h",
-                    raw,
-                )
-            )
-        elif width == 4:
-            values = struct.unpack(
-                f"<{len(raw) // 4}i",
-                raw,
-            )
-            samples = [value >> 16 for value in values]
-        else:
-            raise ValueError(
-                f"Unsupported WAV sample width: {width}"
-            )
+            raw = audioop.bias(raw, 1, -128)  # 8-bit WAV is unsigned
+        if width != 2:
+            raw = audioop.lin2lin(raw, width, 2)
+        if channels == 2:
+            raw = audioop.tomono(raw, 2, 0.5, 0.5)
+        elif channels != 1:
+            raise ValueError(f"Unsupported channel count: {channels}")
+        if source_sr != target_sr and raw:
+            raw, _ = audioop.ratecv(raw, 2, 1, source_sr, target_sr, None)
 
-        if channels > 1:
-            samples = [
-                sum(samples[i:i + channels]) // channels
-                for i in range(0, len(samples), channels)
-            ]
-
-        if source_sr != target_sr and samples:
-            ratio = source_sr / target_sr
-            count = int(len(samples) / ratio)
-
-            samples = [
-                samples[min(
-                    int(i * ratio),
-                    len(samples) - 1,
-                )]
-                for i in range(count)
-            ]
-
-        if not samples:
-            return b""
-
-        return struct.pack(
-            f"<{len(samples)}h",
-            *samples,
-        )
+        return raw
 
     except Exception:
         logger.exception("Failed to decode TTS audio")
@@ -283,17 +256,14 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
                     "TTS returned no audio"
                 )
 
-            pcm = audio_bytes_to_pcm16(
-                audio,
-                target_sr=16000,
-            )
+            pcm = audio_bytes_to_pcm16(audio)
 
             if not pcm:
                 raise RuntimeError(
                     "TTS audio could not be decoded"
                 )
 
-            chunk_size = 640
+            chunk_size = OUT_CHUNK_BYTES
 
             for index in range(0, len(pcm), chunk_size):
                 if not self._is_speaking:
@@ -312,7 +282,7 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
                 await self.push_frame(
                     TTSAudioRawFrame(
                         audio=chunk,
-                        sample_rate=16000,
+                        sample_rate=OUT_SAMPLE_RATE,
                         num_channels=1,
                     )
                 )
@@ -711,7 +681,7 @@ def build_voice_pipeline(
             audio_in_enabled=True,
             audio_out_enabled=True,
             audio_in_sample_rate=16000,
-            audio_out_sample_rate=16000,
+            audio_out_sample_rate=OUT_SAMPLE_RATE,
         ),
     )
 
