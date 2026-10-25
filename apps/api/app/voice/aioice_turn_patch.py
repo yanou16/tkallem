@@ -13,7 +13,9 @@ through the relay was thrown away.
 This reads the Data indication directly (DATA 0x0013 and XOR-PEER-ADDRESS 0x0012) and hands the payload to the ICE agent
 exactly as aioice does for ChannelData. Everything else goes to the original method unchanged.
 """
+import asyncio
 import logging
+import socket
 import struct
 
 from aioice import stun, turn
@@ -67,3 +69,65 @@ def datagram_received(self, data, addr):
 if turn.TurnClientMixin.datagram_received is _original:  # applied once, even if the module is imported twice
     turn.TurnClientMixin.datagram_received = datagram_received
     logger.info("aioice TurnClientMixin patched: relayed Data indications are delivered")
+
+
+# ---- allocation retry ----
+#
+# Second problem, same investigation: on production the server's TURN allocation is sometimes never answered (the four
+# retransmissions of aioice, 0.5 s to 3.5 s apart, all go unanswered), so the answer has no relay address and the browser
+# cannot reach the server. A request from a new socket, a moment later, is answered at once (a pre-flight allocation
+# was answered in 2 ms, then the real one 12 ms later was not). So the allocation is retried on a NEW socket instead of
+# retransmitting on the one that is not being answered.
+
+ALLOCATE_ATTEMPTS = 3
+ALLOCATE_ATTEMPT_TIMEOUT = 1.5  # seconds; aioice gives the whole gathering about 5 s
+
+_original_create_turn_endpoint = turn.create_turn_endpoint
+
+
+async def create_turn_endpoint_with_retry(
+    protocol_factory,
+    server_addr,
+    username,
+    password,
+    lifetime=turn.DEFAULT_ALLOCATION_LIFETIME,
+    channel_refresh_time=turn.DEFAULT_CHANNEL_REFRESH_TIME,
+    ssl=None,
+    transport="udp",
+):
+    """aioice's `create_turn_endpoint` (UDP), with up to ALLOCATE_ATTEMPTS tries, each on a new socket."""
+    if transport != "udp":
+        return await _original_create_turn_endpoint(
+            protocol_factory, server_addr, username, password, lifetime, channel_refresh_time, ssl, transport
+        )
+    loop = asyncio.get_event_loop()
+    for attempt in range(1, ALLOCATE_ATTEMPTS + 1):
+        inner_transport, inner_protocol = await loop.create_datagram_endpoint(
+            lambda: turn.TurnClientUdpProtocol(
+                server_addr, username=username, password=password, lifetime=lifetime, channel_refresh_time=channel_refresh_time
+            ),
+            remote_addr=server_addr,
+        )
+        sock = inner_transport.get_extra_info("socket")
+        if sock is not None:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, turn.UDP_SOCKET_BUFFER_SIZE)
+        try:
+            protocol = protocol_factory()
+            turn_transport = turn.TurnTransport(inner_protocol)
+            await asyncio.wait_for(turn_transport._connect(protocol), ALLOCATE_ATTEMPT_TIMEOUT)
+            if attempt > 1:
+                logger.info("TURN allocation answered on attempt %d", attempt)
+            return turn_transport, protocol
+        except (asyncio.TimeoutError, stun.TransactionTimeout):
+            inner_transport.close()
+            logger.warning("TURN allocation attempt %d/%d unanswered", attempt, ALLOCATE_ATTEMPTS)
+            if attempt == ALLOCATE_ATTEMPTS:
+                raise
+        except BaseException:  # an answer that is an error (401 after the retry, 486...) or a cancellation: no more tries
+            inner_transport.close()
+            raise
+
+
+if turn.create_turn_endpoint is _original_create_turn_endpoint:
+    turn.create_turn_endpoint = create_turn_endpoint_with_retry
+    logger.info("aioice create_turn_endpoint patched: the allocation is retried on a new socket")
