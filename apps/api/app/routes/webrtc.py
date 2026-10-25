@@ -25,8 +25,12 @@ from app.voice.pipecat_pipeline import build_voice_pipeline
 logger = logging.getLogger(__name__)
 
 if settings.voice_ice_debug:  # the network exchanges between our server and the TURN relay, for diagnosis
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(levelname)s:%(name)s:%(message)s"))
     for _name in ("aioice", "aiortc.rtcicetransport"):
-        logging.getLogger(_name).setLevel(logging.DEBUG)
+        _log = logging.getLogger(_name)
+        _log.setLevel(logging.DEBUG)
+        _log.addHandler(_handler)
 
 router = APIRouter(prefix="/sessions", tags=["webrtc"])
 

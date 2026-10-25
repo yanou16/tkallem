@@ -88,15 +88,19 @@ def browser_ice_servers(client: httpx.Client | None = None, now=time.monotonic) 
 
 
 def server_ice_servers(client: httpx.Client | None = None, now=time.monotonic) -> list[dict]:
-    """For our own WebRTC peer: STUN and TURN over UDP only (the relay talks to it in UDP; TCP and TLS are for browsers)."""
+    """For our own WebRTC peer: STUN, and TURN over UDP on port 443 only.
+
+    The relay talks to it in UDP (TCP and TLS are for browsers). Port 443 rather than 3478: on production, with the same
+    credentials, the TURN client of aiortc allocated a relay on 3478 but every following ChannelBind was answered 401;
+    the same client works against port 443 from a laptop. It also takes the one URL aiortc would otherwise pick first."""
     out = []
     for server in all_ice_servers(client, now):
-        urls = [
-            u for u in _as_list(server.get("urls"))
-            if not _port_is(u, 53) and (u.startswith("stun:") or (u.startswith("turn:") and "transport=udp" in u))
-        ]
-        if urls:
-            out.append({**server, "urls": urls})
+        urls = _as_list(server.get("urls"))
+        keep = [u for u in urls if u.startswith("stun:") and not _port_is(u, 53)]
+        turn_udp = [u for u in urls if u.startswith("turn:") and "transport=udp" in u and not _port_is(u, 53)]
+        keep += [u for u in turn_udp if _port_is(u, 443)] or turn_udp[:1]
+        if keep:
+            out.append({**server, "urls": keep})
     return out
 
 
