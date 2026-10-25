@@ -31,7 +31,7 @@ import OutOfCredits, { isCreditError } from "@/features/credits/components/OutOf
 import { markSentence } from "@/features/ai-chat/lib/marks";
 import { feedbackView } from "@/features/ai-chat/lib/feedback";
 import { freezeView, thinkSeconds } from "@/features/ai-chat/lib/freeze";
-import { confidenceLine, shouldAskBefore } from "@/features/ai-chat/lib/confidence";
+import { confidenceLine } from "@/features/ai-chat/lib/confidence";
 import { MODE_LABEL, feedbackModeFrom, modeHint } from "@/features/ai-chat/lib/mode";
 import type { AiSession, ChatMessage, Correction, SentenceStatus, SessionReport } from "@/features/ai-chat/types/ai";
 import { Avatar, Button, Card, EmptyState, PageHeader, Skeleton } from "@/components/ui";
@@ -164,7 +164,6 @@ function Chat() {
   const questionDone = useRef<{ line: string; at: number | null }>({ line: "", at: null });
   const began = useRef<number | null>(null);
   const [nailed, setNailed] = useState<Set<string>>(() => new Set()); // answers said again correctly
-  const [skippedConfidence, setSkippedConfidence] = useState(false);
   const maxSeconds = maxRecordingSeconds(scenarioId);
   const rec = useVoiceRecorder({ onAutoStop: (r) => r && sendRecording(r), maxSeconds });
 
@@ -215,6 +214,22 @@ function Chat() {
   // The first question stays at the top; while an answer is processed the log follows it; once the coach has replied the
   // log shows the student's answer first (its compliment and its fix), not the end of the page.
   const logRef = useRef<HTMLDivElement>(null);
+  // The coach's last line is below the part of the log that is on screen (the log opens on the student's answer): say so.
+  const [replyBelow, setReplyBelow] = useState(false);
+  useEffect(() => {
+    const log = logRef.current;
+    if (!log) return;
+    const measure = () => {
+      const coachLines = log.querySelectorAll<HTMLElement>('[data-role="assistant"]');
+      const lastLine = coachLines[coachLines.length - 1];
+      const hasAnswer = log.querySelector('[data-role="user"]') !== null;
+      setReplyBelow(!!lastLine && hasAnswer && lastLine.getBoundingClientRect().bottom > log.getBoundingClientRect().bottom + 4);
+    };
+    measure();
+    log.addEventListener("scroll", measure, { passive: true });
+    const timer = window.setTimeout(measure, 700); // after the smooth scroll to the answer
+    return () => { log.removeEventListener("scroll", measure); window.clearTimeout(timer); };
+  }, [s?.messages.length, pending, send.live]);
   useEffect(() => {
     const log = logRef.current;
     if (!log) return;
@@ -348,8 +363,8 @@ function Chat() {
       {/* On a phone, once the session runs, the chat is one screen between the app header and the bottom bar: only the
           conversation scrolls, the header, the settings and the answer field stay where they are. (66 px header + 8 px
           padding above, 61 px bar below; the paddings the shell keeps under the page are cancelled by -mb.) */}
-      <div className={cn("flex min-w-0 flex-col md:min-h-[calc(100vh-110px)]",
-        s && "max-md:-mb-[120px] max-md:h-[calc(100dvh-135px-env(safe-area-inset-bottom))]")}>
+      <div className={cn("flex min-w-0 flex-col md:min-h-[calc(100vh-110px)]", s && "md:h-[calc(100dvh-114px)]",
+        s && "max-md:-mb-[120px] max-md:h-[calc(100dvh-139px-env(safe-area-inset-bottom))]")}>
         <div className={s ? "hidden md:block" : undefined}>
           <PageHeader title="Practice session" subtitle={s ? undefined : "Answer by voice or by typing. Your coach corrects each answer and explains why."} />
         </div>
@@ -436,7 +451,7 @@ function Chat() {
               <span className="hidden whitespace-nowrap text-muted md:inline">{plural(answers.length, "answer")}</span>
               {answers.length > 0 && !s.finished && (
                 <Button dark={false} onClick={finish} disabled={end.isPending} aria-label="End session" className="order-2 ml-auto !min-h-11 !px-4 !py-2 md:order-3 md:ml-0">
-                  {end.isPending ? "Preparing your report…" : <><span className="max-[359px]:hidden">End session</span><span className="hidden max-[359px]:inline">End</span></>}
+                  {end.isPending ? "Preparing your report…" : <><span className="max-[419px]:hidden">End session</span><span className="hidden max-[419px]:inline">End</span></>}
                 </Button>
               )}
               {/* On a phone the language toggle gets its own line under the count and the End button. */}
@@ -451,10 +466,6 @@ function Chat() {
 
           <div ref={logRef} role="log" aria-label="Conversation" className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
             {body}
-            {sessionId && s && shouldAskBefore(answers.length, skippedConfidence) && !pending && call.phase === "idle" && (
-              <ConfidenceAsk sessionId={sessionId} when="before" question="How confident do you feel about this interview?"
-                value={s.confidence.before} onSkip={() => setSkippedConfidence(true)} />
-            )}
             {pending && (
               <>
                 {live?.transcript || pending.kind === "text"
@@ -471,6 +482,14 @@ function Chat() {
               </>
             )}
             <div ref={bottom} />
+            {replyBelow && (
+              <div className="sticky bottom-0 h-0 overflow-visible">
+                <button onClick={() => bottom.current?.scrollIntoView({ behavior: "smooth" })}
+                  className="absolute bottom-3 left-1/2 inline-flex min-h-11 -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-mint-deep px-4 text-sm font-semibold text-ink shadow-md transition-transform active:scale-95">
+                  Coach replied <ArrowDown size={16} aria-hidden />
+                </button>
+              </div>
+            )}
           </div>
 
           {(problem || creditProblem || rec.error || coach.blocked) && (
@@ -518,7 +537,7 @@ function Chat() {
                   <p className="max-w-full rounded-2xl bg-surface px-4 py-2 text-center text-sm"><span className="text-slate">Start with: </span><span className="font-semibold">{starter}</span></p>
                 )}
                 <button onClick={toggleMic} disabled={!s || send.isPending} aria-label={rec.isRecording ? "Stop and send" : "Answer by voice"}
-                  className={cn("flex h-16 w-16 items-center justify-center rounded-full bg-ink text-white transition-transform active:scale-95 disabled:opacity-50", rec.isRecording && "ring-[6px] ring-brand")}>
+                  className={cn("flex h-16 w-16 items-center justify-center rounded-full bg-ink text-white transition-transform active:scale-95 disabled:opacity-50", rec.isRecording ? "ring-[6px] ring-brand" : "ring-4 ring-mint-deep")}>
                   {rec.isRecording ? <Square size={20} /> : <Mic size={26} />}
                 </button>
                 {rec.isRecording
@@ -545,10 +564,9 @@ function Chat() {
         </div>
       </div>
 
-      <aside className={cn("hidden space-y-4", interview ? "" : "xl:block")}>
+      <aside className={cn("hidden space-y-4", interview ? "" : "xl:sticky xl:top-20 xl:block xl:self-start")}>
         <Card className="space-y-3">
-          <div className="flex items-center justify-between"><h2 className="text-xl font-semibold">Live corrections</h2>
-            {s && !s.finished && <span className="flex items-center gap-2 text-sm"><span className="h-2.5 w-2.5 rounded-full bg-good" /> Active</span>}</div>
+          <h2 className="text-xl font-semibold">Last answer{last?.corrections?.length ? ` · ${plural(last.corrections.length, "correction")}` : ""}</h2>
           {!last ? (
             <EmptyState title="No corrections yet" text="Send an answer and your coach will suggest improvements here." />
           ) : last.corrections?.length ? (
@@ -556,7 +574,6 @@ function Chat() {
           ) : (
             <EmptyState title="Clean answer" text="No correction on your last answer." />
           )}
-          {last && <SummaryRow icon={<CircleAlert size={18} />} tone="bg-warn-bg" title="Corrections this turn" sub={plural(last.corrections?.length ?? 0, "suggestion")} />}
         </Card>
       </aside>
     </div>
@@ -577,7 +594,7 @@ function Problem({ help, onRetry, onRestart }: { help: Help; onRetry?: () => voi
 }
 
 function StatusPill({ status, label }: { status: SentenceStatus; label: string }) {
-  return <span className={cn("inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[13px] font-semibold", STATUS_STYLE[status])}>{label}</span>;
+  return <span className={cn("inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-sm font-semibold", STATUS_STYLE[status])}>{label}</span>;
 }
 
 function Bubble({ m, icon, tint, user, onListen, sayItAgain, nailed }: {
@@ -588,16 +605,16 @@ function Bubble({ m, icon, tint, user, onListen, sayItAgain, nailed }: {
   const { isGuest: guest } = useCurrentUser(); // a guest has no name: a neutral icon, not "GU"
   const time = m.createdAt && new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   return (
-    <div data-role={m.role} className={cn("flex items-start gap-3", mine && "justify-end")}>
-      {!mine && <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full max-sm:hidden", tint ?? "bg-surface")}><Icon name={icon ?? "briefcase"} /></span>}
+    <div data-role={m.role} className={cn("flex scroll-mt-3 items-start gap-2.5 sm:gap-3", mine && "justify-end")}>
+      {!mine && <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-mint sm:h-12 sm:w-12 max-sm:[&_svg]:size-4"><Icon name={icon ?? "briefcase"} /></span>}
       <div className={cn("max-w-[90%] sm:max-w-[75%]", mine && "text-right")}>
-        <p className={cn("whitespace-pre-wrap rounded-3xl px-4 py-3 text-left sm:px-5 sm:py-4", mine ? "bg-ink text-white" : "bg-black/[0.05]", m.pending && "flex items-center gap-2 italic text-white/70")}>
+        <p className={cn("whitespace-pre-wrap rounded-3xl px-4 py-3 text-left sm:px-5 sm:py-4", mine ? "bg-mint" : "bg-black/[0.05]", m.pending && "flex items-center gap-2 italic text-slate")}>
           {m.pending && <Mic size={16} aria-hidden />}{m.content}
         </p>
         {mine && !m.pending && ((m.corrections?.length ?? 0) > 0 || m.praise) && (
-          <InlineCorrection text={m.content} corrections={m.corrections ?? []} praise={m.praise} priorityIndex={m.priorityIndex} />
+          <InlineCorrection text={m.content} corrections={m.corrections ?? []} praise={m.praise} priorityIndex={m.priorityIndex} action={sayItAgain} />
         )}
-        {mine && !m.pending && sayItAgain}
+        {mine && !m.pending && !((m.corrections?.length ?? 0) > 0 || m.praise) && sayItAgain}
         <div className={cn("mt-1 flex items-center gap-2", mine && "justify-end")}>
           {m.status && (nailed
             ? <StatusPill status="green" label="Nailed it" />
@@ -620,40 +637,51 @@ function Bubble({ m, icon, tint, user, onListen, sayItAgain, nailed }: {
 /** DESIGN.md "Correction": right under the student's answer. Line 1 the sentence with each wrong part struck, line 2
  *  the corrected sentence with each fix in bold, then one short explanation per fix (in the language chosen: English first). */
 function Fix({ c }: { c: Correction }) {
+  const grammar = c.type === "grammar";
   return (
-    <div className="mt-1.5">
-      {/* Red is kept for "Redo" (docs/JURY_BRIEF.md, improvement 4): a small mistake is struck in gray. */}
-      <p><s className="text-steel">{c.original}</s> → <span className="font-semibold text-[color:var(--good)]">{c.fixed}</span></p>
-      <p className="text-sm text-muted">{c.why}</p>
+    <div className="mt-2 first:mt-0">
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", grammar ? "bg-rose-deep" : "bg-butter-deep")} aria-hidden>
+          {grammar ? <CircleAlert size={15} /> : <Lightbulb size={15} />}
+        </span>
+        <span className={cn("rounded-lg px-2 py-0.5", grammar ? "bg-rose-deep/60" : "bg-butter-deep/60")}><span className="sr-only">Instead of </span><s>{c.original}</s></span>
+        <span aria-hidden>→</span>
+        <span className="rounded-lg bg-mint-deep/70 px-2 py-0.5 font-semibold"><span className="sr-only">say </span>{c.fixed}</span>
+      </p>
+      <p className="mt-1 text-sm text-slate">{c.why}</p>
     </div>
   );
 }
 
-function InlineCorrection({ text, corrections, praise, priorityIndex = 0 }: {
-  text: string; corrections: Correction[]; praise?: string | null; priorityIndex?: number;
+function InlineCorrection({ text, corrections, praise, priorityIndex = 0, action }: {
+  text: string; corrections: Correction[]; praise?: string | null; priorityIndex?: number; action?: ReactNode;
 }) {
   const { after } = markSentence(text, corrections);
   const { priority, others, moreLabel } = feedbackView(corrections, priorityIndex);
+  const grammar = corrections.some((c) => c.type === "grammar");
   return (
-    <div className="tk-in ml-auto mt-2 rounded-2xl border border-[color:var(--hairline-soft)] bg-[color:var(--surface)] p-3 text-left text-sm">
+    <div className={cn("tk-in ml-auto mt-2 rounded-2xl p-3 text-left text-sm", corrections.length === 0 ? "bg-mint/40" : grammar ? "bg-rose/40" : "bg-butter/50")}>
       {praise && (
-        <p className="flex items-start gap-1.5 font-medium text-[color:var(--good)]">
+        <p className="mb-2 flex items-start gap-1.5 rounded-lg bg-mint-deep/70 px-2.5 py-1.5 font-medium text-ink">
           <Check size={16} className="mt-0.5 shrink-0" aria-hidden /> <span>{praise}</span>
         </p>
       )}
       {priority && <Fix c={priority} />}
       {others.length > 0 && (
-        <details className="mt-1">
-          <summary className="flex min-h-11 cursor-pointer items-center font-semibold text-ink">{moreLabel}</summary>
+        <details className="group mt-1">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 font-semibold text-ink [&::-webkit-details-marker]:hidden">
+            {moreLabel}<ChevronDown size={16} aria-hidden className="transition-transform group-open:rotate-180" />
+          </summary>
           {others.map((c, i) => <Fix key={i} c={c} />)}
         </details>
       )}
       {priority && (
-        <p className="mt-2 border-t border-[color:var(--hairline-soft)] pt-2 font-medium text-ink">
+        <p className="mt-2 border-t border-black/10 pt-2 font-medium text-ink">
           <span className="font-normal text-slate">Say it: </span>
-          {after.map((p, i) => (p.kind === "fixed" ? <span key={i} className="font-semibold text-[color:var(--good)]">{p.text}</span> : <span key={i}>{p.text}</span>))}
+          {after.map((p, i) => (p.kind === "fixed" ? <span key={i} className="rounded bg-mint-deep/70 px-1 font-semibold">{p.text}</span> : <span key={i}>{p.text}</span>))}
         </p>
       )}
+      {action && <div className="mt-2">{action}</div>}
     </div>
   );
 }
@@ -661,19 +689,19 @@ function InlineCorrection({ text, corrections, praise, priorityIndex = 0 }: {
 function CorrectionCard({ c }: { c: Correction }) {
   const grammar = c.type === "grammar";
   return (
-    <div className={cn("rounded-2xl p-4", grammar ? "bg-warn-bg" : "bg-surface")}>
+    <div className={cn("rounded-2xl p-4", grammar ? "bg-rose" : "bg-butter")}>
       <p className="mb-3 flex items-center gap-2 font-semibold">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white">
+        <span className={cn("flex h-8 w-8 items-center justify-center rounded-lg", grammar ? "bg-rose-deep" : "bg-butter-deep")}>
           {grammar ? <CircleAlert size={18} /> : <Lightbulb size={18} />}
         </span>
         {grammar ? "Grammar correction" : "Better phrasing"}
       </p>
       <p className="text-sm font-medium">Your sentence</p>
-      <p className="mb-1 rounded-lg bg-white px-3 py-1.5 text-sm">{c.original}</p>
+      <p className={cn("mb-1 rounded-lg px-3 py-1.5 text-sm", grammar ? "bg-rose-deep/60" : "bg-butter-deep/60")}>{c.original}</p>
       <ArrowDown size={14} className="mx-auto my-1" />
       <p className="text-sm font-medium">{grammar ? "Better version" : "More natural"}</p>
-      <p className="mb-2 rounded-lg bg-good-bg px-3 py-1.5 text-sm">{c.fixed}</p>
-      <p className="rounded-lg bg-white px-3 py-2 text-sm text-muted">{c.why}</p>
+      <p className="mb-2 rounded-lg bg-mint-deep/70 px-3 py-1.5 text-sm">{c.fixed}</p>
+      <p className="rounded-lg bg-white/60 px-3 py-2 text-sm text-slate">{c.why}</p>
     </div>
   );
 }
@@ -762,7 +790,7 @@ function Report({ report, title, sessionId, explainDefault, onRestart }: { repor
             // Green only when the student really feels more confident: a drop is told neutrally.
             <p className={cn("rounded-2xl px-4 py-3 font-medium", (report.confidence.after ?? 0) > (report.confidence.before ?? 0) ? "bg-good-bg text-good" : "bg-surface text-charcoal")}>{confidenceLine(report.confidence)}</p>
           )}
-          <ConfidenceAsk sessionId={sessionId} when="after" question="How confident do you feel now?" value={report.confidence.after} />
+          <ConfidenceAsk sessionId={sessionId} when="after" question="How confident do you feel about your interview now?" value={report.confidence.after} />
         </div>
       )}
       {speaking !== null && <p className="mt-3 text-sm text-muted">Speaking time: {formatMinutes(speaking / 60)}</p>}

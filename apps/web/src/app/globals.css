@@ -59,7 +59,7 @@ html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%;
 a, button, [role="button"], [role="switch"], summary, label { touch-action: manipulation; }
 button, [role="button"], [role="switch"] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-::placeholder { color: var(--steel); opacity: 1; } /* 5.0:1 on white (the old grey was 2.6:1) */
+::placeholder, input::placeholder, textarea::placeholder { color: var(--steel); opacity: 1; } /* 5.0:1 on white (the old grey was 2.6:1) */
 
 /* Voice state indicator (DESIGN.md "State indicator"): listening bars, thinking dots, speaking circle.
    The reduced-motion rule below stops them; the label always stays. */
