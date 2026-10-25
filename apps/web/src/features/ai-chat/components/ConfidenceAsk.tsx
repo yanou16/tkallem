@@ -21,7 +21,7 @@ export default function ConfidenceAsk({ sessionId, when, question, value, onSkip
   const label = SCALE.find((s) => s.value === picked)?.label;
 
   return (
-    <section aria-label={question} className="min-w-0 rounded-2xl border border-line bg-surface p-3 text-sm">
+    <section aria-label={question} className="min-w-0 rounded-2xl bg-lilac/50 p-3 text-sm">
       <p id={`ask-${when}`} className="font-medium text-ink">{question}</p>
       <div role="radiogroup" aria-labelledby={`ask-${when}`} className="mt-2 flex flex-wrap items-center gap-2">
         {SCALE.map((s) => (

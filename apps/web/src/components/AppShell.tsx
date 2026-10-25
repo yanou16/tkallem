@@ -75,7 +75,7 @@ function MobileNav() {
       {nav.map(({ href, label, icon: I, also }) => {
         const active = isActive(path, href, also);
         return (
-          <Link key={href} href={href} className={cn("flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 text-xs transition-transform active:scale-95", active ? "font-semibold text-ink" : "text-muted")}>
+          <Link key={href} href={href} className={cn("flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-xl px-1 text-sm transition-transform active:scale-95", active ? "font-semibold text-ink" : "text-muted")}>
             <I size={20} /> {label}
           </Link>
         );
