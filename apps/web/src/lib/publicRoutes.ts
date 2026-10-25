@@ -11,10 +11,11 @@ export const PUBLIC_ROUTES = [
   "/plan(.*)",
   "/phrases(.*)", // a guest's own corrections (the API answers /me/corrections for guests)
   "/progress(.*)", // a guest's own numbers and last reports (the API answers /me/progress and /me/sessions for guests)
+  "/groups(.*)", // guests see a read-only preview; the API refuses everything else to them
 ];
 
 /** The menu a guest sees: the screens that work without an account. Each one must be a public route. */
-export const GUEST_PATHS: readonly string[] = ["/practice", "/phrases", "/progress"];
+export const GUEST_PATHS: readonly string[] = ["/practice", "/phrases", "/progress", "/groups"];
 
 const PATTERNS = PUBLIC_ROUTES.map((r) => new RegExp(`^${r.replace(/\(\.\*\)$/, "(?:/.*)?")}$`));
 export const isPublicPath = (path: string) => PATTERNS.some((re) => re.test(path));
