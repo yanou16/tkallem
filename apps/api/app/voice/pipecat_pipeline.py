@@ -56,6 +56,7 @@ from tkallem_agent import CoachSession
 
 from app import credits
 from app.voice import smallwebrtc_patch  # noqa: F401
+from app.voice.echo_gate import EchoGate
 from app.config import settings
 from app.db.connection import ConnFactory
 from app.db.sessions import save_turn
@@ -716,6 +717,8 @@ def build_voice_pipeline(
 
     rtvi = RTVIProcessor()
 
+    echo_gate = EchoGate(enabled=settings.voice_echo_gate, hold_secs=settings.voice_echo_hold_secs)
+
     vad_processor = VADProcessor(
         vad_analyzer=vad
     )
@@ -826,6 +829,7 @@ def build_voice_pipeline(
     pipeline = Pipeline([
         transport.input(),
         rtvi,
+        echo_gate,
         vad_processor,
         stt,
         processor,
