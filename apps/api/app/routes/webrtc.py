@@ -151,6 +151,8 @@ async def handle_webrtc_offer(
         asyncio.create_task(robust_greet_fallback())
 
     relay = await asyncio.to_thread(ice.server_ice_servers)  # the relay credentials are renewed here, before each offer
+    if relay:
+        await ice.warm_relay(relay)  # the first allocation after a quiet period often goes unanswered: do it once here first
     _webrtc_handler.update_ice_servers([IceServer(urls=server["urls"], username=server.get("username"), credential=server.get("credential")) for server in relay] or None)
     answer = await _webrtc_handler.handle_web_request(request, on_connection)
     if answer is None:
