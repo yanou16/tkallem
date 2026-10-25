@@ -19,7 +19,8 @@ class Settings(BaseSettings):
     voice_call_enabled: bool = True  # VOICE_CALL_ENABLED=false hides the live call (the app offers the voice message) without a deploy
     cloudflare_turn_key_id: str = ""  # TURN relay for the live call: without it a browser cannot reach the server behind Azure
     cloudflare_turn_api_token: str = ""  # secret: an App Service setting, never committed
-    turn_credentials_ttl_secs: int = Field(86400, ge=300, le=172800)  # Cloudflare allows up to 48 hours
+    turn_credentials_ttl_secs: int = Field(14400, ge=300, le=172800)  # per call and per side; Cloudflare allows up to 48 hours
+    voice_ice_debug: bool = False  # VOICE_ICE_DEBUG=true logs every TURN/ICE exchange of the call (diagnosis only)
     tts_timeout: float = 5.0  # the coach's voice must start soon: after this many seconds the next provider (or the browser's own voice, at once) takes over
     voice_connect_timeout: float = 3.0  # a provider that cannot be reached in 3 s is retried once, then the next one answers
     database_url: str = ""
