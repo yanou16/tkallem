@@ -9,8 +9,8 @@ import type { CallPhase } from "../hooks/useRealtimeVoice";
  * Where the answer field is in the other modes. Before the call it says what a call is; while connecting it says so;
  * while live it shows whose turn it is. When the call cannot connect, the way out is one tap away: the voice message.
  */
-export default function CallPanel({ phase, state, muted, seconds, error, disabled, onStart, onStop, onMute, onUseVoiceMessage }: {
-  phase: CallPhase; state: CoachState; muted: boolean; seconds: number; error: CallError | null; disabled?: boolean;
+export default function CallPanel({ phase, state, muted, seconds, error, disabled, preparing, onStart, onStop, onMute, onUseVoiceMessage }: {
+  phase: CallPhase; state: CoachState; muted: boolean; seconds: number; error: CallError | null; disabled?: boolean; preparing?: boolean;
   onStart: () => void; onStop: () => void; onMute: () => void; onUseVoiceMessage: () => void;
 }) {
   if (phase === "idle") {
@@ -26,7 +26,7 @@ export default function CallPanel({ phase, state, muted, seconds, error, disable
         )}
         <button onClick={onStart} disabled={disabled}
           className="flex min-h-14 w-full items-center justify-center gap-3 rounded-full bg-ink px-6 text-base font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-50">
-          <Phone size={20} aria-hidden /> {error ? "Try the call again" : "Start the call"}
+          <Phone size={20} aria-hidden /> {preparing ? "Getting the call ready…" : error ? "Try the call again" : "Start the call"}
         </button>
         {!error && <p className="text-center text-sm text-slate">Your microphone will open. Speak naturally; the coach answers out loud each time you stop.</p>}
       </div>
