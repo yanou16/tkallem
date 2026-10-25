@@ -54,7 +54,8 @@ def test_the_credentials_are_asked_from_cloudflare_with_the_key_and_a_ttl():
     r = calls[0]
     assert str(r.url) == "https://rtc.live.cloudflare.com/v1/turn/keys/key123/credentials/generate-ice-servers"
     assert r.headers["authorization"] == "Bearer secret-token"
-    assert b'"ttl": 86400' in r.content or b'"ttl":86400' in r.content
+    ttl = str(settings.turn_credentials_ttl_secs).encode()
+    assert b'"ttl": ' + ttl in r.content or b'"ttl":' + ttl in r.content
 
 
 def test_nothing_is_asked_without_a_key(monkeypatch):
@@ -63,17 +64,12 @@ def test_nothing_is_asked_without_a_key(monkeypatch):
     assert ice.all_ice_servers(fake_cloudflare(calls)) == [] and calls == []
 
 
-def test_credentials_are_cached_for_half_of_their_lifetime():
+def test_every_request_gets_its_own_credentials_because_peers_must_not_share_a_username():
     calls: list = []
     client = fake_cloudflare(calls)
-    t = [1000.0]
-    ice.all_ice_servers(client, now=lambda: t[0])
-    t[0] += settings.turn_credentials_ttl_secs / 2 - 1
-    ice.all_ice_servers(client, now=lambda: t[0])
-    assert len(calls) == 1  # still fresh
-    t[0] += 2
-    ice.all_ice_servers(client, now=lambda: t[0])
-    assert len(calls) == 2  # renewed once half of the lifetime is gone
+    ice.all_ice_servers(client)
+    ice.all_ice_servers(client)
+    assert len(calls) == 2  # one per call and per side, never one shared by everybody
 
 
 def test_the_browser_gets_every_transport_but_the_port_53_ones():
@@ -97,14 +93,6 @@ def test_when_cloudflare_is_down_the_call_still_tries_and_cloudflare_is_not_hamm
     t[0] += 30
     ice.all_ice_servers(down, now=lambda: t[0])
     assert len(calls) == 2
-
-
-def test_an_outage_keeps_serving_the_credentials_that_are_still_valid():
-    calls: list = []
-    t = [0.0]
-    ice.all_ice_servers(fake_cloudflare(calls), now=lambda: t[0])
-    t[0] += settings.turn_credentials_ttl_secs / 2 + 1  # time to renew...
-    assert ice.all_ice_servers(fake_cloudflare(calls, status=500, body={}), now=lambda: t[0]) == CLOUDFLARE["iceServers"]  # ...but they last
 
 
 def test_a_malformed_answer_is_an_outage_not_a_crash():
