@@ -9,8 +9,8 @@ import { useScenarios } from "@/features/practice/hooks/usePractice";
 import { aiSessionKey, useAiSession, useAnswer, useCallConfig, useEndSession, useExplainNote, useSpeakLastLine, useStartSession } from "@/features/ai-chat/hooks/useAiChat";
 import { CREDITS_KEY } from "@/features/credits/hooks/useCredits";
 import { useRealtimeVoice } from "@/features/ai-chat/hooks/useRealtimeVoice";
+import CallScreen from "@/features/ai-chat/components/CallScreen";
 import AnswerModeSwitch from "@/features/ai-chat/components/AnswerModeSwitch";
-import CallPanel from "@/features/ai-chat/components/CallPanel";
 import { addCoachLine, addHeard, applyCallTurn, type CallError } from "@/features/ai-chat/lib/call";
 import { browserCanCall, offeredModes, readAnswerMode, rememberAnswerMode, type AnswerMode } from "@/features/ai-chat/lib/answerMode";
 import { useUpdateProfile } from "@/features/profile/hooks/useProfile";
@@ -318,6 +318,7 @@ function Chat() {
   const answers = s?.messages.filter((m) => m.role === "user") ?? [];
   const lastCoachLine = [...(s?.messages ?? [])].reverse().find((m) => m.role === "assistant");
   const last = answers[answers.length - 1];
+  const lastHeard = [...(s?.messages ?? [])].reverse().find((m) => m.role === "user" && !m.pending);
   const creditProblem = send.error && isCreditError(send.error) ? (send.error as ApiError) : null;
   const problem = send.error && !creditProblem ? answerHelp(send.error) : end.error ? endHelp(end.error) : null;
 
@@ -416,6 +417,20 @@ function Chat() {
         )}
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-line bg-white">
+          {mode === "call" ? (
+            <CallScreen phase={call.phase} state={call.state} muted={call.muted} seconds={call.seconds} levelRef={call.levelRef} error={callProblem}
+              disabled={!sessionId || !s || s.finished || !callAvailable} preparing={callPending} scenarioTitle={title}
+              coachLine={lastCoachLine?.content} heard={lastHeard?.content}
+              heardFixes={interview ? undefined : lastHeard?.corrections} heardStatus={interview ? null : lastHeard?.status}
+              onStart={startCall} onStop={() => void call.stop()} onMute={call.toggleMute} onUseText={() => chooseMode("text")} onUseVoiceMessage={() => chooseMode("voice")}
+              endSession={s?.finished
+                ? <div className="flex flex-wrap items-center justify-center gap-3"><p className="text-sm text-slate">You answered every question.</p><Button onClick={finish} disabled={end.isPending}>{end.isPending ? "Preparing your report…" : "See my report"}</Button></div>
+                : answers.length > 0 && s ? <Button dark={false} onClick={finish} disabled={end.isPending} className="!min-h-11 !px-4 !py-2 text-sm">{end.isPending ? "Preparing your report…" : "End session"}</Button> : undefined}
+              tile={({ compact, speaking }) => avatarOn
+                ? <div className="w-full max-w-xs overflow-hidden rounded-3xl bg-mint/30"><CoachAvatar {...coach.avatarProps} /></div>
+                : <span className={cn("flex items-center justify-center rounded-3xl bg-mint/50 transition-[box-shadow] duration-200", compact ? "h-20 w-20 sm:h-36 sm:w-36" : "h-40 w-40 sm:h-52 sm:w-52", speaking && "tk-breathe ring-4 ring-mint-deep")}><Icon name={icon ?? "speaking"} size={compact ? 40 : 64} className="text-ink/60" /></span>} />
+          ) : (
+          <>
           {s && (
             <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-2 text-sm md:px-6 md:py-3">
               <span className="hidden whitespace-nowrap text-muted md:inline">{plural(answers.length, "answer")}</span>
@@ -492,17 +507,12 @@ function Chat() {
                   )}
                 </div>
               )}
-              {sessionId && s && !interview && mode !== "call" && (
+              {sessionId && s && !interview && (
                 <HelpMeStart sessionId={sessionId} question={lastCoachLine?.content} questionKey={lastCoachLine?.id ?? "start"} typing={text.trim().length > 0}
                   recording={rec.isRecording} busy={coachState === "thinking" || coachState === "preparing" || coachState === "speaking" || !!pending}
                   onUse={(t) => { if (mode === "text") { setText(t); answerField.current?.focus(); } else setStarter(t); }} />
               )}
-              {mode === "call" ? (
-                <CallPanel phase={call.phase} state={call.state} muted={call.muted} seconds={call.seconds} levelRef={call.levelRef} error={callProblem} disabled={!sessionId || !s || s.finished || !callAvailable} preparing={callPending}
-                  onStart={startCall} onStop={() => void call.stop()} onMute={call.toggleMute} onUseVoiceMessage={() => chooseMode("voice")} onUseText={() => chooseMode("text")}
-                  avatar={<span className={cn("flex h-12 w-12 items-center justify-center rounded-full", tint ?? "bg-surface")}><Icon name={icon ?? "briefcase"} /></span>} />
-              ) : (
-              mode === "voice" ? (
+              {mode === "voice" ? (
               <div className="flex flex-col items-center gap-2 p-4">
                 {starter && !rec.isRecording && (
                   <p className="max-w-full rounded-2xl bg-surface px-4 py-2 text-center text-sm"><span className="text-slate">Start with: </span><span className="font-semibold">{starter}</span></p>
@@ -527,9 +537,10 @@ function Chat() {
                 <button onClick={submit} disabled={!text.trim() || !s || send.isPending} aria-label="Send"
                   className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-ink text-white transition-transform active:scale-95 disabled:opacity-40"><Send size={20} /></button>
               </div>
-              )
               )}
             </div>
+          )}
+          </>
           )}
         </div>
       </div>
