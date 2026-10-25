@@ -1,4 +1,7 @@
-"""Text-to-speech. Two providers behind one function, chosen by `settings.tts_provider`:
+"""Text-to-speech. Three providers behind one function, chosen by `settings.tts_provider`:
+
+- `piper`: a voice that runs on the server itself (Piper, en_US-lessac-medium, MIT license): no key, no quota, no waiting
+  line, about a second for a sentence. The safety net when the two others are over their limit or slow.
 
 - `deepinfra`: Kokoro-82M (Apache license), ~0.99 $ per million characters, one request per reply.
 - `groq`: Orpheus (Preview model), ~22 $ per million characters, under 200 characters per request: the reply is
@@ -9,6 +12,7 @@ Neither answer format could be confirmed without a key: the DeepInfra audio fiel
 """
 import base64
 import io
+import os
 import re
 import struct
 import threading
@@ -25,7 +29,7 @@ from app.voice.errors import provider_message
 
 GROQ_MAX_CHARS = 190  # the documented limit is 200
 GROQ_VOICE = "hannah"  # autumn, diana, hannah, austin, daniel, troy
-PRICE_PER_MILLION_CHARS = {"deepinfra": 0.99, "groq": 22.0}  # USD, from the providers' pages (October 2026)
+PRICE_PER_MILLION_CHARS = {"deepinfra": 0.99, "groq": 22.0, "piper": 0.0}  # USD, from the providers' pages (October 2026)
 MP3_MIME = "audio/mpeg"
 
 
@@ -172,8 +176,8 @@ def _decode_audio(value, client: httpx.Client) -> bytes:
 def _budget(factor: float = 1.0) -> httpx.Timeout:
     """How long one reply's voice may take before another voice takes over (a text answer is already on the screen).
     `factor` is per provider (BUDGET_FACTOR): DeepInfra is the slower one (measured on 23 October: Groq 1 to 2 s when idle,
-    DeepInfra 3 to 5 s on 23 October, 5 to 6.5 s for a seven-word line on 25 October, and a longer reply timed out at 10 s during a
-    call) and the last one before the browser's own voice, so it gets three times the time."""
+    DeepInfra 3 to 5 s on 23 October, then 3 to 16 s depending on the minute on 25 October) and the one before Piper, the voice that
+    runs on the server: it gets 1.4 times the time, then Piper answers."""
     return httpx.Timeout(settings.tts_timeout * factor, connect=settings.voice_connect_timeout)
 
 
@@ -219,8 +223,36 @@ def _groq(client: httpx.Client, text: str, voice: str | None, factor: float = 1.
     return [audio for audio, _ in results], "audio/wav", [lat for _, lat in results]
 
 
-PROVIDERS = {"deepinfra": _deepinfra, "groq": _groq}
-BUDGET_FACTOR = {"groq": 1.0, "deepinfra": 3.0}  # times settings.tts_timeout
+_piper_voice = None
+_piper_lock = threading.Lock()  # the model is loaded once, and the phonemizer is not shared by two threads at the same time
+
+
+def _piper(client: httpx.Client, text: str, voice: str | None, factor: float = 1.0):
+    """The voice that runs here. Nothing to rest: "is not set" in a message means a configuration choice, not an outage."""
+    global _piper_voice
+    path = settings.piper_model_path
+    if not path or not os.path.isfile(path):
+        raise TtsError("the Piper voice is not set up (PIPER_MODEL_PATH is not set or the file is missing)")
+    t0 = time.perf_counter()
+    try:
+        with _piper_lock:
+            if _piper_voice is None:
+                from piper import PiperVoice  # imported here: a missing wheel only turns this provider off
+
+                _piper_voice = PiperVoice.load(path)
+            out = io.BytesIO()
+            with wave.open(out, "wb") as w:
+                _piper_voice.synthesize_wav(text, w)
+    except ImportError as e:
+        raise TtsError("the Piper voice is not set up (piper-tts is not installed)") from e
+    except Exception as e:  # a model that cannot be read or a text it cannot say: the next provider takes over
+        _piper_voice = None
+        raise TtsError(f"piper failed: {type(e).__name__}") from e
+    return [out.getvalue()], "audio/wav", [time.perf_counter() - t0]
+
+
+PROVIDERS = {"deepinfra": _deepinfra, "groq": _groq, "piper": _piper}
+BUDGET_FACTOR = {"groq": 1.0, "deepinfra": 1.4, "piper": 1.0}  # DeepInfra is no longer the last resort (Piper is): it does not get 15 s  # times settings.tts_timeout
 
 
 _shared: httpx.Client | None = None

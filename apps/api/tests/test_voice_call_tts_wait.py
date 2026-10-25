@@ -24,6 +24,8 @@ def errors(rtvi):
 
 def slow(seconds):
     def run(text, **kw):
+        if kw.get("provider") == "piper":
+            raise TtsError("the Piper voice is not set up (PIPER_MODEL_PATH is not set or the file is missing)")
         time.sleep(seconds)
         raise AssertionError("a late result must be dropped, not used")
     return run
@@ -80,3 +82,31 @@ def test_a_skipped_attempt_does_not_extend_the_pause_and_the_voice_comes_back(mo
     monkeypatch.setattr(pp, "synthesize", lambda text, **kw: Speech([wav], "audio/wav", "groq", 3, 0.1, 0.1))
     asyncio.run(proc.speak_text("three"))  # tried again (it fails on the empty audio, which is fine here)
     assert proc._tts_skip_until == 0.0 or proc._tts_failures >= 1
+
+
+def test_when_the_usual_voices_are_slow_the_server_voice_says_the_line(monkeypatch):
+    monkeypatch.setattr(settings, "voice_call_tts_wait_secs", 1.0)
+    import io, wave
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1), w.setsampwidth(2), w.setframerate(22050)
+        w.writeframes(b"\x01\x02" * 2205)
+    asked = []
+
+    def synth(text, **kw):
+        asked.append(kw.get("provider"))
+        if kw.get("provider") == "piper":
+            return Speech([buf.getvalue()], "audio/wav", "piper", len(text), 0.1, 0.1)
+        time.sleep(3)
+
+    monkeypatch.setattr(pp, "synthesize", synth)
+    proc, rtvi = make()
+
+    async def go():
+        await proc.speak_text("What is the purpose of your trip?")
+
+    asyncio.run(go())
+    assert asked == [None, "piper"]  # the usual chain first, then the safety net
+    assert errors(rtvi) == []  # no browser fallback needed
+    assert proc._tts_failures == 0
+    assert proc.push_frame.await_count > 3  # the audio was pushed

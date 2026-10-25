@@ -253,10 +253,18 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
 
             # A call cannot wait for a slow voice: the reply text is already on the student's screen, and past this wait
             # the browser reads it (a late audio is dropped). The thread keeps running, its result is discarded.
-            speech: Speech = await asyncio.wait_for(
-                asyncio.to_thread(synthesize, text),
-                timeout=settings.voice_call_tts_wait_secs,
-            )
+            try:
+                speech: Speech = await asyncio.wait_for(
+                    asyncio.to_thread(synthesize, text),
+                    timeout=settings.voice_call_tts_wait_secs,
+                )
+            except asyncio.TimeoutError:
+                # The usual voices are slow or blocked: the voice that runs here says the line (a second at most),
+                # before the page falls back on the browser's voice. Raises TtsError when it is not set up.
+                speech = await asyncio.wait_for(
+                    asyncio.to_thread(synthesize, text, provider="piper"),
+                    timeout=settings.voice_call_tts_wait_secs,
+                )
             self._tts_failures = 0
 
             audio = (

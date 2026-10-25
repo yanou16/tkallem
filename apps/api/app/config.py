@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     stt_model: str = "whisper-large-v3-turbo"
     stt_provider: str = "groq,deepinfra"  # backup chain, first one tried first: groq | deepinfra
-    tts_provider: str = "groq,deepinfra"  # backup chain: groq (Orpheus, limited to 100 voices/day) | deepinfra (Kokoro, needs a balance)
+    tts_provider: str = "groq,deepinfra,piper"  # backup chain: groq (Orpheus, limited to 100 voices/day) | deepinfra (Kokoro, needs a balance, 3 to 10 s) | piper (on the server, no limit: the safety net)
+    piper_model_path: str = "/opt/piper/en_US-lessac-medium.onnx"  # the Piper voice (the Docker image downloads it); missing file = Piper skipped
     deepinfra_api_key: str = ""
     voice_timeout: float = 20.0  # speech to text (the recording is uploaded, then transcribed)
     tts_compress: bool = True  # send the coach's voice as MP3 instead of WAV (8x smaller); TTS_COMPRESS=false goes back to WAV at once
