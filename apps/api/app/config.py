@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     voice_timeout: float = 20.0  # speech to text (the recording is uploaded, then transcribed)
     tts_compress: bool = True  # send the coach's voice as MP3 instead of WAV (8x smaller); TTS_COMPRESS=false goes back to WAV at once
     tts_mp3_kbps: int = Field(64, ge=24, le=128)
+    voice_echo_gate: bool = True  # VOICE_ECHO_GATE=false lets the student talk over the coach (needs good echo cancellation on the phone)
+    voice_echo_hold_secs: float = Field(0.6, ge=0, le=3)  # silence kept after the coach stops, for the last words leaving the loudspeaker
     voice_call_enabled: bool = True  # VOICE_CALL_ENABLED=false hides the live call (the app offers the voice message) without a deploy
     cloudflare_turn_key_id: str = ""  # TURN relay for the live call: without it a browser cannot reach the server behind Azure
     cloudflare_turn_api_token: str = ""  # secret: an App Service setting, never committed
