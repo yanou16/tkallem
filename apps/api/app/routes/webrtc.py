@@ -5,7 +5,7 @@ import uuid
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.voice import smallwebrtc_patch  # noqa: F401 - apply SmallWebRTC fix
+from app.voice import aioice_turn_patch, smallwebrtc_patch  # noqa: F401 - apply the SmallWebRTC and TURN fixes
 from pipecat.transports.smallwebrtc.connection import IceServer, SmallWebRTCConnection
 from pipecat.transports.smallwebrtc.request_handler import (
     SmallWebRTCPatchRequest,
