@@ -12,6 +12,7 @@ Neither answer format could be confirmed without a key: the DeepInfra audio fiel
 """
 import base64
 import io
+import logging
 import os
 import re
 import struct
@@ -26,6 +27,8 @@ import httpx
 from app.config import settings
 from app.voice import failover
 from app.voice.errors import provider_message
+
+logger = logging.getLogger(__name__)
 
 GROQ_MAX_CHARS = 190  # the documented limit is 200
 GROQ_VOICE = "hannah"  # autumn, diana, hannah, austin, daniel, troy
@@ -249,6 +252,20 @@ def _piper(client: httpx.Client, text: str, voice: str | None, factor: float = 1
         _piper_voice = None
         raise TtsError(f"piper failed: {type(e).__name__}") from e
     return [out.getvalue()], "audio/wav", [time.perf_counter() - t0]
+
+
+def warm_up_piper() -> None:
+    """Loads the Piper voice and says one word, at startup: the first call of a new deploy used to pay the model load (several
+    seconds on the small CPU of the App Service), which was longer than the call's wait, so its first line fell back on the
+    browser's voice. Does nothing when Piper is not in the chain; never raises."""
+    if "piper" not in failover.names(settings.tts_provider):
+        return
+    t0 = time.perf_counter()
+    try:
+        _piper(_shared_client(), "Hello.", None)
+        logger.warning("Piper voice ready in %.1f s", time.perf_counter() - t0)
+    except Exception as e:  # not set up, or unreadable: the chain simply goes on without it
+        logger.warning("Piper voice not warmed up: %s", e)
 
 
 PROVIDERS = {"deepinfra": _deepinfra, "groq": _groq, "piper": _piper}

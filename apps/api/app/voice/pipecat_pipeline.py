@@ -263,7 +263,7 @@ class TkallemVoiceTurnProcessor(FrameProcessor):
                 # before the page falls back on the browser's voice. Raises TtsError when it is not set up.
                 speech = await asyncio.wait_for(
                     asyncio.to_thread(synthesize, text, provider="piper"),
-                    timeout=settings.voice_call_tts_wait_secs,
+                    timeout=settings.voice_call_safety_net_wait_secs,
                 )
             self._tts_failures = 0
 
