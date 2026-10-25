@@ -1,14 +1,15 @@
 "use client";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { answerConfidence, askHint, endSession, explainNote, repeatAnswer, getSession, sendAnswer, speakLastLine, startSession, streamAnswer, type AnswerInput, type LiveTurn } from "../api/ai";
+import { answerConfidence, askHint, endSession, explainNote, getCallConfig, repeatAnswer, getSession, sendAnswer, speakLastLine, startSession, streamAnswer, type AnswerInput, type LiveTurn } from "../api/ai";
 import { CREDITS_KEY } from "@/features/credits/hooks/useCredits";
 import { MY_SESSIONS_KEY } from "@/features/practice/hooks/usePractice";
 import { ACHIEVEMENTS_KEY } from "@/features/profile/hooks/useProfile";
 import type { ExplainLang } from "@/features/auth/types/user";
 import type { AiSession, FeedbackMode, HintRequestDto, Turn } from "../types/ai";
 
-const key = (id?: string) => ["ai-session", id] as const;
+export const aiSessionKey = (id?: string) => ["ai-session", id] as const;
+const key = aiSessionKey;
 
 /** Adds one turn: the student's answer (with its status and corrections), then the coach reply. */
 export function addTurn(session: AiSession, turn: Turn, at = new Date().toISOString()): AiSession {
@@ -141,3 +142,7 @@ export const useConfidence = (sessionId?: string) => {
 
 /** The report's note in the other language. */
 export const useExplainNote = (sessionId?: string) => useMutation({ mutationFn: (lang: ExplainLang) => explainNote(sessionId!, lang) });
+
+/** The live call: is it switched on for this session, and which relay servers to use. Nothing is asked until a session exists. */
+export const useCallConfig = (sessionId?: string) =>
+  useQuery({ queryKey: ["call-config", sessionId], queryFn: () => getCallConfig(sessionId!), enabled: !!sessionId, staleTime: 5 * 60_000, retry: false });
