@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AiSession, Correction } from "../types/ai";
-import { addCoachLine, addHeard, applyCallTurn, callError } from "./call";
+import { addCoachLine, addHeard, applyCallTurn, bestEnglishVoice, callError } from "./call";
 
 const fix: Correction = { original: "for study", fixed: "to study", type: "grammar", why: "to + verb" };
 const session = (): AiSession => ({
@@ -85,5 +85,20 @@ describe("call errors", () => {
   });
   it("has a catch-all", () => {
     expect(callError("boom").kind).toBe("other");
+  });
+});
+
+describe("the browser's voice for a line the server could not speak", () => {
+  const v = (name: string, lang: string) => ({ name, lang });
+  it("prefers a neural or Google voice, then a well-known system one", () => {
+    expect(bestEnglishVoice([v("Thomas", "fr-FR"), v("Alex", "en-US"), v("Google US English", "en-US")])?.name).toBe("Google US English");
+    expect(bestEnglishVoice([v("Alex", "en-US"), v("Samantha", "en-US")])?.name).toBe("Samantha");
+    expect(bestEnglishVoice([v("Microsoft Aria Online (Natural)", "en-US"), v("Samantha", "en-US")])?.name).toMatch(/Natural/);
+  });
+  it("falls back to US, UK, then any English voice, and to null when there is none", () => {
+    expect(bestEnglishVoice([v("X", "en-AU"), v("Y", "en-GB")])?.lang).toBe("en-GB");
+    expect(bestEnglishVoice([v("X", "en-AU")])?.lang).toBe("en-AU");
+    expect(bestEnglishVoice([v("Thomas", "fr-FR")])).toBeNull();
+    expect(bestEnglishVoice([])).toBeNull();
   });
 });
