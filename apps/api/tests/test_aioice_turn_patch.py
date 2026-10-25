@@ -71,3 +71,65 @@ def test_other_stun_messages_from_the_relay_are_not_taken_for_data():
 
 def test_the_patch_is_installed_on_the_real_client():
     assert turn.TurnClientMixin.datagram_received is patch.datagram_received
+
+
+# ---- the allocation is retried on a new socket ----
+
+import asyncio  # noqa: E402
+
+
+class FakeSocketTransport:
+    def __init__(self):
+        self.closed = False
+
+    def get_extra_info(self, name, default=None):
+        return None
+
+    def close(self):
+        self.closed = True
+
+
+def run_allocation(monkeypatch, behaviours):
+    """Call the patched create_turn_endpoint; `behaviours` says what each attempt's allocation does: 'ok', 'silent', 'error'."""
+    sockets: list[FakeSocketTransport] = []
+    calls = {"n": 0}
+
+    class FakeLoop:
+        async def create_datagram_endpoint(self, factory, remote_addr=None):
+            sockets.append(FakeSocketTransport())
+            return sockets[-1], factory()
+
+    async def connect(self, protocol):
+        behaviour = behaviours[calls["n"]]
+        calls["n"] += 1
+        if behaviour == "silent":
+            await asyncio.sleep(10)
+        elif behaviour == "error":
+            raise stun.TransactionFailed(stun.Message(message_method=stun.Method.ALLOCATE, message_class=stun.Class.ERROR))
+
+    monkeypatch.setattr(asyncio, "get_event_loop", lambda: FakeLoop())
+    monkeypatch.setattr(turn.TurnTransport, "_connect", connect)
+    monkeypatch.setattr(patch, "ALLOCATE_ATTEMPT_TIMEOUT", 0.05)
+    result = asyncio.run(patch.create_turn_endpoint_with_retry(asyncio.DatagramProtocol, ("turn.example", 443), "u", "p"))
+    return result, sockets, calls["n"]
+
+
+def test_an_unanswered_allocation_is_retried_on_a_new_socket_and_the_dead_one_is_closed(monkeypatch):
+    (transport, protocol), sockets, attempts = run_allocation(monkeypatch, ["silent", "silent", "ok"])
+    assert attempts == 3 and len(sockets) == 3  # a new socket each time
+    assert sockets[0].closed and sockets[1].closed and not sockets[2].closed
+    assert isinstance(transport, turn.TurnTransport)
+
+
+def test_after_all_the_attempts_the_timeout_is_raised_for_aioice_to_handle(monkeypatch):
+    with pytest.raises((asyncio.TimeoutError, stun.TransactionTimeout)):
+        run_allocation(monkeypatch, ["silent", "silent", "silent"])
+
+
+def test_an_error_answer_is_not_retried(monkeypatch):
+    with pytest.raises(stun.TransactionFailed):
+        run_allocation(monkeypatch, ["error", "ok", "ok"])
+
+
+def test_the_retry_is_installed_where_aioice_calls_it():
+    assert turn.create_turn_endpoint is patch.create_turn_endpoint_with_retry
