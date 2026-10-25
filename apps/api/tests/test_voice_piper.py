@@ -92,3 +92,21 @@ def test_a_voice_that_cannot_say_the_text_gives_way_to_the_next_provider(monkeyp
 
 def test_the_default_chain_ends_with_piper():
     assert settings.model_fields["tts_provider"].default == "groq,deepinfra,piper"
+
+
+def test_warm_up_loads_the_voice_once_and_never_raises(monkeypatch, tmp_path):
+    fake_piper(monkeypatch, tmp_path)
+    monkeypatch.setattr(settings, "tts_provider", "groq,deepinfra,piper")
+    assert tts._piper_voice is None
+    tts.warm_up_piper()
+    assert tts._piper_voice is not None  # loaded: the first call of a deploy does not pay for it
+
+
+def test_warm_up_does_nothing_without_piper_in_the_chain_or_without_the_file(monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "tts_provider", "groq,deepinfra")
+    tts.warm_up_piper()
+    assert tts._piper_voice is None
+    monkeypatch.setattr(settings, "tts_provider", "piper")
+    monkeypatch.setattr(settings, "piper_model_path", str(tmp_path / "missing.onnx"))
+    tts.warm_up_piper()  # logs, does not raise
+    assert tts._piper_voice is None

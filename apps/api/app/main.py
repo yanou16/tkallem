@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import threading
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
@@ -20,6 +21,7 @@ from app.routes.scenarios import router as scenarios_router
 from app.routes.sessions import router as sessions_router
 from app.routes.webrtc import router as webrtc_router
 from app.voice import smallwebrtc_patch  # noqa: F401 - apply SmallWebRTC fix
+from app.voice.tts import warm_up_piper
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,8 @@ async def lifespan(app: FastAPI):
         open_pool()
     else:
         logger.warning("DATABASE_URL is not set: starting without a database")
+    # In the background: the API answers /health at once, and the voice that runs here is loaded before the first call needs it.
+    threading.Thread(target=warm_up_piper, name="piper-warm-up", daemon=True).start()
     yield
     if settings.database_url:
         close_pool()

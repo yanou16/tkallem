@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     voice_echo_gate: bool = True  # VOICE_ECHO_GATE=false lets the student talk over the coach (needs good echo cancellation on the phone)
     voice_echo_hold_secs: float = Field(0.6, ge=0, le=3)  # silence kept after the coach stops, for the last words leaving the loudspeaker
     voice_call_tts_wait_secs: float = Field(4.0, ge=1, le=30)  # a call cannot wait for a slow voice: after this long the browser reads the line (the text is already on screen)
+    voice_call_safety_net_wait_secs: float = Field(8.0, ge=1, le=30)  # the server's own voice (Piper) gets longer than the usual chain: it is the last one before the browser's voice
     voice_call_tts_failures_to_skip: int = Field(2, ge=1, le=10)  # this many server voice failures in a row: the browser's voice is used at once...
     voice_call_tts_skip_secs: float = Field(60.0, ge=0, le=600)  # ...for this long, before the server voice is tried again
     voice_call_enabled: bool = True  # VOICE_CALL_ENABLED=false hides the live call (the app offers the voice message) without a deploy

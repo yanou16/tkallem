@@ -110,3 +110,24 @@ def test_when_the_usual_voices_are_slow_the_server_voice_says_the_line(monkeypat
     assert errors(rtvi) == []  # no browser fallback needed
     assert proc._tts_failures == 0
     assert proc.push_frame.await_count > 3  # the audio was pushed
+
+
+def test_the_safety_net_gets_longer_than_the_usual_chain(monkeypatch):
+    """Piper took more than the usual wait to answer on the first call of a deploy (model load): that is allowed."""
+    monkeypatch.setattr(settings, "voice_call_tts_wait_secs", 1.0)
+    monkeypatch.setattr(settings, "voice_call_safety_net_wait_secs", 4.0)
+    import io, wave
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1), w.setsampwidth(2), w.setframerate(22050)
+        w.writeframes(b"\x01\x02" * 2205)
+
+    def synth(text, **kw):
+        time.sleep(2.0 if kw.get("provider") == "piper" else 3.0)
+        if kw.get("provider") == "piper":
+            return Speech([buf.getvalue()], "audio/wav", "piper", len(text), 2.0, 2.0)
+
+    monkeypatch.setattr(pp, "synthesize", synth)
+    proc, rtvi = make()
+    asyncio.run(proc.speak_text("What is the purpose of your trip?"))
+    assert errors(rtvi) == []  # Piper's 2 s fitted in its 4 s, although it is longer than the 1 s wait
