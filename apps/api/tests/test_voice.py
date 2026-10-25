@@ -241,7 +241,7 @@ def test_a_voice_that_is_too_slow_gives_way_to_the_next_provider_instead_of_a_lo
     def handler(request: httpx.Request):
         asked.append(request.url.host)
         # the budget is on every request: the backup (slower) gets twice the time of the first voice
-        assert request.extensions["timeout"]["read"] == settings.tts_timeout * (1 if request.url.host == "api.groq.com" else 2)
+        assert request.extensions["timeout"]["read"] == settings.tts_timeout * (1 if request.url.host == "api.groq.com" else 3)
         if request.url.host == "api.groq.com":
             raise httpx.ReadTimeout("slow")
         return httpx.Response(200, json={"audio": base64.b64encode(AUDIO).decode(), "output_format": "wav"})

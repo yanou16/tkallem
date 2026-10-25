@@ -172,7 +172,8 @@ def _decode_audio(value, client: httpx.Client) -> bytes:
 def _budget(factor: float = 1.0) -> httpx.Timeout:
     """How long one reply's voice may take before another voice takes over (a text answer is already on the screen).
     `factor` is per provider (BUDGET_FACTOR): DeepInfra is the slower one (measured on 23 October: Groq 1 to 2 s when idle,
-    DeepInfra 3 to 5 s) and the last one before the browser's own voice, so it gets twice the time."""
+    DeepInfra 3 to 5 s on 23 October, 5 to 6.5 s for a seven-word line on 25 October, and a longer reply timed out at 10 s during a
+    call) and the last one before the browser's own voice, so it gets three times the time."""
     return httpx.Timeout(settings.tts_timeout * factor, connect=settings.voice_connect_timeout)
 
 
@@ -219,7 +220,7 @@ def _groq(client: httpx.Client, text: str, voice: str | None, factor: float = 1.
 
 
 PROVIDERS = {"deepinfra": _deepinfra, "groq": _groq}
-BUDGET_FACTOR = {"groq": 1.0, "deepinfra": 2.0}  # times settings.tts_timeout
+BUDGET_FACTOR = {"groq": 1.0, "deepinfra": 3.0}  # times settings.tts_timeout
 
 
 _shared: httpx.Client | None = None
