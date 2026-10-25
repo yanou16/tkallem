@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     voice_timeout: float = 20.0  # speech to text (the recording is uploaded, then transcribed)
     tts_compress: bool = True  # send the coach's voice as MP3 instead of WAV (8x smaller); TTS_COMPRESS=false goes back to WAV at once
     tts_mp3_kbps: int = Field(64, ge=24, le=128)
+    voice_call_enabled: bool = True  # VOICE_CALL_ENABLED=false hides the live call (the app offers the voice message) without a deploy
+    cloudflare_turn_key_id: str = ""  # TURN relay for the live call: without it a browser cannot reach the server behind Azure
+    cloudflare_turn_api_token: str = ""  # secret: an App Service setting, never committed
+    turn_credentials_ttl_secs: int = Field(86400, ge=300, le=172800)  # Cloudflare allows up to 48 hours
     tts_timeout: float = 5.0  # the coach's voice must start soon: after this many seconds the next provider (or the browser's own voice, at once) takes over
     voice_connect_timeout: float = 3.0  # a provider that cannot be reached in 3 s is retried once, then the next one answers
     database_url: str = ""

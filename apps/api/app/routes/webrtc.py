@@ -1,11 +1,12 @@
 """WebRTC Signaling routes for Pipecat Voice Sessions in Tkallem."""
 import asyncio
 import logging
+import uuid
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.voice import smallwebrtc_patch  # noqa: F401 - apply SmallWebRTC fix
-from pipecat.transports.smallwebrtc.connection import SmallWebRTCConnection
+from pipecat.transports.smallwebrtc.connection import IceServer, SmallWebRTCConnection
 from pipecat.transports.smallwebrtc.request_handler import (
     SmallWebRTCPatchRequest,
     SmallWebRTCRequest,
@@ -18,6 +19,7 @@ from app.db.connection import ConnFactory, get_conn_factory
 from app.db.sessions import get_session_for_user
 from app.dependencies import user_for_claims
 from app.security import ClerkClaims, get_clerk_claims
+from app.voice import ice
 from app.voice.pipecat_pipeline import build_voice_pipeline
 
 logger = logging.getLogger(__name__)
@@ -29,6 +31,25 @@ _webrtc_handler = SmallWebRTCRequestHandler()
 _active_sessions: dict[UUID, asyncio.Task] = {}
 
 
+def _own_session_or_404(connect: ConnFactory, claims: ClerkClaims, session_id: UUID) -> None:
+    with connect() as conn:
+        user = user_for_claims(conn, claims)
+        if get_session_for_user(conn, session_id, user["id"]) is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+
+
+@router.get("/{session_id}/ice-servers")
+async def get_ice_servers(
+    session_id: UUID,
+    claims: ClerkClaims = Depends(get_clerk_claims),
+    connect: ConnFactory = Depends(get_conn_factory),
+) -> dict:
+    """What the browser needs to reach the call: whether it is on, and the ICE (STUN/TURN relay) servers to use."""
+    _own_session_or_404(connect, claims, session_id)
+    servers = await asyncio.to_thread(ice.browser_ice_servers) if settings.voice_call_enabled else []
+    return {"call_enabled": settings.voice_call_enabled, "ice_servers": servers}
+
+
 @router.post("/{session_id}/webrtc")
 async def handle_webrtc_offer(
     session_id: UUID,
@@ -37,6 +58,8 @@ async def handle_webrtc_offer(
     connect: ConnFactory = Depends(get_conn_factory),
 ) -> dict:
     """Negotiates a WebRTC session offer from the browser and launches the Pipecat pipeline."""
+    if not settings.voice_call_enabled:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "The live call is switched off")
     with connect() as conn:
         user = user_for_claims(conn, claims)
         session = get_session_for_user(conn, session_id, user["id"])
@@ -119,6 +142,8 @@ async def handle_webrtc_offer(
 
         asyncio.create_task(robust_greet_fallback())
 
+    relay = await asyncio.to_thread(ice.server_ice_servers)  # the relay credentials are renewed here, before each offer
+    _webrtc_handler.update_ice_servers([IceServer(urls=server["urls"], username=server.get("username"), credential=server.get("credential")) for server in relay] or None)
     answer = await _webrtc_handler.handle_web_request(request, on_connection)
     if answer is None:
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Failed to generate SDP answer")
