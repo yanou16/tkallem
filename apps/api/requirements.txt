@@ -12,5 +12,6 @@ PyJWT[crypto]
 pytest
 httpx
 pipecat-ai[webrtc,silero]
+piper-tts==1.8.0
 -e ../../packages/agent
 lameenc

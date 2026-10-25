@@ -13,6 +13,9 @@ COPY packages/agent/pyproject.toml packages/agent/
 COPY packages/agent/tkallem_agent packages/agent/tkallem_agent
 COPY apps/api/requirements.txt apps/api/
 RUN cd apps/api && pip install -r requirements.txt
+# The voice that runs on the server (Piper, about 63 MB): downloaded and checked against its SHA-256, in its own layer.
+COPY apps/api/scripts/fetch_piper_voice.py /tmp/fetch_piper_voice.py
+RUN python /tmp/fetch_piper_voice.py /opt/piper && rm /tmp/fetch_piper_voice.py
 
 COPY apps/api apps/api
 # The commit this image was built from, shown by /health (the deploy workflow checks it went live)
