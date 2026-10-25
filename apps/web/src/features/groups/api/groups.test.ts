@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { checkDraft, getMessages, getMyGroup, joinAGroup, leaveGroup, mapGroupPreview, mapMessage, reportMessage, saveFirstName } from "./groups";
+import { checkDraft, getGroupPreview, getMessages, getMyGroup, joinAGroup, leaveGroup, mapGroupPreview, mapMessage, reportMessage, saveFirstName, sendMessage } from "./groups";
 import type { GroupMessageDto, GroupSummaryDto } from "../types/groups";
 
 const GROUP: GroupSummaryDto = {
@@ -39,6 +39,23 @@ describe("mapMessage", () => {
 });
 
 describe("groups API", () => {
+  it("loads real preview data from /groups/preview without a demo fallback", async () => {
+    const theme = { id: "work", title: "Work", category: "work", question: "Office or home?" };
+    const f = answer({ theme, groups: [GROUP] });
+    expect((await getGroupPreview()).groups[0].id).toBe(7);
+    expect(sent(f).url).toMatch(/\/groups\/preview$/);
+    answer({ detail: "Not found" }, 404);
+    await expect(getGroupPreview()).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("sends a message to the backend and returns the persisted message", async () => {
+    const f = answer(MESSAGE);
+    expect(await sendMessage(7, "Hello everyone")).toMatchObject({ id: 12, body: "Hello everyone" });
+    expect(sent(f).url).toMatch(/\/groups\/7\/messages$/);
+    expect(sent(f).method).toBe("POST");
+    expect(JSON.parse(sent(f).body as string)).toEqual({ body: "Hello everyone" });
+  });
+
   it("GET /me/group: the group, or null when she has none", async () => {
     answer(GROUP);
     expect(await getMyGroup()).toMatchObject({ id: 7, memberCount: 3, lastActivity: null });

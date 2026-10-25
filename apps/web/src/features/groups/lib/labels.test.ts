@@ -30,6 +30,11 @@ describe("memberName", () => {
 const fail = (status: number, message = "from the API") => new ApiError(message, status);
 
 describe("error messages", () => {
+  it("shows language feedback instead of a misleading length error", () => {
+    const message = "Write a clear message in English so your draft can be checked.";
+    expect(checkError(fail(422, message))).toBe(message);
+    expect(checkError(fail(422))).toContain("1 to 500");
+  });
   it("sending: 429 says to wait, the limit is 20 a minute", () => {
     expect(sendError(fail(429))).toMatch(/20 messages in the last minute/);
     expect(sendError(fail(403))).toMatch(/no longer a member/);
