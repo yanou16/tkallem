@@ -28,6 +28,7 @@ export function sendError(e: unknown): string {
 export function checkError(e: unknown): string {
   if (status(e) === 429) return "You used your 30 checks of the last 24 hours. You can check again later.";
   if (status(e) === 502) return "The check is not available right now. Try again in a moment.";
+  if (status(e) === 422 && e instanceof ApiError && e.message === "Write a clear message in English so your draft can be checked.") return e.message;
   if (status(e) === 422) return "A text to check has 1 to 500 characters.";
   return fallback(e);
 }
