@@ -136,4 +136,4 @@ We would rather say them:
 - **Scenarios are few** (ten), and a real admission or visa interview may be held in another language while ours trains the English version.
 - **Voice quality and latency depend on the providers' free quotas;** backups exist, but a long outage falls back to the
   browser's voice.
-- **The API contains a real-time voice route** (Pipecat over WebRTC) that the app does not use yet.
+- **The API contains a real-time voice route** (Pipecat over WebRTC, through a Cloudflare relay) and the app has its call screen, but the call is switched off (`VOICE_CALL_ENABLED=false`): real-time audio was not smooth enough on the single vCPU of the demo server. The voice message (a recorded answer, a spoken reply) is the voice mode in use.

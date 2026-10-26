@@ -108,7 +108,7 @@ Keys never enter the repository (`.gitignore`, `.dockerignore`). Each lives in e
 |---|---|
 | `apps/api/.env` (local, ignored by Git) | Everything the API needs on a developer's machine; the example is `apps/api/.env.example` |
 | Azure App Service settings | The API's production variables (database, provider keys, Clerk, `GUEST_SECRET`, `DAILY_SPEND_CAP`, pool size) |
-| Vercel environment variables | `NEXT_PUBLIC_API_URL`, the Clerk keys (`NEXT_PUBLIC_FEATURE_GROUPS` is no longer read: it can be deleted) |
+| Vercel environment variables | `NEXT_PUBLIC_API_URL`, the Clerk keys (`NEXT_PUBLIC_FEATURE_GROUPS=0` hides the practice groups; they are on when it is absent) |
 | GitHub Actions | `AZURE_WEBAPP_PUBLISH_PROFILE` (secret), `AZURE_WEBAPP_NAME` (variable), `OPENROUTER_API_KEY` (secret, for the AI gate) |
 
 CI builds the web app with a fake Clerk key in the right format: a CI build never calls Clerk.

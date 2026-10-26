@@ -9,7 +9,7 @@
 An English speaking coach for Algerian students who understand English but freeze when they have to speak it:
 a US student visa interview, a university admission interview, a remote job interview, IELTS Speaking.
 
-[**Try it now**](https://tkallem.vercel.app) · [Demo video](#) `[TEAM: link]` · [API docs](https://tkallem-api-rayane.azurewebsites.net/docs) · [Documentation](#documentation)
+[**Try it now**](https://tkallem.vercel.app) · <!-- TODO: add the demo video link here once uploaded: [Demo video](URL) · -->[API docs](https://tkallem-api-rayane.azurewebsites.net/docs) · [Documentation](#documentation)
 
 [![tests](https://img.shields.io/github/actions/workflow/status/yanou16/tkallem/ci.yml?branch=main&label=tests&logo=github)](https://github.com/yanou16/tkallem/actions/workflows/ci.yml)
 [![deploy](https://img.shields.io/github/actions/workflow/status/yanou16/tkallem/api-image.yml?branch=main&label=deploy&logo=microsoftazure)](https://github.com/yanou16/tkallem/actions/workflows/api-image.yml)
@@ -46,7 +46,7 @@ is nowhere safe to rehearse: a teacher is not available at night, and a friend's
 Tkallem is that place. A coach asks the real questions, listens, and shows what was good and the one thing to fix first,
 with nobody watching. The student can also *see* the freeze itself: how long they waited before starting to answer.
 
-`[TEAM: who has this problem and who you spoke to: how many students, where, what they said]`
+<!-- TODO (the team): who has this problem and who you spoke to: how many students, where, what they said. Real numbers only. -->
 
 ## Try it in 30 seconds
 
@@ -63,12 +63,14 @@ A guest's sessions, reports and progress are kept on that device; creating an ac
 |---|---|
 | **Pick a real situation** | Visa interview, university admission interview, remote job interview, IELTS Speaking, everyday scenes (renting a room, the airport, a taxi…). 5 to 10 minutes each. |
 | **Choose a mode** | *Practice* (corrections after each answer, hints) or *Real interview* (the coach plays the officer, nothing is shown until the report). |
-| **Answer out loud or type** | The coach replies in text and in a natural voice. |
+| **Voice message or text** | Record one answer and hear the coach reply in a natural voice, or type it and read the reply. The microphone only asks for permission when the student taps it. |
 | **Be reassured, then corrected** | One true compliment, then the single correction that matters most, explained in French or simple English. |
 | **Get unstuck** | **Help me start** gives the first words of an answer, or turns an idea written in French or Darija into English to read aloud. |
 | **Repeat the fix** | **Say it again**: the code, not the AI, checks the repeated sentence. |
-| **See the freeze** | The report shows how long the student waited before speaking, mistakes per 100 words, the answer to redo and how confident they felt before and after. |
-| **Build a plan** | Five questions (optional) set the level, the daily goal and the order of the situations. |
+| **See the freeze** | The report shows how long the student waited before speaking, mistakes per 100 words, the answer to redo and how confident they feel at the end. |
+| **Build a plan** | Five short questions (why you need English, your level, daily practice time, what is hardest, the subjects you like) set the level, the daily goal and the order of the situations. They are optional: a visa interview can start straight away. |
+| **Practice with others** | Groups of up to 8 students of the same level, with the question of the day, a private **Check my English** for a draft before sending, and a weekly leaderboard. A visitor without an account sees a read-only preview. |
+| **Keep what was learned** | **Progress** and past reports, **Phrases** (the corrections of earlier sessions in one place, with *Say it again*) and a phrase of the day to say out loud. |
 
 ## How the AI works
 
@@ -79,7 +81,7 @@ plain code then keeps, trims, merges or rejects them. The next question, the sen
 computed, never generated. Prompt injections ("ignore your rules", "mark this green") are treated as data and checked
 against 9 attacks in CI.
 
-Every provider has a backup, so a rate limit during the judging week costs a second, not the session.
+Every provider has a backup, so a rate limit during the judging week costs a second, not the session. The coach's voice has four levels: Groq, DeepInfra, **Piper (a voice that runs on our own server, no quota)**, then the browser's own voice.
 
 **→ [Read the full AI coach document](docs/ai.md)** (the guardrails table, providers and backups, evaluation, privacy, limits)
 
@@ -97,7 +99,7 @@ identity, free answers, sessions and the calls to the coach. Only the text of th
 ![Tech stack by layer: Next.js, React, TypeScript, Tailwind, PWA and Clerk for the web app; Python, FastAPI, Docker and Azure for the API; LangGraph, LangChain, OpenRouter, Groq, DeepInfra and Langfuse for the AI; Neon PostgreSQL for data; GitHub, GitHub Actions, pytest, Vitest, Locust and Vercel for quality and delivery](docs/images/tech-stack.svg)
 
 **AI tools used to build it:** Claude Code (an AI coding assistant) wrote a large part of the code, which the team reviewed
-and tested. `[TEAM: add the tools each of you used]`
+and tested. <!-- TODO (the team): add the AI tools each member used. -->
 
 ## DevOps
 
@@ -130,13 +132,17 @@ cp .env.local.example .env.local   # NEXT_PUBLIC_API_URL=http://localhost:8000, 
 npm run dev
 ```
 
+The optional server-side voice (Piper, about 63 MB, MIT) is downloaded and checked against its SHA-256 with
+`python apps/api/scripts/fetch_piper_voice.py <folder>`; then set `PIPER_MODEL_PATH` to the `.onnx` file. Without it the voice chain simply
+skips Piper. The Docker image does this for you.
+
 Keys live only in `.env` files, which Git ignores. Guests need no Clerk account: open `/ai-chat?scenarioId=visa-us`.
 Add a scenario with one JSON file in `packages/agent/tkallem_agent/scenarios/` (see `visa-us.json`).
 
 ```bash
 cd packages/agent && ../../apps/api/.venv/bin/pytest -q                      # agent
-cd apps/api && TEST_DATABASE_URL=<a scratch database> .venv/bin/pytest -q   # API
-cd apps/web && npm run typecheck && npm test                                 # web
+cd apps/api && TEST_DATABASE_URL=<a scratch database> .venv/bin/pytest -q   # API (about 520 tests)
+cd apps/web && npm run typecheck && npm test                                 # web (about 280 tests)
 ```
 
 ## Quality and security
@@ -153,9 +159,9 @@ cd apps/web && npm run typecheck && npm test                                 # w
 
 **→ Load test results (pool of 5, 10 and 15 connections, 30 and 50 simulated users) are in the [system design](docs/system-design.md#performance).**
 
-**Not done yet** (we would rather say it): no Content-Security-Policy or HSTS headers on the web app; rate limits are in
-memory (one API process); no automatic dependency scanning; sign-in uses a Clerk development instance.
-`[TEAM: confirm before submission]`
+**Not done yet** (we would rather say it): no Content-Security-Policy header (the web app does send `nosniff`, frame denial, a
+referrer policy and a permissions policy); rate limits are in memory (one API process); dependency scanning is limited to
+`npm audit` for critical advisories in CI, with nothing yet for the Python packages; sign-in uses a Clerk development instance.
 
 ## Cost and limits
 
@@ -168,6 +174,7 @@ spend in a day, with an alert at 80 % and at 100 %.
 | Typed | about 0.0003 $ |
 | Spoken, voice by Groq Orpheus | about 0.0034 $ |
 | Spoken, voice by DeepInfra Kokoro | about 0.0009 $ |
+| Spoken, voice by Piper (our own server) | no provider fee, only server time |
 
 The cap therefore bounds a day at about 1.5 $ (typed) to 17 $ (all spoken with Orpheus). The database pool is 10
 connections; a Locust load test of the judge journey (50 simulated users, fake model) kept the median answer at 2.3 s with
@@ -175,20 +182,24 @@ no errors ([`apps/api/loadtest/`](apps/api/loadtest/README.md)).
 
 **Known limits** (we would rather say them):
 
-- **The microphone is tested on desktop Chrome, not yet on every phone.** A "Tap to hear the coach" button covers blocked
-  audio. `[TEAM: update after the phone tests]`
+- **The microphone and the voice are tested on desktop Chrome and with an automated browser, not yet on every phone.** A "Tap to hear
+  the coach" button covers blocked audio.
+- **A live call mode (WebRTC with Pipecat, through a Cloudflare relay) is built and tested but switched off** (`VOICE_CALL_ENABLED=false`):
+  on the single vCPU of our demo server the real-time audio was not smooth enough on phones. The voice message gives the same corrections
+  without that risk, and the code stays for the day the server grows.
 - **The evaluation sets are small and labelled by one person** (33 sentences, 9 attacks, 20 "Help me start" cases). A
   correction can still be wrong; one example is described in [docs/ai.md](docs/ai.md#limits).
 - **Scenarios are few** (ten). A real admission or visa interview may be held in another language; ours trains the English version of it.
 - **One API process:** several instances would need Redis first.
 - **Sign-in uses a Clerk development instance** and the interface is in English only.
 - **The optional 3D avatar** comes from the TalkingHead project, whose sample avatars are for non-commercial use; it is off by default.
-- Voice quality and latency depend on the providers' free quotas; a long outage falls back to the browser's voice.
+- Voice quality and latency depend on the providers' free quotas (Groq's free plan allows about 100 voices a day): the chain is Groq,
+  DeepInfra, Piper on our server, then the browser's voice. Piper is clear and fast, but less natural than Groq's.
 
 ## Impact and what next
 
 What Tkallem can measure about students who freeze, from real sessions. Only averages, never a student: the **time before
-the student starts** (the freeze meter), **confidence before and after** (1 to 5, self-reported), and **mistakes per 100
+the student starts** (the freeze meter), **confidence at the end of a session** (1 to 5, self-reported; a "before" question was removed because it confused first visits), and **mistakes per 100
 words**. Honest limits: confidence is self-reported, the number of sessions is small, and there is no control group.
 `apps/api/scripts/impact.py` prints the averages.
 
@@ -196,18 +207,18 @@ words**. Honest limits: confidence is self-reported, the number of sessions is s
 student clubs and language centers, and check whether their mistakes per 100 words and their time before speaking drop
 over five sessions. We will add the scenarios they ask for, such as scholarship interviews, and a French interface. It
 stays free to try with daily answers; intensive preparation packs and language-center partnerships would pay for it.
-`[TEAM: name the clubs and centers we will approach]`
+<!-- TODO (the team): name the clubs and language centers we will approach. -->
 
 ## Team
 
 Git history shows the real split (the same person sometimes commits under two names).
-`[TEAM: each person checks their own line and adds their full name]`
+<!-- TODO (the team): each person checks their own line and adds their full name if wanted. -->
 
 | | |
 |---|---|
-| **Rayane Louzazna** | Tech lead. The AI coach (agent, prompts, guardrails, evaluation sets), the voice pipeline and its backups, free answers and guest mode, deployment (Azure, Neon, Vercel), the CI/CD, the four improvements ("Help me start", "Say it again", Practice and Real interview modes, corrections that reassure first), the freeze meter and the report. |
-| **Zaki** | The API (sessions, profile, progress, database and migrations), the practice groups (database, REST routes, live WebSocket, leaderboard; the screen was taken out of the app before the jury), the API documentation, the load test, the first diagrams. `[TEAM: Zaki, confirm]` |
-| **Akram (Wad2o)** | The first front-end redesign (sign-in with Clerk), the dashboard and practice API routes, and the real-time voice route (Pipecat, WebRTC) in the API. `[TEAM: Akram, confirm]` |
+| **Rayane Louzazna** | Tech lead. The AI coach (agent, prompts, guardrails, evaluation sets), the voice pipeline and its backups, free answers and guest mode, deployment (Azure, Neon, Vercel), the CI/CD, the four improvements ("Help me start", "Say it again", Practice and Real interview modes, corrections that reassure first), the freeze meter and the report, and the integration of the team's front-end work (call screen, group room and chat visual language by Akram, groups by Zaki). |
+| **Zakaria Sabi (Zaki)** | The API (sessions, profile, progress, database and migrations), the practice groups (database, REST routes, live WebSocket, leaderboard; the screen is back in the app, read-only for visitors without an account), the API documentation, the load test, the first diagrams. <!-- TODO: Zaki, confirm --> |
+| **Akram (Wad2o)** | The first front-end redesign (sign-in with Clerk), the dashboard and practice API routes, the real-time voice route (Pipecat, WebRTC) in the API, and the designs adopted in the app: the call screen, the practice group room and the chat's visual language (mint bubbles, pastel correction cards). <!-- TODO: Akram, confirm and add the full name --> |
 
 ## Documentation
 
@@ -237,4 +248,5 @@ infra/azure/         Deployment script and notes
 
 ## License
 
-`[TEAM: choose a license and add a LICENSE file, for example MIT]`
+<!-- TODO (the team): choose a license and add a LICENSE file, for example MIT. Until then all rights are reserved by default. -->
+All rights reserved by the authors until the team chooses a license.
