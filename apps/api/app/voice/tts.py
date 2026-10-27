@@ -1,5 +1,7 @@
-"""Text-to-speech. Three providers behind one function, chosen by `settings.tts_provider`:
+"""Text-to-speech. Four providers behind one function, chosen by `settings.tts_provider`:
 
+- `azure`: Azure Speech neural voice (en-US-AndrewMultilingualNeural), free F0 plan = 0.5 million characters a month, then
+  Azure answers 429 and the next provider takes over. The voice the students hear first, the same one for the whole session.
 - `piper`: a voice that runs on the server itself (Piper, en_US-lessac-medium, MIT license): no key, no quota, no waiting
   line, about a second for a sentence. The safety net when the two others are over their limit or slow.
 
@@ -21,6 +23,7 @@ import time
 import wave
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
+from xml.sax.saxutils import escape as xml_escape
 
 import httpx
 
@@ -32,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 GROQ_MAX_CHARS = 190  # the documented limit is 200
 GROQ_VOICE = "hannah"  # autumn, diana, hannah, austin, daniel, troy
-PRICE_PER_MILLION_CHARS = {"deepinfra": 0.99, "groq": 22.0, "piper": 0.0}  # USD, from the providers' pages (October 2026)
+PRICE_PER_MILLION_CHARS = {"deepinfra": 0.99, "groq": 22.0, "piper": 0.0, "azure": 0.0}  # USD, from the providers' pages (October 2026); azure = free F0 plan
 MP3_MIME = "audio/mpeg"
 
 
@@ -226,6 +229,31 @@ def _groq(client: httpx.Client, text: str, voice: str | None, factor: float = 1.
     return [audio for audio, _ in results], "audio/wav", [lat for _, lat in results]
 
 
+def _azure(client: httpx.Client, text: str, voice: str | None, factor: float = 1.0):
+    """Azure Speech, REST: SSML in, 24 kHz 16-bit WAV out (the same format as the other providers, so the call and the MP3
+    compression work unchanged). The voice comes from AZURE_SPEECH_VOICE: a name meant for another provider is not used."""
+    if not settings.azure_speech_key:
+        raise TtsError("AZURE_SPEECH_KEY is not set")
+    name = voice if voice and voice.endswith("Neural") else settings.azure_speech_voice
+    ssml = f"<speak version='1.0' xml:lang='en-US'><voice name='{name}'>{xml_escape(text)}</voice></speak>"
+    t0 = time.perf_counter()
+    r = client.post(
+        f"https://{settings.azure_speech_region}.tts.speech.microsoft.com/cognitiveservices/v1",
+        headers={
+            "Ocp-Apim-Subscription-Key": settings.azure_speech_key,
+            "Content-Type": "application/ssml+xml",
+            "X-Microsoft-OutputFormat": "riff-24khz-16bit-mono-pcm",
+            "User-Agent": "tkallem",
+        },
+        content=ssml.encode(),
+        timeout=_budget(factor),
+    )
+    r.raise_for_status()
+    if r.content[:4] != b"RIFF":
+        raise TtsError("azure returned no WAV audio")
+    return [r.content], "audio/wav", [time.perf_counter() - t0]
+
+
 _piper_voice = None
 _piper_lock = threading.Lock()  # the model is loaded once, and the phonemizer is not shared by two threads at the same time
 
@@ -268,8 +296,8 @@ def warm_up_piper() -> None:
         logger.warning("Piper voice not warmed up: %s", e)
 
 
-PROVIDERS = {"deepinfra": _deepinfra, "groq": _groq, "piper": _piper}
-BUDGET_FACTOR = {"groq": 1.0, "deepinfra": 1.4, "piper": 1.0}  # DeepInfra is no longer the last resort (Piper is): it does not get 15 s  # times settings.tts_timeout
+PROVIDERS = {"azure": _azure, "deepinfra": _deepinfra, "groq": _groq, "piper": _piper}
+BUDGET_FACTOR = {"azure": 1.0, "groq": 1.0, "deepinfra": 1.4, "piper": 1.0}  # DeepInfra is no longer the last resort (Piper is): it does not get 15 s  # times settings.tts_timeout
 
 
 _shared: httpx.Client | None = None

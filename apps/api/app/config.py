@@ -11,7 +11,10 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     stt_model: str = "whisper-large-v3-turbo"
     stt_provider: str = "groq,deepinfra"  # backup chain, first one tried first: groq | deepinfra
-    tts_provider: str = "groq,deepinfra,piper"  # backup chain: groq (Orpheus, limited to 100 voices/day) | deepinfra (Kokoro, needs a balance, 3 to 10 s) | piper (on the server, no limit: the safety net)
+    tts_provider: str = "azure,piper,groq,deepinfra"  # backup chain, first one tried first: azure (neural voice, free 0.5M characters/month) | piper (on the server, no limit) | groq (Orpheus, ~100 voices/day) | deepinfra (Kokoro, needs a balance, 3 to 16 s)
+    azure_speech_key: str = ""  # secret: an App Service setting, never committed; empty = azure skipped
+    azure_speech_region: str = "germanywestcentral"
+    azure_speech_voice: str = "en-US-AndrewMultilingualNeural"
     piper_model_path: str = "/opt/piper/en_US-lessac-medium.onnx"  # the Piper voice (the Docker image downloads it); missing file = Piper skipped
     deepinfra_api_key: str = ""
     voice_timeout: float = 20.0  # speech to text (the recording is uploaded, then transcribed)
