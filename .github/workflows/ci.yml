@@ -130,6 +130,7 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           LLM_FALLBACKS: ""
+          OPENROUTER_PROVIDER_IGNORE: GMICloud   # this host answers 400 "model deprecated" for Qwen3-235B (seen on 29 October 2026): invalid outputs in the gate
           PYTHONUNBUFFERED: "1"   # each case shows in the log as it runs, not all at the end
         run: |
           if [ -z "$OPENROUTER_API_KEY" ]; then echo "::error::The agent changed but the OPENROUTER_API_KEY secret is missing: evals cannot run."; exit 1; fi
