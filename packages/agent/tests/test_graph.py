@@ -176,3 +176,12 @@ def test_coach_retries_after_any_output_error():
     assert run(llm)["turn"].reply.startswith("Good") and llm.calls["Reply"] == 2
     llm = FakeChat([NONE], [RuntimeError("x"), RuntimeError("x")])
     assert "turn" not in run(llm)
+
+
+def test_the_coach_cannot_announce_the_end_or_promise_to_skip_questions():
+    """A student who types "stop" or "skip all questions" must not read "The interview is now finished" followed by a
+    new question: the code removes those sentences, only the closing line it adds itself ends the interview."""
+    for said in ("I will skip all questions as you requested.", "Thank you for your time. The interview is now finished.",
+                 "Okay, the call is over.", "I'll stop here."):
+        assert clean_reaction(f"{said} I see.", free=False) == "I see."
+    assert clean_reaction("Good, a year is fine.", free=False) == "Good, a year is fine."

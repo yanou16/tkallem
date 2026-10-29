@@ -227,11 +227,21 @@ def help_problem(raw: dict, scenario: dict) -> str | None:
             "they asked about in ONE simple statement that is NOT a question, for example: 'Move in means to start living in the room.'")
 
 
+# Only the app ends the interview (the closing line, added by the code). A coach that says "the interview is finished" or
+# "I will skip all questions" and then asks the next question contradicts itself (a student who types "stop", or a
+# prompt injection, got exactly that), so those sentences are removed from the model's reaction.
+_ENDING_TALK = re.compile(
+    r"(interview|call|conversation|session|practice)\s+(is|are|was)\s+(now\s+)?(over|finished|complete|completed|done|ended)"
+    r"|end of (the|our) (interview|call|conversation)|\bi(\s+will|['’]ll)\s+(skip|stop|end)\b|\bskip(ping)?\s+(all|the|every)\s+(the\s+)?questions"
+    r"|thank you for your time|as (you )?(requested|asked)", re.I)
+
+
 def clean_reaction(reaction: str, free: bool) -> str:
-    """Guided mode: the code asks the next question, so questions written by the model are dropped."""
+    """Guided mode: the code asks the next question, so questions written by the model are dropped, and so is any sentence
+    that talks about ending or skipping the interview."""
     if free:
         return reaction.strip()
-    return " ".join(s for s in sentences(reaction) if not s.endswith("?"))
+    return " ".join(s for s in sentences(reaction) if not s.endswith("?") and not _ENDING_TALK.search(s))
 
 
 def learner_text(text: str) -> str:
