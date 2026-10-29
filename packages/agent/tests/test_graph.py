@@ -93,12 +93,14 @@ def test_question_order():
     assert next_question(sc, last, covered={"g0", "g1", "g2", "g3"}) is None
 
 
-def test_an_unanswered_question_is_asked_again_once():
+def test_an_unanswered_question_is_asked_again_twice_at_most():
     sc = {"questions": ["q0", "q1", "q2"], "goals": ["g0", "g1", "g2"]}
     asked = [AIMessage("q0")]
     assert next_question(sc, asked, covered=set()) == "q0"  # "What do you mean?": the coach explains and asks again
     asked_twice = asked + [HumanMessage("what?"), AIMessage("I mean your reason. q0")]
-    assert next_question(sc, asked_twice, covered=set()) == "q1"  # never a third time: the student is not stuck
+    assert next_question(sc, asked_twice, covered=set()) == "q0"  # a second request for help gets help and the question again
+    asked_three = asked_twice + [HumanMessage("what do you mean?"), AIMessage("It means your reason. q0")]
+    assert next_question(sc, asked_three, covered=set()) == "q1"  # never a fourth time: the student is not stuck
 
 
 def test_a_question_answered_earlier_is_not_asked():

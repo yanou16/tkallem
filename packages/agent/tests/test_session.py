@@ -271,10 +271,11 @@ def test_fallback_list_is_parsed():
 
 def test_clarification_question_gets_the_question_again_then_the_interview_goes_on():
     qs = load_scenario("visa-us").questions
-    llm = FakeChat([NONE] * 3, [reply("I mean the reason of your trip."), reply("I see.", goal=None), reply(goal=GOALS[1])])
+    llm = FakeChat([NONE] * 4, [reply("I mean the reason of your trip."), reply("It is why you travel."), reply("I see.", goal=None), reply(goal=GOALS[1])])
     s = CoachSession("visa-us", "B1", "fr", llm=llm)
     assert s.turn("What do you mean?").reply == f"I mean the reason of your trip. {qs[0]}"
-    assert s.turn("Hmm.").reply.endswith(qs[1])  # asked twice already: the interview moves on
+    assert s.turn("What do you mean again?").reply == f"It is why you travel. {qs[0]}"  # a second request for help gets help too
+    assert s.turn("Hmm.").reply.endswith(qs[1])  # asked three times already: the interview moves on
     assert not s.finished
 
 
@@ -325,3 +326,19 @@ def test_an_invented_praise_never_reaches_the_student():
     s = CoachSession("visa-us", "B1", llm=llm)
     assert s.turn("I want to study computer science.").praise is None
     assert s.turns[0].praise is None
+
+
+def test_a_rephrased_question_is_not_all_the_help_the_student_gets():
+    """The coach answered "What do you mean?" with another question, which the code removes (it asks the question itself):
+    the coach is asked once more for an explanation, so the student does not hear the same question again with no help."""
+    qs = load_scenario("visa-us").questions
+    llm = FakeChat([NONE], [reply("What is the reason of your trip?"), reply("I mean why you want to go there.")])
+    s = CoachSession("visa-us", "B1", "fr", llm=llm)
+    assert s.turn("What do you mean?").reply == f"I mean why you want to go there. {qs[0]}"
+
+
+def test_interview_mode_does_not_start_teaching_when_the_student_is_lost():
+    qs = load_scenario("visa-us").questions
+    llm = FakeChat([NONE], [reply("What is the reason of your trip?")])
+    s = CoachSession("visa-us", "B1", "fr", llm=llm, feedback_mode="interview")
+    assert s.turn("What do you mean?").reply == qs[0]  # the officer simply asks again, one call, no explanation
