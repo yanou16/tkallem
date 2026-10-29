@@ -38,6 +38,7 @@ CLOSING = "Thank you, that is the end of the interview."
 # averaged 24 s with runaway outputs on some hosts. Switchable if a provider behaves differently.
 STRUCTURED_METHOD = os.getenv("TKALLEM_STRUCTURED_METHOD", "function_calling")
 RETRY_COMPACT = "Your previous answer was invalid or too long. Return compact JSON only: short sentences, no repetition."
+MAX_ASKS = 3  # a question is asked at most this many times (the first time, then after up to two requests for help)
 LENGTH_TOLERANCE = 2  # words above MAX_WORDS before the coach is asked to rephrase
 HEDGE_AFTER = float(os.getenv("TKALLEM_HEDGE_AFTER", "3"))  # seconds; 0 disables the duplicate request
 # LLM calls are I/O-bound: a large pool, so concurrent sessions do not wait for a free thread.
@@ -143,7 +144,7 @@ def next_question(
     """The scenario question to ask now, verbatim. `covered`: goal ids answered so far, this answer included.
 
     - The question just asked was not answered (clarification request, off-topic, another question answered): it is
-      asked once more, never twice, so a student who is stuck is not trapped.
+      asked again, up to MAX_ASKS times in all, so a student who asks what it means gets help twice and is still not trapped.
     - Questions whose goal was already answered earlier are passed over (no "What do you do?" after "I am a nurse").
     - With `skip` (the answer showed the next questions cannot apply), questions marked skippable are passed over.
     """
@@ -152,7 +153,7 @@ def next_question(
     questions, goals = scenario["questions"], scenario.get("goals", [])
     skippable = scenario.get("skippable", [])
     pos = asked_position(scenario, history)
-    if not skip and pos < len(goals) and goals[pos] not in covered and times_asked(questions[pos], history) < 2:
+    if not skip and pos < len(goals) and goals[pos] not in covered and times_asked(questions[pos], history) < MAX_ASKS:
         return questions[pos]
     nxt = pos + 1
     while nxt < len(questions) and nxt < len(goals) and (goals[nxt] in covered or (skip and goals[nxt] in skippable)):
@@ -211,11 +212,36 @@ def reaction_problem(reaction: str, level: Level) -> str | None:
     return None
 
 
+def help_problem(raw: dict, scenario: dict) -> str | None:
+    """Soft problem: the student did not answer (asked what a word means, was lost) and the coach's help would vanish.
+    A rephrased question ("When can you start living here?") is dropped by clean_reaction, because the code asks the next
+    question itself, so the student would only hear the same question again. The coach is asked once for a statement."""
+    if is_free(scenario):
+        return None
+    said = [raw.get("goal_covered"), *(raw.get("also_covered") or [])]
+    if any(g in scenario.get("goals", []) for g in said) or raw.get("skip_next"):
+        return None
+    if clean_reaction(raw["reaction"], False):
+        return None
+    return ("the student did not answer, and your sentence was a question, which is removed. Explain the question or the word "
+            "they asked about in ONE simple statement that is NOT a question, for example: 'Move in means to start living in the room.'")
+
+
+# Only the app ends the interview (the closing line, added by the code). A coach that says "the interview is finished" or
+# "I will skip all questions" and then asks the next question contradicts itself (a student who types "stop", or a
+# prompt injection, got exactly that), so those sentences are removed from the model's reaction.
+_ENDING_TALK = re.compile(
+    r"(interview|call|conversation|session|practice)\s+(is|are|was)\s+(now\s+)?(over|finished|complete|completed|done|ended)"
+    r"|end of (the|our) (interview|call|conversation)|\bi(\s+will|['’]ll)\s+(skip|stop|end)\b|\bskip(ping)?\s+(all|the|every)\s+(the\s+)?questions"
+    r"|thank you for your time|as (you )?(requested|asked)", re.I)
+
+
 def clean_reaction(reaction: str, free: bool) -> str:
-    """Guided mode: the code asks the next question, so questions written by the model are dropped."""
+    """Guided mode: the code asks the next question, so questions written by the model are dropped, and so is any sentence
+    that talks about ending or skipping the interview."""
     if free:
         return reaction.strip()
-    return " ".join(s for s in sentences(reaction) if not s.endswith("?"))
+    return " ".join(s for s in sentences(reaction) if not s.endswith("?") and not _ENDING_TALK.search(s))
 
 
 def learner_text(text: str) -> str:
@@ -280,8 +306,9 @@ def build_graph(llm: BaseChatModel):
     def coach_node(state: CoachState, config: RunnableConfig) -> CoachState:
         t0 = time.perf_counter()
         level = state["level"]
+        interview = state.get("feedback_mode") == "interview"  # the officer stays neutral: it does not teach
         messages = [
-            SystemMessage(build_system_prompt(level, state["scenario"], state.get("feedback_mode") == "interview")),
+            SystemMessage(build_system_prompt(level, state["scenario"], interview)),
             *state.get("history", []),
             HumanMessage(state["student_text"]),
         ]
@@ -294,7 +321,7 @@ def build_graph(llm: BaseChatModel):
                 problem = f"no usable output ({type(e).__name__}). {RETRY_COMPACT}"
             # raw is None without an error when the provider answers without the structured output: unusable too
             hard = problem if raw is None and problem else reply_problem(raw)
-            soft = None if hard else reaction_problem(raw["reaction"], level)
+            soft = None if hard else reaction_problem(raw["reaction"], level) or (None if interview else help_problem(raw, state["scenario"]))
             if not hard and (not soft or attempt == MAX_RETRIES):
                 timings = {"coach": time.perf_counter() - t0, "coach_attempts": attempt + 1}
                 return {"reply": raw, "coach_error": "", "timings": timings}

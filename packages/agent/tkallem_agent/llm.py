@@ -48,7 +48,11 @@ def get_llm(provider: str | None = None, model: str | None = None, *, timeout: f
         from langchain_openai import ChatOpenAI
 
         sort = os.getenv("OPENROUTER_PROVIDER_SORT", "latency")  # route to the fastest host of the model ("" = default)
-        extra = {"extra_body": {"provider": {"sort": sort}}} if sort else {}
+        # Hosts never to use, comma separated ("GMICloud"): on 29 October 2026 the fastest host of Qwen3-235B answered 400
+        # "model deprecated" to about a third of the calls, each one then costing a second and a weaker backup model.
+        ignore = [h.strip() for h in os.getenv("OPENROUTER_PROVIDER_IGNORE", "").split(",") if h.strip()]
+        routing = {**({"sort": sort} if sort else {}), **({"ignore": ignore} if ignore else {})}
+        extra = {"extra_body": {"provider": routing}} if routing else {}
         return ChatOpenAI(base_url="https://openrouter.ai/api/v1", api_key=os.environ["OPENROUTER_API_KEY"], **common, **extra)
     raise ValueError(f"unknown LLM provider: {provider}")
 
