@@ -9,7 +9,7 @@ import InstallButton from "@/components/InstallButton";
 import HeroExample from "@/features/landing/HeroExample";
 import HowItWorks from "@/features/landing/HowItWorks";
 import ProductTour from "@/features/landing/ProductTour";
-import { GUEST_FREE_ANSWERS } from "@/lib/config";
+import { DAILY_NEW_ANSWERS, GUEST_FREE_ANSWERS, SIGNUP_BONUS_ANSWERS } from "@/lib/config";
 
 const FIRST_SCENARIO = "visa-us";
 const PRIMARY = "inline-flex min-h-14 items-center justify-center gap-3 rounded-full bg-ink px-7 py-4 text-base font-semibold text-white transition-colors hover:bg-black/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink";
@@ -59,7 +59,7 @@ export default function WelcomePage() {
         <div><h2 className="max-w-3xl text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">Your real interview is coming.<br />Rehearse it first.</h2><p className="mt-4 text-base text-white/70 sm:text-lg">Five minutes, your voice, nobody watching.</p></div>
         <div className="flex shrink-0 flex-col items-start gap-4"><Link href={primaryHref} className="inline-flex min-h-14 items-center justify-center gap-3 rounded-full bg-white px-7 py-4 text-base font-semibold text-ink hover:bg-white/90">{primaryLabel} <ArrowRight size={19} aria-hidden="true" /></Link><InstallButton className="[&_*]:!text-white" /></div>
       </section>
-      <footer className="mt-8 flex flex-col gap-4 border-t border-line pt-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between"><span className="font-semibold text-ink">Tkallem</span><p>Free to try: {GUEST_FREE_ANSWERS} answers without an account. Sign in for 60 more, then 15 new answers every day.</p></footer>
+      <footer className="mt-8 flex flex-col gap-4 border-t border-line pt-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between"><span className="font-semibold text-ink">Tkallem</span><p>Free to try: {GUEST_FREE_ANSWERS} answers without an account. Sign in for {SIGNUP_BONUS_ANSWERS} more, then {DAILY_NEW_ANSWERS} new answers every day.</p></footer>
     </main>
   </div>;
 }
