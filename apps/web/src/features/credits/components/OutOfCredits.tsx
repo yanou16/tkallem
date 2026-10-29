@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { ApiError } from "@/lib/api/client";
+import { DAILY_NEW_ANSWERS, SIGNUP_BONUS_ANSWERS } from "@/lib/config";
 import type { CreditErrorDetail } from "../types/credits";
 
 /** True when the error means "no credits" (402) or "today's free practice is used up" (429). */
@@ -21,7 +22,7 @@ export default function OutOfCredits({ error, isGuest }: { error: ApiError; isGu
     text = "A lot of students practiced today. Come back tomorrow, your answers are safe.";
   } else if (isGuest) {
     title = "You used your free answers";
-    text = "Create a free account to get 60 more answers, and new answers every day.";
+    text = `Create a free account to get ${SIGNUP_BONUS_ANSWERS} more answers, and ${DAILY_NEW_ANSWERS} new ones every day.`;
     cta = { href: "/sign-up", label: "Create a free account" };
   } else {
     title = "No answers left";

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, type InputHTMLAttributes, type ReactNode } from "react";
+import { DAILY_NEW_ANSWERS, SIGNUP_BONUS_ANSWERS } from "@/lib/config";
 
 /* ------------------------------------------------------------------ */
 /* Petits éléments partagés                                            */
@@ -251,7 +252,7 @@ export function AuthShell({ mode, children }: { mode: "sign-in" | "sign-up"; chi
               </h1>
               <p className="mt-4 max-w-[400px] text-[15px] leading-relaxed text-steel">
                 {isSignUp
-                  ? "Free account: 60 answers to start, then 15 new answers every day. Your progress is saved."
+                  ? `Free account: ${SIGNUP_BONUS_ANSWERS} answers to start, then ${DAILY_NEW_ANSWERS} new answers every day. Your progress is saved.`
                   : "Rehearse visa, admission and job interviews by voice, with every mistake explained in English or French, your choice."}
               </p>
             </div>

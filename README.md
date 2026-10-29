@@ -54,7 +54,7 @@ with nobody watching. The student can also *see* the freeze itself: how long the
 2. Answer the first question out loud, or type it. Not sure how to start? Press **Help me start**.
 3. Read the correction, press **Say it again**, finish the interview and open the **report**.
 
-A guest has **300 free answers** (about 50 full sessions). Signing in adds 200 more and 50 every day. It installs on a phone like an app (PWA).
+A guest has **1,000 free answers** (about 160 full sessions). Signing in adds 200 more and 50 every day. It installs on a phone like an app (PWA).
 A guest's sessions, reports and progress are kept on that device; creating an account moves them to the account.
 
 ## What a student can do
@@ -165,7 +165,7 @@ referrer policy and a permissions policy); rate limits are in memory (one API pr
 
 ## Cost and limits
 
-One answer from the student uses one free answer. On the demo server a guest gets **300**; signing in adds **200** and moves the guest's unused
+One answer from the student uses one free answer. On the demo server a guest gets **1,000**; signing in adds **200** and moves the guest's unused
 answers over; then **50 every day**, never above **200**. One network may create 1,000 guests a day (5,000 in total). These are settings
 (`GUEST_CREDITS`, `LOGIN_BONUS`, `DAILY_REFILL`, `REFILL_CAP`, `GUEST_IP_DAILY_CAP`, `GUEST_DAILY_CAP`); the defaults in the code are the smaller
 100, 60, 15 and 45, so a local run stays frugal. `DAILY_SPEND_CAP` (default 5000) bounds what everyone together can
