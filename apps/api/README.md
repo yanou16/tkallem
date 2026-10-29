@@ -77,7 +77,8 @@ production (see `infra/azure/api.env.example`). Never commit a value.
 | `LLM_PROVIDER`, `LLM_MODEL` | Main language model of the coach (`openrouter` or `groq`) |
 | `LLM_FALLBACKS` | Backup models, comma separated `provider:model` |
 | `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `DEEPINFRA_API_KEY` | Provider keys (Groq: model backups and voice; DeepInfra: voice backup) |
-| `STT_PROVIDER`, `TTS_PROVIDER`, `STT_MODEL` | Voice providers in backup order (`groq,deepinfra`), and the transcription model |
+| `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`, `AZURE_SPEECH_VOICE` | Azure Speech neural voice, first of the voice chain (free F0 plan; empty key = skipped) |
+| `STT_PROVIDER`, `TTS_PROVIDER`, `STT_MODEL` | Voice providers in backup order (STT `groq,deepinfra`; TTS `azure,piper,groq,deepinfra`), and the transcription model |
 | `VOICE_TIMEOUT`, `VOICE_CONNECT_TIMEOUT` | Time limits of a voice provider call |
 | `MAX_AUDIO_BYTES`, `MAX_TEXT_CHARS` | Largest recording and longest typed answer accepted |
 | `GUEST_SECRET` | Signs guest tokens (32 characters or more). Empty: guest mode is off |
