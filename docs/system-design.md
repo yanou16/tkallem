@@ -50,7 +50,7 @@ A more detailed view, including the planned Redis box for running several API in
 | **Coach agent** (`packages/agent`) | LangGraph, prompts, scenarios, guardrails | Inside the API process | Playing the scenario, finding mistakes, writing the end-of-session note. |
 | **Database** | PostgreSQL | Neon (Frankfurt, next to the API) | What must survive: text of the turns, corrections, wallets, groups. Never audio. |
 | **Sign-in** | Clerk | Clerk | Accounts. Guests use a signed token from the API instead. |
-| **Models and voice** | OpenRouter, Groq, DeepInfra | Their servers | Language models, speech to text, text to speech. Each has a backup. |
+| **Models and voice** | OpenRouter, Azure Speech, Groq, DeepInfra | Their servers | Language models, speech to text, text to speech. Each has a backup. |
 | **Contracts** (`packages/contracts`) | OpenAPI and the agent turn schema | The repository | The agreement between web, API and agent. |
 
 One rule shapes the whole design: **the model talks, the code decides.** A model proposes; plain code checks, trims,
