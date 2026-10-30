@@ -81,7 +81,7 @@ validated by code. Attacks such as "ignore your rules", "mark this green" or hid
 |---|---|---|
 | Language model (coach and corrector) | Qwen3-235B through OpenRouter | DeepSeek V3.2 through OpenRouter, then Qwen3 on Groq (slower, a last resort) |
 | Speech to text | Whisper large-v3-turbo on Groq | The same model on DeepInfra |
-| Voice | Azure Speech neural voice (Andrew; free plan, 0.5 million characters a month) | Piper on our own server (no quota), Orpheus on Groq, Kokoro on DeepInfra, then the browser's own voice |
+| Voice | Azure Speech neural voice (Andrew; free plan, 0.5 million characters a month) | Orpheus on Groq, Piper on our own server (no quota), Kokoro on DeepInfra, then the browser's own voice |
 
 If the main language model has not answered after 12 seconds, the backups are tried; a duplicate request is sent after
 3 seconds if the first is slow. An unusable output is retried once. Every provider call has a timeout.

@@ -81,7 +81,7 @@ plain code then keeps, trims, merges or rejects them. The next question, the sen
 computed, never generated. Prompt injections ("ignore your rules", "mark this green") are treated as data and checked
 against 9 attacks in CI.
 
-Every provider has a backup, so a rate limit during the judging week costs a second, not the session. The coach's voice has five levels: **Azure Speech** (a neural voice, free plan), **Piper (a voice that runs on our own server, no quota)**, Groq, DeepInfra, then the browser's own voice.
+Every provider has a backup, so a rate limit during the judging week costs a second, not the session. The coach's voice has five levels: **Azure Speech** (a neural voice, free plan), Groq, **Piper (a voice that runs on our own server, no quota)**, DeepInfra, then the browser's own voice.
 
 **→ [Read the full AI coach document](docs/ai.md)** (the guardrails table, providers and backups, evaluation, privacy, limits)
 

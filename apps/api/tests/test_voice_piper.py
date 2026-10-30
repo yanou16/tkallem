@@ -90,8 +90,8 @@ def test_a_voice_that_cannot_say_the_text_gives_way_to_the_next_provider(monkeyp
     assert tts.synthesize("Hello.").provider == "deepinfra"
 
 
-def test_the_default_chain_puts_piper_before_the_limited_voices():
-    assert settings.model_fields["tts_provider"].default == "azure,piper,groq,deepinfra"
+def test_the_default_chain_is_azure_groq_piper_deepinfra():
+    assert settings.model_fields["tts_provider"].default == "azure,groq,piper,deepinfra"
 
 
 def test_warm_up_loads_the_voice_once_and_never_raises(monkeypatch, tmp_path):

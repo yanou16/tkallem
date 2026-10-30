@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     openrouter_api_key: str = ""
     stt_model: str = "whisper-large-v3-turbo"
     stt_provider: str = "groq,deepinfra"  # backup chain, first one tried first: groq | deepinfra
-    tts_provider: str = "azure,piper,groq,deepinfra"  # backup chain, first one tried first: azure (neural voice, free 0.5M characters/month) | piper (on the server, no limit) | groq (Orpheus, ~100 voices/day) | deepinfra (Kokoro, needs a balance, 3 to 16 s)
+    tts_provider: str = "azure,groq,piper,deepinfra"  # backup chain, first one tried first: azure (neural voice, free 0.5M characters/month) | groq (Orpheus, ~100 voices/day) | piper (on the server, no limit) | deepinfra (Kokoro, needs a balance, 3 to 16 s)
     azure_speech_key: str = ""  # secret: an App Service setting, never committed; empty = azure skipped
     azure_speech_region: str = "germanywestcentral"
     azure_speech_voice: str = "en-US-AndrewMultilingualNeural"
