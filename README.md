@@ -253,5 +253,4 @@ infra/azure/         Deployment script and notes
 
 ## License
 
-<!-- TODO (the team): choose a license and add a LICENSE file, for example MIT. Until then all rights are reserved by default. -->
-All rights reserved by the authors until the team chooses a license.
+All rights reserved by the authors. The code is public so that it can be read, run locally and judged; it is not licensed for reuse.
