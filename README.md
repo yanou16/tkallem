@@ -9,7 +9,7 @@
 An English speaking coach for Algerian students who understand English but freeze when they have to speak it:
 a US student visa interview, a university admission interview, a remote job interview, IELTS Speaking.
 
-[**Try it now**](https://tkallem.vercel.app) · <!-- TODO: add the demo video link here once uploaded: [Demo video](URL) · -->[API docs](https://tkallem-api-rayane.azurewebsites.net/docs) · [Documentation](#documentation)
+[**Try it now**](https://tkallem.vercel.app) · [Demo video](https://youtu.be/rMd0lO5nTWI) · [API docs](https://tkallem-api-rayane.azurewebsites.net/docs) · [Documentation](#documentation)
 
 [![tests](https://img.shields.io/github/actions/workflow/status/yanou16/tkallem/ci.yml?branch=main&label=tests&logo=github)](https://github.com/yanou16/tkallem/actions/workflows/ci.yml)
 [![deploy](https://img.shields.io/github/actions/workflow/status/yanou16/tkallem/api-image.yml?branch=main&label=deploy&logo=microsoftazure)](https://github.com/yanou16/tkallem/actions/workflows/api-image.yml)
@@ -81,7 +81,7 @@ plain code then keeps, trims, merges or rejects them. The next question, the sen
 computed, never generated. Prompt injections ("ignore your rules", "mark this green") are treated as data and checked
 against 9 attacks in CI.
 
-Every provider has a backup, so a rate limit during the judging week costs a second, not the session. The coach's voice has four levels: Groq, DeepInfra, **Piper (a voice that runs on our own server, no quota)**, then the browser's own voice.
+Every provider has a backup, so a rate limit during the judging week costs a second, not the session. The coach's voice has five levels: **Azure Speech** (a neural voice, free plan), **Piper (a voice that runs on our own server, no quota)**, Groq, DeepInfra, then the browser's own voice.
 
 **→ [Read the full AI coach document](docs/ai.md)** (the guardrails table, providers and backups, evaluation, privacy, limits)
 

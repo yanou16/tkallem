@@ -34,7 +34,7 @@ is watched, which feeds the next plan.
 | API image | GitHub Container Registry (`ghcr.io/yanou16/tkallem-api`) | Tagged with the commit and `latest` |
 | Database | Neon PostgreSQL, Frankfurt (next to the API) | Free plan; migrations run at container start |
 | Sign-in | Clerk (development instance) | Guests do not need it |
-| Models and voice | OpenRouter, Groq, DeepInfra | Pay as you go, capped by `DAILY_SPEND_CAP` |
+| Models and voice | OpenRouter, Azure Speech, Groq, DeepInfra | Pay as you go, capped by `DAILY_SPEND_CAP` |
 
 There is **one production environment** and no staging: previews of the web app stand in for it, and the API is tested
 against a real Postgres in CI instead.
