@@ -99,7 +99,10 @@ identity, free answers, sessions and the calls to the coach. Only the text of th
 ![Tech stack by layer: Next.js, React, TypeScript, Tailwind, PWA and Clerk for the web app; Python, FastAPI, Docker and Azure for the API; LangGraph, LangChain, OpenRouter, Groq, DeepInfra and Langfuse for the AI; Neon PostgreSQL for data; GitHub, GitHub Actions, pytest, Vitest, Locust and Vercel for quality and delivery](docs/images/tech-stack.svg)
 
 **AI tools used to build it:** Claude Code (an AI coding assistant) wrote a large part of the code, which the team reviewed
-and tested. <!-- TODO (the team): add the AI tools each member used. -->
+and tested. Rayane also ran design-review skills inside Claude Code (Impeccable and Emil Kowalski's design-engineering
+skills) to audit and polish the interface, and a scripted QA campaign with the real models to find the coach's weak spots
+(see `packages/agent/evals`). The models inside the app (Qwen3, DeepSeek, Whisper, Azure Speech, Piper) are part of the
+product, not build tools; they are listed above. <!-- TODO: Zaki and Akram, add the AI tools you used. -->
 
 ## DevOps
 
